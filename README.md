@@ -4,8 +4,6 @@ TuffyFlow is a campus companion web application designed for students at Califor
 
 The project is being developed for **CPSC 362 – Foundations of Software Engineering** at California State University, Fullerton.
 
-
-
 ---
 
 ## Project Overview
@@ -36,7 +34,7 @@ TuffyFlow will help students identify a suitable parking location based on facto
 * Historical parking trends
 
 A future goal is to provide a **recommended arrival time** so students know when they should arrive on campus.
-
+      
 Example:
 
 ```text
@@ -255,14 +253,12 @@ Future versions may include real-time parking information, historical parking an
 
 ## Team
 
-**Team Name:** TBD
+Team Name: TBD
 
-**Team Members:**
-
+Team Members: 
 * Team Member 1
 * Team Member 2
 * Team Member 3
-* Team Member 4
 
 Responsibilities will be divided across frontend development, backend/database development, recommendation logic, testing, documentation, and project management.
 
@@ -270,10 +266,10 @@ Responsibilities will be divided across frontend development, backend/database d
 
 ## Course Information
 
-**Course:** CPSC 362 – Foundations of Software Engineering
-**University:** California State University, Fullerton
-**Professor:** Mehdi Peiravi
-**Semester:** Fall 2026
+Course: 362 – Foundations of Software Engineering
+University: California State University, Fullerton
+Professor: Mehdi Peiravi
+Semester: Fall 2026
 
 ---
 
@@ -282,8 +278,6 @@ Responsibilities will be divided across frontend development, backend/database d
 TuffyFlow is currently an academic project and is not an official California State University, Fullerton application.
 
 Parking availability, campus locations, clubs, events, and other information used during development may initially contain sample or manually collected data.
-
-Official CSUF integrations will only be used where appropriate and where data access is publicly available or authorized.
 
 ---
 
