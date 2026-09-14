@@ -158,10 +158,11 @@ Machine learning is not required for the initial version of the application. Mor
 * Vite
 * JavaScript
 * Tailwind CSS
+  
 
 ### Backend / Database
 
-* Supabase
+* Python
 * PostgreSQL
 * Supabase Authentication
 
@@ -172,13 +173,14 @@ Machine learning is not required for the initial version of the application. Mor
 
 ### Deployment
 
-* Vercel
+Planning on Vercel/github page
 
 ### Development Tools
 
 * Git
 * GitHub
 * Visual Studio Code
+* AI powered IDE 
 
 ---
 
