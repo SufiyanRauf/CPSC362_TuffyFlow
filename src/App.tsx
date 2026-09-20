@@ -1,14 +1,28 @@
-// This is the starting point, on purpose. Week 1 is where you replace it with the real
-// dashboard, built from the hardcoded data in src/data.ts. Do not add Supabase here yet.
+import { useState } from 'react'
+import Sidebar from './components/Sidebar'
+import Dashboard from './components/Dashboard'
+
+export type View = 'home' | 'parking' | 'spots' | 'clubs' | 'profile'
+
+// No router on purpose. There are five screens and one user, so a piece of state
+// does the same job without the extra setup a router needs on Vercel.
 export default function App() {
+  const [view, setView] = useState<View>('home')
+
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-3xl font-semibold">Tuffy Flow</h1>
-        <p className="mt-2 text-slate-400">
-          The scaffold is running. Week 1 replaces this screen.
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex">
+      <Sidebar active={view} onSelect={setView} />
+
+      <main className="flex-1 p-6">
+        {view === 'home' ? (
+          <Dashboard />
+        ) : (
+          <div className="text-slate-400">
+            <h1 className="text-2xl font-semibold capitalize text-slate-100">{view}</h1>
+            <p className="mt-2 text-sm">Coming in a later sprint.</p>
+          </div>
+        )}
+      </main>
     </div>
   )
 }
