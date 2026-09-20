@@ -1,11 +1,8 @@
 import { useState } from 'react'
+import type { View } from './types'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 
-export type View = 'home' | 'parking' | 'spots' | 'clubs' | 'profile'
-
-// No router on purpose. There are five screens and one user, so a piece of state
-// does the same job without the extra setup a router needs on Vercel.
 export default function App() {
   const [view, setView] = useState<View>('home')
 

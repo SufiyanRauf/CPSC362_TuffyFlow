@@ -6,7 +6,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-semibold">Hello {student.name}</h1>
+        <h1 className="text-2xl font-semibold">Hello {student.full_name}</h1>
         <p className="text-sm text-slate-400">Your next move on campus</p>
       </div>
 
@@ -18,9 +18,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* The map goes here once Leaflet is set up. Keeping the space so the
-          layout does not shift when it arrives. */}
-      <div className="rounded-xl bg-slate-800 h-56 grid place-items-center text-sm text-slate-500">
+      {/* map goes here */}
+      <div className="rounded-xl bg-slate-800 h-56 grid place-items-center text-sm text-slate-400">
         Map coming in a later sprint
       </div>
     </div>

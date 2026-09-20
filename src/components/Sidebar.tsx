@@ -1,4 +1,4 @@
-import type { View } from '../App'
+import type { View } from '../types'
 
 type SidebarProps = {
   active: View
@@ -15,7 +15,7 @@ const views: { id: View; label: string }[] = [
 
 export default function Sidebar({ active, onSelect }: SidebarProps) {
   return (
-    <nav className="w-48 shrink-0 bg-slate-950 p-4 flex flex-col gap-1">
+    <nav aria-label="Main" className="w-48 shrink-0 bg-slate-950 p-4 flex flex-col gap-1">
       <div className="flex items-center gap-2 mb-6">
         <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-bold grid place-items-center">
           TF
@@ -27,6 +27,7 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
         <button
           key={view.id}
           onClick={() => onSelect(view.id)}
+          aria-current={view.id === active ? 'page' : undefined}
           className={
             'text-left px-3 py-2 rounded-md text-sm ' +
             (view.id === active

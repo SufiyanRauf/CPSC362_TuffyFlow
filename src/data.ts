@@ -1,41 +1,39 @@
-// Hardcoded sample data so the dashboard can be built before the database exists.
-// Week 2 swaps this out for real Supabase queries. The values here match the seed
-// data in db/seed.sql so the screen should not change when we make the switch.
+// sample data until Supabase is wired up in week 2
 
 import type { Student, NextClass, Recommendation } from './types'
 
 export const student: Student = {
-  name: 'Titan',
+  full_name: 'Titan',
   major: 'Computer Science',
 }
 
 export const nextClass: NextClass = {
-  courseCode: 'CPSC 362',
-  startsAt: '11:30 AM',
-  building: 'Computer Science',
-  minutesUntil: 42,
+  course_code: 'CPSC 362',
+  start_time: '11:30 AM',
+  building_name: 'Computer Science',
+  minutes_until: 42,
 }
 
 export const recommendations: Recommendation[] = [
   {
     id: 'lot-eastside',
-    kind: 'parking',
+    category: 'parking',
     title: 'Eastside Parking Structure',
-    matchPercent: 88,
-    reason: '8 min walk, usually about 30% open at 10 AM',
+    match_percent: 88,
+    reason: '4 min walk, usually about 20% open at 10 AM',
   },
   {
     id: 'spot-ecs',
-    kind: 'spot',
+    category: 'spot',
     title: 'ECS Study Area',
-    matchPercent: 94,
-    reason: 'Quiet, has outlets, 4 min from your next class',
+    match_percent: 94,
+    reason: 'Quiet, has outlets, same building as your next class',
   },
   {
     id: 'event-acm',
-    kind: 'event',
-    title: 'ACM Resume Workshop',
-    matchPercent: 92,
+    category: 'event',
+    title: 'Resume Workshop with Industry Mentors',
+    match_percent: 92,
     reason: 'Matches software engineering and career development',
   },
 ]
