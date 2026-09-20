@@ -17,7 +17,7 @@ Students often need to use multiple resources to answer simple questions such as
 
 TuffyFlow aims to bring these decisions into one application.
 
-Instead of only displaying information, the application will use a student's schedule, interests, preferences, campus locations, and available data to provide personalized recommendations.
+Instead of only displaying information, the application uses a student's schedule, interests, preferences, and campus locations to provide personalized recommendations.
 
 ---
 
@@ -25,16 +25,16 @@ Instead of only displaying information, the application will use a student's sch
 
 ### Parking Recommendation
 
-TuffyFlow will help students identify a suitable parking location based on factors such as:
+TuffyFlow helps students identify a suitable parking location based on factors such as:
 
-* Current parking availability
+* Typical availability for that lot at the hour they would arrive
 * Class location
 * Class start time
 * Walking distance
-* Historical parking trends
+* Permit type
 
-A future goal is to provide a **recommended arrival time** so students know when they should arrive on campus.
-      
+The recommendation also includes a **suggested arrival time**, so students know when to leave.
+
 Example:
 
 ```text
@@ -45,9 +45,9 @@ Recommended Parking:
 Eastside Parking Structure
 
 Estimated Walk: 8 minutes
-Parking Availability: Good
+Expected Availability: usually about 30% open at 10:00 AM
 
-Recommended Arrival Time:
+Suggested Arrival Time:
 10:50 AM
 ```
 
@@ -55,9 +55,9 @@ Recommended Arrival Time:
 
 ### Campus Spot Recommendation
 
-Students will be able to search for campus locations based on what they need at that moment.
+Students can find campus locations based on what they need at that moment.
 
-Possible preferences include:
+Preferences include:
 
 * Quiet study area
 * Power outlets
@@ -84,7 +84,7 @@ Match: 94%
 
 ### Club and Event Discovery
 
-Students will receive recommendations for clubs and campus events based on their interests, major, career goals, and availability.
+Students receive recommendations for clubs and campus events based on their interests, major, career goals, and availability.
 
 Example interests:
 
@@ -112,58 +112,48 @@ Software Engineering + Career Development
 
 ## Recommendation System
 
-TuffyFlow will initially use a rule-based recommendation system.
+TuffyFlow uses a rule based scoring system rather than machine learning. With no real usage history to learn from, a model would be learning from data we invented, and it could not explain its own output. Every recommendation in this app has to be able to say why it was chosen.
 
-For example:
-
-### Parking
+All three recommenders are the same algorithm with different inputs, so the project implements **one ranking engine** and configures it three ways:
 
 ```text
-Parking Score =
-Availability
-+ Walking Distance
-+ Class Start Time
-+ Historical Parking Data
+1. Remove candidates that are impossible
+   (a permit you do not hold, an event that clashes with a class)
+
+2. Score what remains on a few factors,
+   each scaled to a value between 0 and 1
+
+3. Multiply each factor by its weight and add them up
+
+4. Sort, take the top few, and return a sentence
+   explaining each one
 ```
 
-### Campus Spaces
+The factors differ per feature:
 
-```text
-Space Score =
-Crowd Level
-+ Distance
-+ Student Preferences
-+ Time Until Next Class
-```
+| Feature | Filters | Factors |
+|---|---|---|
+| Parking | Permit type | Walking distance, typical fullness at arrival hour |
+| Campus spots | Open now | Walking distance, noise level, power outlets |
+| Clubs and events | Time conflicts, already started | Tag overlap with interests, walking distance |
 
-### Clubs and Events
-
-```text
-Club Match =
-Student Interests
-+ Major
-+ Career Goals
-+ Schedule Availability
-```
-
-Machine learning is not required for the initial version of the application. More advanced prediction models may be explored later if enough historical data becomes available.
+Scaling every factor to the same range before weighting matters. Walking minutes run to about 25 and fullness runs to 100, so adding the raw numbers would let fullness decide almost everything regardless of the weights.
 
 ---
 
-## Proposed Tech Stack
+## Tech Stack
 
 ### Frontend
 
 * React
+* TypeScript
 * Vite
-* JavaScript
 * Tailwind CSS
-  
 
-### Backend / Database
+### Backend and Database
 
-* Python
-* PostgreSQL
+* Python with FastAPI, for the scoring endpoint
+* PostgreSQL, hosted on Supabase
 * Supabase Authentication
 
 ### Maps
@@ -173,102 +163,110 @@ Machine learning is not required for the initial version of the application. Mor
 
 ### Deployment
 
-Planning on Vercel/github page
+* Vercel
 
 ### Development Tools
 
-* Git
-* GitHub
+* Git and GitHub
 * Visual Studio Code
-* AI powered IDE 
+* Jira for task tracking
+* AI assisted development
+
+---
+
+## What is real and what is seeded
+
+All data in this application is seeded by the development team. There is no live data source.
+
+| Real | Seeded by us |
+|---|---|
+| Campus building and lot locations | Class schedules |
+| Building names and codes | Parking occupancy patterns |
+| | Clubs and events |
+| | Study spot details |
+
+Parking availability is a typical occupancy pattern by day and hour that we wrote, not a live measurement. There is no public feed for CSUF parking occupancy. Anywhere this appears in the interface it is described as typical or expected, never as current or live.
+
+The database is designed so that a real data source could replace the seeded rows later without redesigning anything.
+
+---
+
+## Architecture
+
+The application has four parts:
+
+* **The browser** runs the interface and draws everything. It holds no permanent data.
+* **The database** holds every row and decides who is allowed to read which rows.
+* **The scoring service** is a Python function that ranks candidates. It has no database access and holds no credentials.
+* **The host** serves the site and runs the scoring function.
+
+A single recommendation travels like this:
+
+```text
+Browser reads the session
+  -> asks the database for this student's profile and class schedule
+  -> works out the next class from the schedule and the current time
+  -> asks for candidate lots, occupancy rows and upcoming events
+  -> posts all of it to the scoring service in one request
+  -> receives a ranked list with a reason for each
+  -> draws the cards and the map pins
+```
+
+The scoring service receives everything it needs in the request rather than querying the database itself. This means no long lived credential exists anywhere in the deployment, access control is enforced in exactly one place, and the service is a pure function that can be tested without a database running.
+
+Access control uses PostgreSQL row level security, so the database enforces per row who may read what. A student can only ever read their own profile and their own class schedule, regardless of what the browser asks for.
 
 ---
 
 ## Current Project Status
 
-The project is currently in the **planning and prototyping stage**.
+The project is in the **early development stage**.
 
-Completed so far:
+Completed:
 
-* Initial project concept
-* Problem identification
+* Project concept and problem identification
 * Initial presentation
 * UI prototype
-* Parking recommendation concept
-* Campus space recommendation concept
-* Club and event recommendation concept
-* Initial technology stack selection
-* Research into public CSUF parking availability data
+* Database schema and seed data
+* Recommendation algorithm design
+* Technology stack selection
 
----
+In progress:
 
-## Prototype
-
-The current prototype includes:
-
-* Student dashboard
-* Parking recommendation interface
-* Campus spot recommendation interface
-* Club and event recommendation interface
-* Student profile and preferences
-* Sample recommendation scores
-
-The prototype currently uses sample data and is intended to demonstrate the proposed user experience.
+* React application setup
+* Dashboard interface
 
 ---
 
 ## Planned Development
 
-Our next steps include:
-
-1. Finalize project requirements
-2. Create user stories and use cases
-3. Design the database
-4. Set up the React application
-5. Set up Supabase
-6. Implement authentication
-7. Develop parking recommendations
-8. Develop campus-space recommendations
-9. Develop club and event recommendations
-10. Integrate maps
-11. Test the application
-12. Deploy the MVP
-
----
-
-## Shipping Next
-
-The next version of TuffyFlow will focus on turning the current prototype into a working MVP.
-
-The first development milestone will include:
-
-* Basic React frontend
-* Navigation between major features
-* Supabase database connection
-* Student profile
-* Sample parking data
-* Initial recommendation logic
-
-Future versions may include real-time parking information, historical parking analysis, recommended arrival times, crowdsourced campus-space availability, notifications, and improved personalization.
+1. Set up the React application
+2. Build the dashboard interface
+3. Set up Supabase and load the schema
+4. Implement authentication and student profiles
+5. Build the ranking engine
+6. Develop parking recommendations
+7. Develop club and event recommendations
+8. Integrate maps
+9. Develop campus space search
+10. Test the application
+11. Deploy
 
 ---
 
 ## Team
 
-Team Name: TBD
-
-Team Members: 
-* Team Member 1
-* Team Member 2
-* Team Member 3
-
-Responsibilities will be divided across frontend development, backend/database development, recommendation logic, testing, documentation, and project management.
+| Name | Role |
+|---|---|
+| Sufiyan Rauf | Development, database, recommendation engine |
+| Phillip Bryan | Development, campus data |
+| Bhavy Patel | Development, presentations and documentation |
 
 ---
 
 ## Course Information
 
-Course: 362 – Foundations of Software Engineering
+Course: CPSC 362 – Foundations of Software Engineering
 University: California State University, Fullerton
 Professor: Mehdi Peiravi
 Semester: Fall 2026
@@ -277,10 +275,10 @@ Semester: Fall 2026
 
 ## Disclaimer
 
-TuffyFlow is currently an academic project and is not an official California State University, Fullerton application.
+TuffyFlow is an academic project and is not an official California State University, Fullerton application.
 
-Parking availability, campus locations, clubs, events, and other information used during development may initially contain sample or manually collected data.
+Parking availability, campus locations, clubs, events, and other information used in this project are sample or manually collected data.
 
 ---
 
-**“What should I do or where should I go next?”**
+**"What should I do or where should I go next?"**
