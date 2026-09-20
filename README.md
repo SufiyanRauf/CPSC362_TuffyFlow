@@ -44,11 +44,11 @@ Class Time: 11:30 AM
 Recommended Parking:
 Eastside Parking Structure
 
-Estimated Walk: 8 minutes
-Expected Availability: usually about 30% open at 10:00 AM
+Estimated Walk: 4 minutes
+Expected Availability: usually about 20% open at 10:00 AM
 
 Suggested Arrival Time:
-10:50 AM
+11:16 AM
 ```
 
 ---
@@ -75,7 +75,7 @@ ECS Study Area
 Quiet
 Outlets Available
 Indoor
-4 Minutes From Next Class
+Same Building As Next Class
 
 Match: 94%
 ```
@@ -84,7 +84,7 @@ Match: 94%
 
 ### Club and Event Discovery
 
-Students receive recommendations for clubs and campus events based on their interests, major, career goals, and availability.
+Students receive recommendations for clubs and campus events based on their interests, career goals, and availability.
 
 Example interests:
 
@@ -98,7 +98,7 @@ Example:
 
 ```text
 Recommended Event:
-ACM Tech Workshop
+Resume Workshop with Industry Mentors
 
 Time: 4:00 PM
 
@@ -134,10 +134,8 @@ The factors differ per feature:
 | Feature | Filters | Factors |
 |---|---|---|
 | Parking | Permit type | Walking distance, typical fullness at arrival hour |
-| Campus spots | Open now | Walking distance, noise level, power outlets |
+| Campus spots | Building | Walking distance, noise level, power outlets |
 | Clubs and events | Time conflicts, already started | Tag overlap with interests, walking distance |
-
-Scaling every factor to the same range before weighting matters. Walking minutes run to about 25 and fullness runs to 100, so adding the raw numbers would let fullness decide almost everything regardless of the weights.
 
 ---
 
@@ -195,10 +193,10 @@ The database is designed so that a real data source could replace the seeded row
 
 The application has four parts:
 
-* **The browser** runs the interface and draws everything. It holds no permanent data.
-* **The database** holds every row and decides who is allowed to read which rows.
-* **The scoring service** is a Python function that ranks candidates. It has no database access and holds no credentials.
-* **The host** serves the site and runs the scoring function.
+* The browser runs the interface. It holds no permanent data.
+* The database holds every row and decides who can read what.
+* The scoring service is a Python function that ranks candidates.
+* Vercel serves the site and runs the scoring function.
 
 A single recommendation travels like this:
 
@@ -212,7 +210,7 @@ Browser reads the session
   -> draws the cards and the map pins
 ```
 
-The scoring service receives everything it needs in the request rather than querying the database itself. This means no long lived credential exists anywhere in the deployment, access control is enforced in exactly one place, and the service is a pure function that can be tested without a database running.
+The scoring service gets the rows it needs in the request rather than querying the database, so it does not need any credentials of its own.
 
 Access control uses PostgreSQL row level security, so the database enforces per row who may read what. A student can only ever read their own profile and their own class schedule, regardless of what the browser asks for.
 
@@ -230,11 +228,13 @@ Completed:
 * Database schema and seed data
 * Recommendation algorithm design
 * Technology stack selection
+* React application setup
+* Dashboard interface with sample data
 
 In progress:
 
-* React application setup
-* Dashboard interface
+* Supabase setup
+* Connecting the dashboard to real data
 
 ---
 
