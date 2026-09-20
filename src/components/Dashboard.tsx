@@ -18,7 +18,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* map goes here */}
       <div className="rounded-xl bg-slate-800 h-56 grid place-items-center text-sm text-slate-400">
         Map coming in a later sprint
       </div>

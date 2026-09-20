@@ -11,7 +11,6 @@ const labels: Record<RecCategory, string> = {
 }
 
 export default function RecCard({ rec }: RecCardProps) {
-  // clamp so a bad value cannot overflow the bar
   const width = Math.max(0, Math.min(100, rec.match_percent))
 
   return (

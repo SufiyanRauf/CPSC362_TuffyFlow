@@ -5,7 +5,6 @@ type NextClassCardProps = {
 }
 
 export default function NextClassCard({ nextClass }: NextClassCardProps) {
-  // evenings, weekends, or no schedule added yet
   if (nextClass.minutes_until === null) {
     return (
       <div className="rounded-xl bg-slate-800 p-5">
