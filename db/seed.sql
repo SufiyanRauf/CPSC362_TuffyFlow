@@ -1,8 +1,9 @@
 -- Tuffy Flow seed data
 -- Run after schema.sql. Safe to run more than once.
 --
--- The coordinates below are approximate. Phillip is replacing them with real ones
--- taken off a map, since the pins have to sit on the actual buildings.
+-- Campus is 800 N. State College Blvd, Fullerton CA 92831, roughly 33.8823, -117.8854.
+-- The coordinates below are approximate and sit around that point. Phillip is replacing
+-- them with real ones off a map, since the pins have to land on the actual buildings.
 
 -- ---------------------------------------------------------------------------
 -- Buildings
@@ -29,18 +30,21 @@ on conflict (code) do nothing;
 -- Parking lots
 -- ---------------------------------------------------------------------------
 insert into parking_lots (name, lat, lng, permit_type, total_spaces) values
-  ('Nutwood Parking Structure',       33.8791, -117.8890, 'student', 2100),
-  ('Eastside Parking Structure',      33.8817, -117.8809, 'student', 1900),
-  ('State College Parking Structure', 33.8845, -117.8886, 'student', 1400),
-  ('Lot A',                           33.8852, -117.8852, 'student',  420),
-  ('Lot C',                           33.8846, -117.8827, 'student',  380),
-  ('Lot D',                           33.8838, -117.8814, 'student',  310),
-  ('Lot E',                           33.8779, -117.8875, 'student',  260),
-  ('Lot G',                           33.8783, -117.8841, 'student',  340),
-  ('Lot I',                           33.8809, -117.8806, 'student',  290),
-  ('Lot J',                           33.8856, -117.8869, 'staff',    180),
-  ('Lot K',                           33.8776, -117.8858, 'staff',    150),
-  ('Visitor Lot',                     33.8800, -117.8895, 'visitor',  120)
+  -- The five counted structures, names and totals taken from the campus parking
+  -- availability board. Coordinates still approximate.
+  ('Nutwood Structure',              33.8791, -117.8890, 'student', 2484),
+  ('State College Structure',        33.8845, -117.8886, 'student', 1373),
+  ('Eastside North',                 33.8822, -117.8806, 'student', 1880),
+  ('Eastside South',                 33.8809, -117.8809, 'student', 1341),
+  ('S8 and S10',                     33.8862, -117.8848, 'student', 2104),
+  -- Surface lots, not on the counts board
+  ('Lot A',                          33.8852, -117.8852, 'student',  420),
+  ('Lot C',                          33.8846, -117.8827, 'student',  380),
+  ('Lot D',                          33.8838, -117.8814, 'student',  310),
+  ('Lot E',                          33.8779, -117.8875, 'student',  260),
+  ('Lot G',                          33.8783, -117.8841, 'student',  340),
+  ('Staff Lot J',                    33.8856, -117.8869, 'staff',    180),
+  ('Visitor Lot',                    33.8800, -117.8895, 'visitor',  120)
 on conflict (name) do nothing;
 
 -- ---------------------------------------------------------------------------

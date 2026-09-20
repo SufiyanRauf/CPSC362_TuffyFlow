@@ -18,7 +18,7 @@ export const recommendations: Recommendation[] = [
   {
     id: 'lot-eastside',
     category: 'parking',
-    title: 'Eastside Parking Structure',
+    title: 'Eastside North',
     match_percent: 88,
     reason: '4 min walk, usually about 20% open at 10 AM',
   },

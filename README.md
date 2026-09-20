@@ -42,7 +42,7 @@ Next Class: CPSC 362
 Class Time: 11:30 AM
 
 Recommended Parking:
-Eastside Parking Structure
+Eastside North
 
 Estimated Walk: 4 minutes
 Expected Availability: usually about 20% open at 10:00 AM
@@ -183,9 +183,11 @@ All data in this application is seeded by the development team. There is no live
 | | Clubs and events |
 | | Study spot details |
 
-Parking availability is a typical occupancy pattern by day and hour that we wrote, not a live measurement. There is no public feed for CSUF parking occupancy. Anywhere this appears in the interface it is described as typical or expected, never as current or live.
+Parking availability is a typical occupancy pattern by day and hour rather than a live reading. CSUF does publish current counts for the five parking structures, and we used that board to get the real lot names and capacities, and to sample actual occupancy at different times of day so our pattern is based on something real.
 
-The database is designed so that a real data source could replace the seeded rows later without redesigning anything.
+We are not reading it live in this version. It is a web page rather than an API, so parsing it would break without warning if the page changed, and we would rather the app not depend on that during a demo. Anywhere occupancy appears in the interface it is described as typical or expected, never as current.
+
+The database is designed so a live source could replace the seeded rows later without redesigning anything, and that is the obvious next step for this project.
 
 ---
 
