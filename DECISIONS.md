@@ -154,3 +154,52 @@ In practice: write the first version of anything new by hand, then let AI help
 with the repeats. The scoring engine, the database design and the access rules
 are ours. Once a week each of us explains someone else's file rather than our
 own, because you cannot fake having read it.
+
+---
+
+## What each file does
+
+Short notes so any of us can answer if we get asked about a file we did not
+write. Read before a presentation.
+
+**src/types.ts** — the shape of everything the dashboard renders. Three types:
+the student, their next class, and a recommendation. Field names are the same
+as the database columns, underscores and all, so nothing has to be renamed when
+we swap in real data.
+
+**src/data.ts** — sample values so the screen could be built before the database
+was set up. Week 2 replaces this file with Supabase queries and nothing else
+should have to change, which is the point of matching the column names.
+
+**src/App.tsx** — holds one piece of state for which screen is showing, draws the
+sidebar next to the content, and shows the dashboard when the view is "home".
+Four of the five screens are placeholders right now.
+
+**src/components/Sidebar.tsx** — the five nav buttons. Takes the active view and
+a function to call when one is clicked, so it does not know or care what the
+views actually do. Real buttons, not clickable divs, so keyboard works.
+
+**src/components/NextClassCard.tsx** — course code, time, building, and minutes
+until it starts. Returns a different card when there is no next class, which is
+what evenings, weekends and empty schedules will hit.
+
+**src/components/RecCard.tsx** — one card used for parking, spots and events. The
+only thing that changes between them is the small label at the top. The match
+percent is clamped to 0 to 100 before it sets the bar width, because a number
+outside that range would either spill past the bar or render backwards as a
+full one.
+
+**src/components/Dashboard.tsx** — the greeting, the next class card, the three
+recommendation cards in a row, and a placeholder where the map goes.
+
+**db/schema.sql** — eight tables. Six describe the campus and are the same for
+everyone. Two belong to a student. The bottom half is the access rules, which
+are the part that actually matters: without them anyone could read every row
+from the browser console, because the key our app ships with is public.
+
+**db/seed.sql and db/seed_events.sql** — the campus data. Events are separate
+because they are dated and have to be re-run before each demo, otherwise they
+have all expired and the events card is empty.
+
+**api/recommend.py** — a stub returning ok, so we could confirm the Python half
+deploys before writing the real thing. The ranking lands in week 4.
