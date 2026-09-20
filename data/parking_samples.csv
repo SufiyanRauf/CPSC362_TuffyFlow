@@ -1,0 +1,10 @@
+# Readings from the campus parking availability board.
+# Campus: 800 N. State College Blvd, Fullerton CA 92831.
+# Take a few at different times and days. Weekday mornings matter most.
+# Sunday readings are all near empty and not much use.
+date,day,time,lot,total_spots,spaces_free
+2026-09-20,Sunday,12:23,Nutwood Structure,2484,2436
+2026-09-20,Sunday,12:23,State College Structure,1373,1318
+2026-09-20,Sunday,12:23,Eastside North,1880,1871
+2026-09-20,Sunday,12:23,Eastside South,1341,1320
+2026-09-20,Sunday,12:23,S8 and S10,2104,857

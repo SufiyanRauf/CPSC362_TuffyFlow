@@ -120,6 +120,31 @@ bare count like "23 spaces left". Those are numbers we typed into a file.
 
 ---
 
+**2026-09-20 — CSUF does publish live parking counts, and we are still seeding**
+
+Found the campus parking availability board. It shows current free spaces for
+Nutwood, State College, Eastside North, Eastside South and S8/S10, with a
+timestamp.
+
+So "there is no data source" was wrong, and we fixed the README. But we are
+still seeding, for two reasons. It is a web page and not an API, so we would be
+parsing HTML that can change whenever they redesign it, and it would fail
+silently in front of the class. And a browser cannot fetch another site
+directly, so it would need a server side fetch we do not otherwise need.
+
+What we did instead: took the real lot names and capacities off the board, and
+we are recording actual readings at different times and days to shape the
+seeded curve. So the numbers are based on real observations even though the app
+is not reading them live.
+
+One thing to be careful of: the first reading we took was a Sunday, when
+everything reads about 1% full. Not representative of anything.
+
+Live integration is the obvious next version and we should say so when we
+present.
+
+---
+
 **2026-09-20 — How we are using AI**
 
 Professor allows it. Our rule is that nobody merges code they cannot explain
