@@ -178,8 +178,9 @@ All data in this application is seeded by the development team. There is no live
 
 | Real | Seeded by us |
 |---|---|
-| Campus building and lot locations | Class schedules |
-| Building names and codes | Parking occupancy patterns |
+| Building and lot names | Class schedules |
+| Capacities of the five counted structures | Parking occupancy patterns |
+| | Map coordinates, still approximate |
 | | Clubs and events |
 | | Study spot details |
 

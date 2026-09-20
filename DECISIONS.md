@@ -138,8 +138,8 @@ seeded curve. So the numbers are based on real observations even though the app
 is not reading them live.
 
 One thing to be careful of: the first reading we took was a Sunday lunchtime.
-Four of the five structures were under 4% full. S8 and S10 read 59%, which
-does not fit the others and I have not worked out why yet. Either way we need
+Three of the structures were under 2% full and one was at 4%. S8 and S10 read
+59%, which does not fit the others at all and I have not worked out why yet. Either way we need
 weekday readings before the curve means anything.
 
 Live integration is the obvious next version and we should say so when we

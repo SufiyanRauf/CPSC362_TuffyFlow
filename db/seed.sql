@@ -49,7 +49,7 @@ on conflict (name) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- Typical fullness, every lot, every day, 6am to 9pm.
--- Generated rather than typing ~1300 rows. Weekdays peak late morning, weekends
+-- Generated rather than typing 1,344 rows. Weekdays peak late morning, weekends
 -- stay quiet.
 -- ---------------------------------------------------------------------------
 insert into lot_availability (lot_id, day_of_week, hour, typical_pct_full)
