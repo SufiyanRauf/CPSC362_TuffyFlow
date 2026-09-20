@@ -4,8 +4,7 @@ dist/
 dist-ssr/
 *.local
 
-# Environment files. These hold your Supabase keys.
-# A key committed once stays in the history forever, even if you delete the file later.
+# holds the Supabase keys
 .env
 .env.local
 .env.*.local

@@ -1,9 +1,6 @@
-# Runtime, shipped to Vercel
 fastapi
 pydantic
 
-# Local development only. Small and harmless in the bundle; the rule that matters
-# is no heavy numerical libraries (numpy, pandas, scikit-learn) for arithmetic
-# you can write in a loop.
+# local only
 uvicorn
 pytest

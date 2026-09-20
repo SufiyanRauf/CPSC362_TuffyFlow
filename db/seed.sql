@@ -1,28 +1,8 @@
 -- Tuffy Flow seed data
--- Run this in the Supabase SQL Editor after schema.sql.
+-- Run after schema.sql. Safe to run more than once.
 --
--- ===========================================================================
--- READ THIS FIRST. THE COORDINATES BELOW ARE APPROXIMATE.
---
--- They put every pin in roughly the right part of campus, which is enough to
--- get the map working. They are NOT surveyed, and some will be off by enough
--- to notice. The map is on screen at all four of your presentations, so this
--- is a week 1 task for one person:
---
---   Open a map of CSUF. For each building and lot below, right click the
---   actual location, copy the coordinates, and replace the numbers here.
---   Takes about thirty minutes for the whole list.
---
--- Do not ask an AI to generate coordinates. It will produce numbers that look
--- exactly like these and sit in a parking lot two streets over, and you will
--- not find out until the map is on a projector.
--- ===========================================================================
-
--- Seeding runs from the SQL Editor, which bypasses Row Level Security. That is expected.
--- Your app cannot write to these tables, which is also expected.
---
--- This file is safe to run more than once. Every insert either skips rows that already
--- exist or updates them.
+-- The coordinates below are approximate. Phillip is replacing them with real ones
+-- taken off a map, since the pins have to sit on the actual buildings.
 
 -- ---------------------------------------------------------------------------
 -- Buildings
@@ -64,14 +44,9 @@ insert into parking_lots (name, lat, lng, permit_type, total_spaces) values
 on conflict (name) do nothing;
 
 -- ---------------------------------------------------------------------------
--- Typical fullness, every lot, every day, 6am to 9pm
---
--- Written as a generated pattern rather than about 1,300 typed rows. Read it as a formula:
--- a weekday base that peaks late morning, a much emptier weekend, a small per lot offset so
--- the lots do not all look identical, and a clamp so nothing leaves the 0 to 100 range.
---
--- "on conflict do update" makes this safe to run twice. Without the unique constraint in
--- schema.sql this would insert duplicate rows instead, and your scoring would double count.
+-- Typical fullness, every lot, every day, 6am to 9pm.
+-- Generated rather than typing ~1300 rows. Weekdays peak late morning, weekends
+-- stay quiet.
 -- ---------------------------------------------------------------------------
 insert into lot_availability (lot_id, day_of_week, hour, typical_pct_full)
 select
@@ -91,8 +66,8 @@ select
           else 92 - (abs(h.hour - 11) * 9)
         end
     end
-    -- A stable per lot offset, so the closer lots read as busier.
-    + (('x' || substr(md5(l.name), 1, 4))::bit(16)::int % 13) - 6
+    -- Small offset per lot so they are not all identical
+    + (length(l.name) % 13) - 6
   ))::smallint
 from parking_lots l
 cross join generate_series(0, 6)  as d(day_of_week)
@@ -100,10 +75,7 @@ cross join generate_series(6, 21) as h(hour)
 on conflict (lot_id, day_of_week, hour)
 do update set typical_pct_full = excluded.typical_pct_full;
 
--- ---------------------------------------------------------------------------
--- Study and hangout spots
--- noise_level: 1 is silent, 5 is loud. Same scale as profiles.noise_pref.
--- ---------------------------------------------------------------------------
+-- Study and hangout spots. noise_level 1 is silent, 5 is loud.
 insert into spots (name, kind, building_id, noise_level, has_outlets, seats)
 select v.name, v.kind, b.id, v.noise_level, v.has_outlets, v.seats
 from (values
@@ -124,14 +96,8 @@ join buildings b on b.code = v.code
 on conflict (name, building_id) do nothing;
 
 -- ---------------------------------------------------------------------------
--- Clubs
---
--- Tags are lowercase and hyphenated, always. One person owns this vocabulary.
--- "ai", "AI", "Artificial Intelligence" and "a.i." are four different tags to Postgres,
--- and a mismatch returns no results with no error, so you will blame your scoring code.
--- After seeding, run this and read the output:
---   select distinct unnest(tags) from clubs union select distinct unnest(tags) from events
---   order by 1;
+-- Clubs. Tags are always lowercase and hyphenated, otherwise matching misses
+-- silently ("ai" and "AI" are different strings to Postgres).
 -- ---------------------------------------------------------------------------
 insert into clubs (name, description, tags) values
   ('ACM at CSUF',              'Computing club: talks, workshops, and programming contests.',
@@ -153,6 +119,6 @@ insert into clubs (name, description, tags) values
 on conflict (name) do nothing;
 
 -- ---------------------------------------------------------------------------
--- Events live in their own file, db/seed_events.sql, because they are dated and
--- you will need to run them again before each presentation. Run that file next.
+-- Events are in db/seed_events.sql because they are dated and get re-run before
+-- each demo. Run that file next.
 -- ---------------------------------------------------------------------------

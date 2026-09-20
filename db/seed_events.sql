@@ -1,31 +1,13 @@
 -- Tuffy Flow: event seed data
 --
--- ===========================================================================
--- RUN THIS AGAIN BEFORE EVERY PRESENTATION.
---
--- Events are dated relative to the day you run this file, spread across the
--- next nine days. Your scoring filters out anything that has already started,
--- so a set of events seeded in week 1 is entirely in the past by week 3 and
--- your events card will be empty in front of the class.
---
--- Re-running this file clears the old events and lays down a fresh set
--- starting from today. It takes five seconds. Put it on your checklist for
--- the end of weeks 2, 4, 6 and 8.
--- ===========================================================================
+-- RUN THIS AGAIN BEFORE EVERY DEMO.
+-- Events are dated from the day this is run and we filter out anything already
+-- started, so a set seeded in week 1 is all in the past by week 3.
 
 delete from events;
 
--- A note on the time handling, because this is the exact bug the guide warns
--- about and it is worth seeing done correctly.
---
--- `(current_date + n)::timestamp + time '16:00'` produces a timestamp with no
--- timezone attached. Postgres then reads it in the database's own timezone,
--- which on Supabase is UTC. So 4pm would be stored as 4pm UTC, which is 9am in
--- California, and every evening event would silently become a morning event.
---
--- `at time zone 'America/Los_Angeles'` says these times are campus local, which
--- is what we mean. Without it the data looks fine in the table and every
--- recommendation using it is seven or eight hours wrong.
+-- at time zone 'America/Los_Angeles' matters here. Without it Postgres reads these
+-- as UTC, and every evening event ends up stored as a morning one.
 insert into events (club_id, title, starts_at, ends_at, building_id, tags)
 select c.id, v.title,
        ((current_date + v.day_offset)::timestamp + v.at_time)

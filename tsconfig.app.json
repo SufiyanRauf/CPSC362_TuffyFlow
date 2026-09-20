@@ -15,9 +15,7 @@
 
     "strict": true,
 
-    /* Turned off deliberately. These two fail `npm run build` on half-wired code that runs
-       fine in `npm run dev`, which for a team on a deadline costs hours and catches nothing
-       we need. The rest of strict mode stays on. Written up in the decision log. */
+    /* off on purpose, they break the build on half finished code, see DECISIONS.md */
     "noUnusedLocals": false,
     "noUnusedParameters": false,
 
