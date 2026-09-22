@@ -262,7 +262,7 @@ In progress:
 |---|---|
 | Sufiyan Rauf | Development, database, recommendation engine |
 | Phillip Bryan | Development, campus data |
-| Bhavy Patel | Development, presentations and documentation |
+| Bhavy Patel | Development, System design, documentation |
 
 ---
 
