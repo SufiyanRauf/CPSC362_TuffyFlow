@@ -3,7 +3,7 @@
 TuffyFlow is a campus companion web application designed for students at California State University, Fullerton. The goal of the project is to help students make better decisions throughout their campus day by providing personalized recommendations for parking, campus study spaces, clubs, and events.
 
 The project is being developed for **CPSC 362 – Foundations of Software Engineering** at California State University, Fullerton.
-
+Current progress demo: https://genre-fetch-60235643.figma.site/
 ---
 
 ## Project Overview
