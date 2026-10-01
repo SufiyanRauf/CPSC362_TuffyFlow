@@ -1,29 +1,28 @@
 -- Tuffy Flow seed data
 -- Run after schema.sql. Safe to run more than once.
 --
--- Campus is 800 N. State College Blvd, Fullerton CA 92831, roughly 33.8823, -117.8854.
--- The coordinates below are approximate and sit around that point. Phillip is replacing
--- them with real ones off a map, since the pins have to land on the actual buildings.
+-- Coordinates come from CSUF's own campus map data, fullerton.edu/campusmap/locations.json,
+-- retrieved 1 October 2026. Not estimates. Campus is 800 N. State College Blvd.
 
 -- ---------------------------------------------------------------------------
 -- Buildings
 -- ---------------------------------------------------------------------------
 insert into buildings (name, code, lat, lng) values
-  ('McCarthy Hall',                      'MH',   33.8796, -117.8853),
-  ('Langsdorf Hall',                     'LH',   33.8788, -117.8837),
-  ('Pollak Library',                     'PL',   33.8814, -117.8852),
-  ('Titan Student Union',                'TSU',  33.8828, -117.8878),
-  ('Computer Science',                   'CS',   33.8824, -117.8829),
-  ('Engineering',                        'E',    33.8820, -117.8826),
-  ('Dan Black Hall',                     'DBH',  33.8801, -117.8845),
-  ('Humanities',                         'H',    33.8806, -117.8866),
-  ('Education Classroom',                'EC',   33.8811, -117.8872),
-  ('Gordon Hall',                        'GH',   33.8803, -117.8859),
-  ('Steven G. Mihaylo Hall',             'SGMH', 33.8785, -117.8823),
-  ('Titan Gym',                          'TG',   33.8837, -117.8859),
-  ('Student Recreation Center',          'SRC',  33.8841, -117.8872),
-  ('Visual Arts',                        'VA',   33.8790, -117.8887),
-  ('Kinesiology and Health Science',     'KHS',  33.8834, -117.8845)
+  ('McCarthy Hall',                      'MH',   33.879706, -117.885573),
+  ('Langsdorf Hall',                     'LH',   33.879057, -117.884333),
+  ('Pollak Library',                     'PL',   33.881414, -117.885361),
+  ('Titan Student Union',                'TSU',  33.881795, -117.888204),
+  ('Computer Science',                   'CS',   33.882349, -117.88275),
+  ('Engineering',                        'E',    33.882349, -117.88329),
+  ('Dan Black Hall',                     'DBH',  33.879305, -117.885845),
+  ('Humanities',                         'H',    33.88051, -117.884151),
+  ('Education Classroom',                'EC',   33.881386, -117.884348),
+  ('Gordon Hall',                        'GH',   33.879666, -117.884138),
+  ('Steven G. Mihaylo Hall',             'SGMH', 33.878837, -117.883428),
+  ('Titan Gym',                          'TG',   33.883132, -117.886251),
+  ('Student Recreation Center',          'SRC',  33.883147, -117.887846),
+  ('Visual Arts',                        'VA',   33.880722, -117.888976),
+  ('Kinesiology and Health Science',     'KHS',  33.882697, -117.886076)
 on conflict (code) do nothing;
 
 -- ---------------------------------------------------------------------------
@@ -32,18 +31,18 @@ on conflict (code) do nothing;
 insert into parking_lots (name, lat, lng, permit_type, total_spaces) values
   -- The five counted structures, names and totals taken from the campus parking
   -- availability board. Coordinates still approximate.
-  ('Nutwood Structure',              33.8791, -117.8890, 'student', 2484),
-  ('State College Structure',        33.8845, -117.8886, 'student', 1373),
-  ('Eastside North',                 33.8822, -117.8806, 'student', 1880),
-  ('Eastside South',                 33.8809, -117.8809, 'student', 1341),
+  ('Nutwood Structure',              33.879029, -117.88852, 'student', 2484),
+  ('State College Structure',        33.883055, -117.888671, 'student', 1373),
+  ('Eastside North',                 33.880356, -117.881687, 'student', 1880),
+  ('Eastside South',                 33.881079, -117.881804, 'student', 1341),
   ('S8 and S10',                     33.8862, -117.8848, 'student', 2104),
   -- Surface lots, not on the counts board
-  ('Lot A',                          33.8852, -117.8852, 'student',  420),
-  ('Lot C',                          33.8846, -117.8827, 'student',  380),
-  ('Lot D',                          33.8838, -117.8814, 'student',  310),
-  ('Lot E',                          33.8779, -117.8875, 'student',  260),
-  ('Lot G',                          33.8783, -117.8841, 'student',  340),
-  ('Staff Lot J',                    33.8856, -117.8869, 'staff',    180),
+  ('Lot A',                          33.887246, -117.888922, 'student',  420),
+  ('Lot C',                          33.878331, -117.88835, 'student',  380),
+  ('Lot D',                          33.884152, -117.887855, 'student',  310),
+  ('Lot E',                          33.88188, -117.881648, 'student',  260),
+  ('Lot G',                          33.888301, -117.886538, 'student',  340),
+  ('Staff Lot J',                    33.88344, -117.882967, 'staff',    180),
   ('Visitor Lot',                    33.8800, -117.8895, 'visitor',  120)
 on conflict (name) do nothing;
 
