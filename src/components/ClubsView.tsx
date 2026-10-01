@@ -17,7 +17,8 @@ export default function ClubsView() {
       <div>
         <h1 className="text-2xl font-semibold">Clubs</h1>
         <p className="text-sm text-slate-400">
-          Names and categories from TitanLink, retrieved 1 October 2026. Interest tags are ours.
+          Names, summaries and categories from TitanLink, retrieved 1 October 2026. Interest
+          tags are ours.
         </p>
       </div>
 
