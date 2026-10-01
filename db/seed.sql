@@ -25,7 +25,11 @@ insert into buildings (name, code, lat, lng) values
   ('Titan Gym',                          'TG',   33.883132, -117.886251),
   ('Student Recreation Center',          'SRC',  33.883147, -117.887846),
   ('Visual Arts',                        'VA',   33.880722, -117.888976),
-  ('Kinesiology and Health Science',     'KHS',  33.882697, -117.886076)
+  ('Kinesiology and Health Science',     'KHS',  33.882697, -117.886076),
+  -- South of Nutwood Avenue. Needed because the campus map puts Avanti Markets
+  -- at Nutwood Cafe in this building, not in the Titan Student Union.
+  ('College Park',                       'CP',   33.877584, -117.883445),
+  ('Bookstore and Titan Shops',          'B',    33.881893, -117.886841)
 on conflict (code) do nothing;
 
 -- ---------------------------------------------------------------------------

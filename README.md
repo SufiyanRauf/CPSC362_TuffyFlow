@@ -185,16 +185,18 @@ two are kept apart on purpose.
 | Parking lot coordinates, same source, for 10 of the 12 lots | Typical parking occupancy curve, including every surface lot figure |
 | Capacities of the five counted structures, from the parking availability board | Capacities of the seven surface lots |
 | Two parking readings, Sun 20 Sep 12:23 and Thu 1 Oct 13:11, in `data/parking_samples.csv` | Which permit type each lot takes |
-| 67 clubs: names, summaries, descriptions, categories and IDs, from the TitanLink directory, 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
+| 66 clubs: names, summaries, descriptions, categories and IDs, from the TitanLink directory, 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
 | Pollak Library floor designations and room booking rules, from the library's study spaces page | Pollak's opening hours, inferred from the 7am to 11pm booking slots, which CSUF does not publish |
-| Dining locations and hours for 11 of the 13 venues, from Campus Dining | Noise ratings, seat counts and outlet availability for every spot |
-| | Hours for Avanti Markets and the food trucks, which have no published block |
+| Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
 | | All events |
 
 Two lot coordinates, S8 and S10 and the Visitor Lot, are our estimates because
 neither appears in CSUF's map data. The other 10 are CSUF's own figures.
 
-CSUF publishes no weekend dining hours, so none are stored.
+Campus Dining publishes Monday to Thursday and Friday only, so no weekend hours
+are stored for those thirteen. The three Titan Shops convenience stores come
+from a different page, and one of them, Titan Shops and Titan Express, does open
+on a Saturday.
 
 ### Parking occupancy
 
