@@ -5,7 +5,9 @@
 // same reason.
 //
 // Sources are recorded in db/seed_clubs.sql and db/seed_spots.sql.
-// Coordinates are CSUF's own, from fullerton.edu/campusmap/locations.json.
+// Coordinates are CSUF's own, from fullerton.edu/campusmap/locations.json, for
+// all 15 buildings and 10 of the 12 lots. S8 and S10 and the Visitor Lot are
+// not in that file, so those two are our estimates.
 
 import type {
   Building, Profile, ClassMeeting, ParkingLot, LotAvailability,
@@ -34,7 +36,11 @@ const parkingLots: ParkingLot[] = [
   { id: 'lot-0', name: "Nutwood Structure", lat: 33.879029, lng: -117.88852, permit_type: 'student', total_spaces: 2484 },
   { id: 'lot-1', name: "State College Structure", lat: 33.883055, lng: -117.888671, permit_type: 'student', total_spaces: 1373 },
   { id: 'lot-2', name: "Eastside North", lat: 33.880356, lng: -117.881687, permit_type: 'student', total_spaces: 1880 },
+  // CSUF's map data still titles this one "Eastside Parking Structure 2 (Under
+  // Construction)", but the availability board reports counts for it, so it
+  // looks open and the map entry stale.
   { id: 'lot-3', name: "Eastside South", lat: 33.881079, lng: -117.881804, permit_type: 'student', total_spaces: 1341 },
+  // Our estimate: not in CSUF's map data.
   { id: 'lot-4', name: "S8 and S10", lat: 33.8862, lng: -117.8848, permit_type: 'student', total_spaces: 2104 },
   { id: 'lot-5', name: "Lot A", lat: 33.887246, lng: -117.888922, permit_type: 'student', total_spaces: 420 },
   { id: 'lot-6', name: "Lot C", lat: 33.878331, lng: -117.88835, permit_type: 'student', total_spaces: 380 },
@@ -42,24 +48,53 @@ const parkingLots: ParkingLot[] = [
   { id: 'lot-8', name: "Lot E", lat: 33.88188, lng: -117.881648, permit_type: 'student', total_spaces: 260 },
   { id: 'lot-9', name: "Lot G", lat: 33.888301, lng: -117.886538, permit_type: 'student', total_spaces: 340 },
   { id: 'lot-10', name: "Staff Lot J", lat: 33.88344, lng: -117.882967, permit_type: 'staff', total_spaces: 180 },
+  // Our estimate: CSUF's map data has no visitor lot entry.
   { id: 'lot-11', name: "Visitor Lot", lat: 33.88, lng: -117.8895, permit_type: 'visitor', total_spaces: 120 },
 ]
 
-// Mirrors the generate_series in db/seed.sql: weekdays peak late morning,
-// weekends stay quiet, a small per lot offset, clamped to 0..100, hours 6 to 21.
+// Mirrors the generate_series in db/seed.sql and has to stay in step with it.
+// Hours 6 to 21, clamped to 0..100.
+//
+// The five counted structures are measured, from data/parking_samples.csv:
+// Thursday 1 October 2026 13:11 for the weekday figure and Sunday 20 September
+// 2026 12:23 for the weekend one. Both reproduce their reading to within a
+// point. The two shapes are not the same curve scaled down. On a weekday
+// Eastside fills to about 88 percent because it is closest to the academic
+// buildings, while on a Sunday every structure is under 4 percent except
+// S8 and S10 at 59, which sits by the stadium and the gym.
+//
+// Only Sunday was sampled, so Saturday is an assumption.
+//
+// The seven surface lots are not on the board. Those numbers are guesses.
+const LOT_DEMAND: Record<string, { weekday: number; weekend: number }> = {
+  "Nutwood Structure":           { weekday:  -24, weekend:  -1 },
+  "State College Structure":     { weekday:  -31, weekend:   1 },
+  "Eastside North":              { weekday:   12, weekend:  -3 },
+  "Eastside South":              { weekday:   14, weekend:  -1 },
+  "S8 and S10":                  { weekday:   -9, weekend:  56 },
+  "Lot A":                       { weekday:  -18, weekend:   0 },
+  "Lot C":                       { weekday:  -13, weekend:   0 },
+  "Lot D":                       { weekday:   -3, weekend:   0 },
+  "Lot E":                       { weekday:    0, weekend:   0 },
+  "Lot G":                       { weekday:  -20, weekend:   0 },
+  "Staff Lot J":                 { weekday:  -28, weekend:   0 },
+  "Visitor Lot":                 { weekday:  -33, weekend:   0 },
+}
 function buildAvailability(): LotAvailability[] {
   const rows: LotAvailability[] = []
   for (const lot of parkingLots) {
     for (let day = 0; day <= 6; day++) {
       for (let hour = 6; hour <= 21; hour++) {
         const weekend = day === 0 || day === 6
+        const demand = LOT_DEMAND[lot.name]
         const base = weekend
-          ? 15 + (20 - Math.abs(hour - 13) * 3)
+          ? 1 + Math.max(0, 3 - Math.abs(hour - 13))
           : hour < 8 ? 20 : hour > 18 ? 25 : 92 - Math.abs(hour - 11) * 9
-        const offset = (lot.name.length % 13) - 6
+        const offset = weekend ? demand?.weekend ?? 0 : demand?.weekday ?? 0
         rows.push({
           lot_id: lot.id, day_of_week: day, hour,
-          typical_pct_full: Math.max(0, Math.min(100, base + offset)),
+          // 99, not 100: a typical pattern should not claim a lot is literally full.
+          typical_pct_full: Math.max(0, Math.min(99, base + offset)),
         })
       }
     }

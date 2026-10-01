@@ -10,7 +10,8 @@ export default function ParkingView() {
       <div>
         <h1 className="text-2xl font-semibold">Parking</h1>
         <p className="text-sm text-slate-400">
-          Ranked for your next class. Availability is a typical pattern, not a live count.
+          Ranked for your next class. Availability is a typical pattern, not a live count, and
+          the seven surface lots are our estimates rather than counted.
         </p>
       </div>
 
