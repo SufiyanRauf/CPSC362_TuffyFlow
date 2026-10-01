@@ -28,6 +28,8 @@ export default function Dashboard() {
                 start_time: next.start_time,
                 building_id: next.building_id,
                 building_name: next.building_name,
+                day_of_week: next.day_of_week,
+                day_offset: next.day_offset,
                 minutes_until: next.minutes_until,
               }}
             />

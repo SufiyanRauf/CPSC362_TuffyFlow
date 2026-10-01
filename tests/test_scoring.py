@@ -36,13 +36,14 @@ def test_normalize_handles_equal_anchors():
     assert scoring.normalize(5, 5, 5) == 0.5
 
 
-def _parking_context(hour=10, rows=None):
+def _parking_context(hour=10, rows=None, day=1, day_offset=0):
     return {
         "profile": {"permit_type": "student", "noise_pref": 2,
                     "interests": [], "career_goals": []},
         "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "Computer Science",
         "arrival_hour": hour, "availability": rows or [],
         "class_start_minutes": 690, "now_minutes": 600,
+        "day_of_week": day, "class_day_offset": day_offset,
     }
 
 
@@ -134,7 +135,7 @@ def test_arrive_by_subtracts_walk_and_buffer():
     cfg = scoring.parking_config(ctx)
     out = scoring.rank(LOTS, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
     lot = out[0]["item"]
-    assert scoring.arrive_by(lot, ctx) is not None
+    assert scoring.arrive_by(lot, ctx, out[0]["walk_minutes"]) is not None
 
 
 def test_arrive_by_is_none_when_it_has_already_passed():
@@ -142,7 +143,7 @@ def test_arrive_by_is_none_when_it_has_already_passed():
     ctx["now_minutes"] = 689          # one minute before class
     cfg = scoring.parking_config(ctx)
     out = scoring.rank(LOTS, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
-    assert scoring.arrive_by(out[0]["item"], ctx) is None
+    assert scoring.arrive_by(out[0]["item"], ctx, out[0]["walk_minutes"]) is None
 
 
 def test_event_tag_overlap_uses_sets_not_counts():
@@ -200,3 +201,29 @@ def test_closed_spot_is_filtered_out():
               "noise_level": 4, "has_outlets": False, "opens_at": "10:00", "closes_at": "17:00"}]
     out = scoring.rank(spots, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx)
     assert out == []
+
+
+def test_fullness_reads_the_class_day_not_today():
+    # Asked on a Friday about a Monday class. Monday's row is the one that counts.
+    rows = [
+        {"lot_id": "a", "day_of_week": 5, "hour": 10, "typical_pct_full": 5},
+        {"lot_id": "a", "day_of_week": 1, "hour": 10, "typical_pct_full": 95},
+    ]
+    lot = {"id": "a", "name": "A", "lat": 33.8823, "lng": -117.8829,
+           "permit_type": "student"}
+    ctx = _parking_context(rows=rows, day=5, day_offset=3)
+    assert scoring.lot_fullness(lot, ctx) == (95, True)
+
+
+def test_class_day_wraps_past_saturday():
+    ctx = _parking_context(day=6, day_offset=2)
+    assert scoring.class_day(ctx) == 1
+
+
+def test_arrive_by_stands_for_a_class_on_another_day():
+    # The time has passed today, but the class is tomorrow, so it still holds.
+    ctx = _parking_context(day_offset=1)
+    ctx["now_minutes"] = 1400
+    lot = {"id": "a", "name": "A", "lat": 33.8823, "lng": -117.8829,
+           "permit_type": "student"}
+    assert scoring.arrive_by(lot, ctx, 5) is not None

@@ -2,7 +2,7 @@ import os
 import sys
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Vercel runs this from /var/task with api/ not on the path, so scoring is not
 # importable by name there even though it sits next to this file.
@@ -23,7 +23,7 @@ def health() -> dict:
 
 class Profile(BaseModel):
     permit_type: str
-    noise_pref: int
+    noise_pref: int = Field(ge=1, le=5)
     interests: list[str]
     career_goals: list[str]
 
@@ -40,7 +40,7 @@ class Availability(BaseModel):
     lot_id: str
     day_of_week: int
     hour: int
-    typical_pct_full: int
+    typical_pct_full: int = Field(ge=0, le=100)
 
 
 class Spot(BaseModel):
@@ -48,7 +48,7 @@ class Spot(BaseModel):
     name: str
     lat: float
     lng: float
-    noise_level: int
+    noise_level: int = Field(ge=1, le=5)
     has_outlets: bool
     opens_at: str | None = None
     closes_at: str | None = None
@@ -79,6 +79,7 @@ class RecommendRequest(BaseModel):
     day_of_week: int
     arrival_hour: int
     class_start_minutes: int
+    class_day_offset: int = Field(default=0, ge=0, le=7)
     lots: list[Lot]
     availability: list[Availability]
     spots: list[Spot]
@@ -88,6 +89,7 @@ class RecommendRequest(BaseModel):
 
 def _result(entry, category, with_arrive_by=None, context=None):
     item = entry["item"]
+    walk = entry.get("walk_minutes")
     return {
         "id": item["id"],
         "category": category,
@@ -97,8 +99,8 @@ def _result(entry, category, with_arrive_by=None, context=None):
         "reasons": entry["reasons"],
         "lat": item.get("lat"),
         "lng": item.get("lng"),
-        "walk_minutes": item.get("_walk"),
-        "arrive_by": arrive_by(item, context) if with_arrive_by else None,
+        "walk_minutes": walk,
+        "arrive_by": arrive_by(item, context, walk) if with_arrive_by else None,
     }
 
 

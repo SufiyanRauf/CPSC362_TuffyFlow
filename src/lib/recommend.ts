@@ -31,15 +31,16 @@ export async function findNextClass() {
 
   const upcoming = meetings.map((m) => {
     const start = toMinutes(m.start_time)
-    let until: number
+    let daysAhead: number
     if (m.day_of_week === dayOfWeek && start > minutes) {
-      until = start - minutes
+      daysAhead = 0
     } else {
-      let daysAhead = (m.day_of_week - dayOfWeek + 7) % 7
+      daysAhead = (m.day_of_week - dayOfWeek + 7) % 7
       if (daysAhead === 0) daysAhead = 7
-      until = daysAhead * 1440 + start - minutes
     }
-    return { meeting: m, until, start }
+    // Counted in calendar days, not minutes divided by 1440. Friday 23:00 to a
+    // Monday 10:00 class is three days ahead but only 2100 minutes away.
+    return { meeting: m, until: daysAhead * 1440 + start - minutes, start, daysAhead }
   })
 
   upcoming.sort((a, b) => a.until - b.until)
@@ -56,6 +57,8 @@ export async function findNextClass() {
     building_lng: building?.lng ?? 0,
     start_minutes: next.start,
     minutes_until: next.until,
+    day_of_week: next.meeting.day_of_week,
+    day_offset: next.daysAhead,
   }
 }
 
@@ -77,7 +80,7 @@ export async function getRecommendations(): Promise<RecommendResponse> {
   )
 
   const [profile, lots, availability, spots, events, buildings, meetings] = await Promise.all([
-    getProfile(), getParkingLots(), getAvailabilityAround(dayOfWeek, arrivalHour),
+    getProfile(), getParkingLots(), getAvailabilityAround(next.day_of_week, arrivalHour),
     getSpots(), getEvents(), getBuildings(), getClassMeetings(),
   ])
   const where = (id: string) => buildings.find((b) => b.id === id)
@@ -96,30 +99,35 @@ export async function getRecommendations(): Promise<RecommendResponse> {
     day_of_week: dayOfWeek,
     arrival_hour: arrivalHour,
     class_start_minutes: next.start_minutes,
+    class_day_offset: next.day_offset,
     lots: lots.map((l) => ({
       id: l.id, name: l.name, lat: l.lat, lng: l.lng, permit_type: l.permit_type,
     })),
     availability,
-    spots: spots.map((s) => ({
-      id: s.id, name: s.name,
-      lat: where(s.building_id)?.lat ?? 0, lng: where(s.building_id)?.lng ?? 0,
-      noise_level: s.noise_level, has_outlets: s.has_outlets,
-      opens_at: s.opens_at, closes_at: s.closes_at,
-    })),
-    events: events.map((e) => {
+    spots: spots.flatMap((s) => {
+      const b = where(s.building_id)
+      if (!b) return []
+      return [{
+        id: s.id, name: s.name, lat: b.lat, lng: b.lng,
+        noise_level: s.noise_level, has_outlets: s.has_outlets,
+        opens_at: s.opens_at, closes_at: s.closes_at,
+      }]
+    }),
+    events: events.flatMap((e) => {
+      const b = where(e.building_id)
+      if (!b) return []
       const start = new Date(e.starts_at)
       const end = new Date(e.ends_at)
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const dayOffset = Math.round((new Date(start).setHours(0, 0, 0, 0) - today.getTime()) / 86400000)
-      return {
-        id: e.id, name: e.title,
-        lat: where(e.building_id)?.lat ?? 0, lng: where(e.building_id)?.lng ?? 0,
+      return [{
+        id: e.id, name: e.title, lat: b.lat, lng: b.lng,
         tags: e.tags,
         starts_minutes: start.getHours() * 60 + start.getMinutes(),
         ends_minutes: end.getHours() * 60 + end.getMinutes(),
         day_offset: dayOffset,
-      }
+      }]
     }),
     todays_classes: meetings
       .filter((m) => m.day_of_week === dayOfWeek)

@@ -33,6 +33,8 @@ export type NextClass = {
   start_time: string
   building_id: string
   building_name: string
+  day_of_week: number
+  day_offset: number
   minutes_until: number | null
 }
 
