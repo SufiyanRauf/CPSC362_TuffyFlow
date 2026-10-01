@@ -1,0 +1,32 @@
+flowchart TD
+
+    A["CSUF Student"]
+
+    B["Student Information<br/>• Class Schedule<br/>• Interests<br/>• Preferences<br/>• Permit Type"]
+
+    C["TuffyFlow"]
+
+    D["Parking<br/>Recommendation"]
+    E["Campus Spot<br/>Recommendation"]
+    F["Club & Event<br/>Recommendation"]
+
+    G[" Parking Lot<br/>+ Suggested Arrival Time"]
+    H[" Study / Campus Spot<br/>+ Match Score"]
+    I["Relevant Clubs & Events<br/>+ Match Score"]
+
+    J["Personalized Campus<br/>Recommendations"]
+
+    A --> B
+    B --> C
+
+    C --> D
+    C --> E
+    C --> F
+
+    D --> G
+    E --> H
+    F --> I
+
+    G --> J
+    H --> J
+    I --> J
