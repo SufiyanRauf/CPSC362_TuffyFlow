@@ -1,5 +1,12 @@
+import os
+import sys
+
 from fastapi import FastAPI
 from pydantic import BaseModel
+
+# Vercel runs this from /var/task with api/ not on the path, so scoring is not
+# importable by name there even though it sits next to this file.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from scoring import (
     arrive_by, event_config, parking_config, rank, spot_config,
