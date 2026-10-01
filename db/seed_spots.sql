@@ -9,8 +9,16 @@
 --     fullerton.edu/it/services/student-genius-center
 --
 -- Floor designations, booking rules, dining locations and dining hours are all
--- taken from those pages. noise_level and seats are OUR estimates on our own
--- 1 to 5 scale, not published figures.
+-- taken from those pages. noise_level, seats and has_outlets are OUR estimates
+-- on our own 1 to 5 scale, not published figures.
+--
+-- One caveat on the library rows: CSUF does not publish Pollak's opening hours
+-- on the study spaces page, only the bookable slot range of 7am to 11pm. The
+-- 07:00 to 23:00 on those rows is that slot range, not a published opening
+-- time, so source_url supports the floor rules but not the hours.
+--
+-- Two dining venues, Avanti Markets and the food trucks, have no published
+-- hours block at all. Theirs are ours, and their notes say so.
 
 delete from spots;
 
@@ -40,18 +48,18 @@ insert into spots (name, kind, building_id, noise_level, has_outlets, is_indoor,
 select v.name, 'eat', b.id, v.noise, v.outlets, v.indoor, v.seats, v.opens, v.closes, v.note,
        'https://www.fullerton.edu/food/hours/'
 from (values
-  ('Avanti Markets at Nutwood Cafe', 'TSU',  3, true,  true,  40, time '07:00', time '20:00', 'Mon to Thu 7am to 8pm, Fri 7am to 5pm. Grab and go snacks and drinks.'),
+  ('Avanti Markets at Nutwood Cafe', 'TSU',  3, true,  true,  40, time '07:00', time '20:00', 'Mon to Thu 7am to 8pm, Fri 7am to 5pm. Grab and go snacks and drinks. Hours not published by CSUF, ours.'),
   ('Baja Fresh Express',             'TSU',  5, false, true,  60, time '10:00', time '17:00', 'Mon to Thu 10am to 5pm'),
   ('Carl''s Jr.',                    'GH',   4, false, true,  50, time '08:00', time '19:00', 'Mon to Thu 8am to 7pm, Fri 8am to 2pm. Near Gordon Hall.'),
   ('Fresh Kitchen',                  'TSU',  5, false, true,  40, time '10:00', time '15:00', 'Mon to Thu 10am to 3pm, Fri 10am to 2pm'),
   ('Hibachi-San',                    'TSU',  5, false, true,  40, time '09:00', time '19:00', 'Mon to Thu 9am to 7pm, Fri 9am to 2pm'),
   ('Juice It Up!',                   'TSU',  4, false, true,  15, time '08:30', time '18:30', 'Mon to Thu 8:30am to 6:30pm, Fri 8:30am to 1:30pm'),
-  ('On-Campus Food Trucks',          'H',    4, false, false, 30, time '11:00', time '13:00', 'Mon to Thu 11am to 1pm, Humanities Plaza'),
+  ('On-Campus Food Trucks',          'H',    4, false, false, 30, time '11:00', time '13:00', 'Mon to Thu 11am to 1pm, Humanities Plaza. Hours not published by CSUF, ours.'),
   ('Panda Express',                  'TSU',  5, false, true,  60, time '09:00', time '19:00', 'Mon to Thu 9am to 7pm, Fri 9am to 2pm'),
-  ('Pieology',                       'TSU',  5, false, true,  50, time '10:00', time '18:00', 'Mon to Thu 10am to 6pm, Fri 10am to 2pm'),
+  ('Pieology',                       'TSU',  5, false, true,  50, time '10:00', time '19:00', 'Mon to Thu 10am to 7pm, Fri 10am to 2pm'),
   ('Starbucks Mihaylo Hall',         'SGMH', 4, true,  true,  35, time '08:00', time '19:00', 'Mon to Thu 8am to 7pm'),
   ('Starbucks Pollak Library',       'PL',   4, true,  true,  30, time '07:30', time '19:00', 'Mon to Thu 7:30am to 7pm, Fri 8am to 2pm'),
   ('Starbucks Titan Student Union',  'TSU',  4, true,  true,  45, time '08:00', time '17:00', 'Mon to Thu 8am to 5pm, Fri 8am to 1pm'),
-  ('TOGO''S',                        'TSU',  4, false, true,  40, time '10:00', time '18:00', 'Mon to Thu 10am to 6pm, Fri 10am to 2pm')
+  ('TOGO''S',                        'TSU',  4, false, true,  40, time '10:00', time '17:00', 'Mon to Thu 10am to 5pm, Fri 10am to 2pm')
 ) as v(name, code, noise, outlets, indoor, seats, opens, closes, note)
 join buildings b on b.code = v.code;

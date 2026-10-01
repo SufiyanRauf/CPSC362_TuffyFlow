@@ -16,7 +16,8 @@ export default function SpotsView() {
       <div>
         <h1 className="text-2xl font-semibold">Spots</h1>
         <p className="text-sm text-slate-400">
-          Buildings, floors and opening hours are from CSUF. Noise ratings and seat counts are our
+          Buildings, floors, booking rules and dining hours are from CSUF. Library hours are
+          inferred from its booking slots. Noise ratings, seat counts and outlet availability are our
           own estimates.
         </p>
       </div>
