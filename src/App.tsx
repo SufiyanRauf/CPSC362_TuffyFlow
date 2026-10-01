@@ -2,6 +2,9 @@ import { useState } from 'react'
 import type { View } from './types'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
+import ParkingView from './components/ParkingView'
+import SpotsView from './components/SpotsView'
+import ClubsView from './components/ClubsView'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -11,11 +14,13 @@ export default function App() {
       <Sidebar active={view} onSelect={setView} />
 
       <main className="flex-1 p-6">
-        {view === 'home' ? (
-          <Dashboard />
-        ) : (
+        {view === 'home' && <Dashboard />}
+        {view === 'parking' && <ParkingView />}
+        {view === 'spots' && <SpotsView />}
+        {view === 'clubs' && <ClubsView />}
+        {view === 'profile' && (
           <div className="text-slate-400">
-            <h1 className="text-2xl font-semibold capitalize text-slate-100">{view}</h1>
+            <h1 className="text-2xl font-semibold capitalize text-slate-100">Profile</h1>
             <p className="mt-2 text-sm">Coming in a later sprint.</p>
           </div>
         )}
