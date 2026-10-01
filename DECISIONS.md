@@ -161,11 +161,16 @@ own, because you cannot fake having read it.
 
 **2026-10-01 — Clubs come from TitanLink, not from us**
 
-Replaced the eight made up clubs with 67 real ones pulled by hand from CSUF's
+Replaced the eight made up clubs with 66 real ones pulled by hand from CSUF's
 own student organization directory at fullerton.campuslabs.com/engage. Names,
 summaries, descriptions and categories are theirs, stored verbatim. 701 orgs in
-the directory, 392 of them Active, and we kept 67 that cover a decent spread of
-interests. Nothing fetches it at runtime, so there is nothing to break later.
+the directory, and we kept 66 that cover a decent spread of interests. Nothing
+fetches it at runtime, so there is nothing to break later.
+
+The directory moves under you, which is worth knowing. At the first pull 392
+orgs were Active. Re-checking the same afternoon it was 391, because Moving
+Forward Community @ CSUF had been frozen in between. We dropped that one rather
+than leave it in, since a club nobody can join is not worth recommending.
 
 One trap worth writing down: the paging endpoint needs orderBy[0]=Name asc.
 Without a stable sort the pages drift between requests and 17 orgs come back
@@ -262,7 +267,7 @@ scorer needs and posts it to the Python function. The fiddly part is the clock.
 It reads campus local time through Intl rather than the laptop's own, because
 the arrival hour decides which occupancy row gets looked up.
 
-**db/seed_clubs.sql** — the 67 TitanLink clubs, with a header recording where
+**db/seed_clubs.sql** — the 66 TitanLink clubs, with a header recording where
 they came from and when.
 
 **db/seed_spots.sql** — Pollak Library floors and the campus dining locations,
