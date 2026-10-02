@@ -184,11 +184,14 @@ still looked about right.
 Shipped 66 clubs and that was wrong. Student Life and Leadership say there are
 over 300, and Bhavy spotted immediately that most of his were missing.
 
-The mistake was using TitanLink's own Status field as the filter. The directory
-holds 701 records and only 391 come back Active, but Active is not the same as
-registered this year: it is just whether the page is live. The list that decides
-who is actually registered is the one SLL publish, and it has 320 orgs on it,
-all FULLY RE-REGISTERED as of 22 September 2026.
+The mistake was curating. The directory holds 701 records and 391 come back
+Active, but Active only means the page is still live, not that the org is
+registered this year. Nothing in the directory answers that, so we filtered to
+Active and then hand picked 66 that covered a spread of interests. That is a
+judgement nobody asked us to make and it quietly cut four fifths of the campus.
+
+Student Life and Leadership publish the list that does answer it. It has 320
+orgs on it, all FULLY RE-REGISTERED as of 22 September 2026.
 
 So the roster decides membership and TitanLink supplies the detail. All 320
 names resolve to a directory record. Three needed to be matched by hand because

@@ -23,9 +23,11 @@
 --   roster but TitanLink has frozen it since. It is kept, with its real status
 --   in the status column, because the roster says who is registered.
 --
---   An earlier version of this file carried 66 of them, filtered on TitanLink's
---   Status alone. Active only means the page is live, not that the org is
---   registered this year, which is why the roster decides and not the directory.
+--   An earlier version of this file carried 66. The directory was filtered to
+--   Active and Public, which leaves 392, and then hand picked down to a spread
+--   of interests. Active only means an org's page is live, so it never answered
+--   the question we were really asking, and with nothing else to go on we
+--   curated. The roster answers it, so there is no reason to curate at all.
 --   Nothing in the app fetches TitanLink at runtime.
 --
 -- categories  TitanLink's CategoryNames, verbatim. Theirs.
