@@ -186,7 +186,7 @@ two are kept apart on purpose.
 | Capacities of the five counted structures, from the parking availability board | Capacities of the seven surface lots |
 | Two parking readings, Sun 20 Sep 12:23 and Thu 1 Oct 13:11, in `data/parking_samples.csv` | Which permit type each lot takes |
 | 66 clubs: names, summaries, descriptions, categories and IDs, from the TitanLink directory, 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
-| Pollak Library floor designations and room booking rules, from the library's study spaces page | Pollak's opening hours, inferred from the 7am to 11pm booking slots, which CSUF does not publish |
+| Pollak Library floor designations, room booking rules and opening hours, from the library's own pages | |
 | Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
 | | All events |
 

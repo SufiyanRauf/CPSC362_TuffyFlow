@@ -3,6 +3,8 @@
 -- Sources, all read 1 October 2026:
 --   Pollak Library study spaces and room booking rules
 --     library.fullerton.edu/study-make/study-spaces.html
+--   Pollak Library opening hours (a different page from the floor rules)
+--     library.fullerton.edu/hours-events/
 --   Campus Dining location hours
 --     fullerton.edu/food/hours
 --   Student Genius Center
@@ -14,10 +16,15 @@
 -- taken from those pages. noise_level, seats and has_outlets are OUR estimates
 -- on our own 1 to 5 scale, not published figures.
 --
--- One caveat on the library rows: CSUF does not publish Pollak's opening hours
--- on the study spaces page, only the bookable slot range of 7am to 11pm. The
--- 07:00 to 23:00 on those rows is that slot range, not a published opening
--- time, so source_url supports the floor rules but not the hours.
+-- The library hours are real, from the hours page: Monday to Thursday 7am to
+-- 11:59pm, Friday 7am to 5pm, Saturday and Sunday 9am to 5pm. The spots table
+-- only has one opens_at and one closes_at, so the Monday to Thursday range is
+-- what gets stored and the full week is in hours_note. That means is_open will
+-- say a library floor is open late on a Friday when it shut at 5. Day aware
+-- hours are the fix and they are not in this schema yet.
+--
+-- Same shape for the Student Genius Center, 7am to 10pm Monday to Thursday,
+-- and its hours come from the IT page, not the library one.
 
 
 delete from spots;
@@ -30,14 +37,14 @@ select v.name, v.kind, b.id, v.floor, v.section, v.noise, v.outlets, true, v.sea
        v.reservable, v.opens, v.closes, v.note,
        'https://www.library.fullerton.edu/study-make/study-spaces.html'
 from (values
-  ('Library North 1st Floor',  'study', 1, 'North', 4, true,  120, false, time '07:00', time '23:00', 'Group study space, talking permitted'),
-  ('Library North 2nd Floor',  'study', 2, 'North', 4, true,  140, false, time '07:00', time '23:00', 'Group study space, talking permitted'),
-  ('Library North 3rd Floor',  'study', 3, 'North', 1, true,   90, false, time '07:00', time '23:00', 'Quiet study floor, phones off'),
-  ('Library North 4th Floor',  'study', 4, 'North', 3, true,  110, false, time '07:00', time '23:00', 'Group study space, talking permitted'),
-  ('Library South 4th Floor',  'study', 4, 'South', 1, true,   80, false, time '07:00', time '23:00', 'Quiet study floor, phones off'),
-  ('Library South 5th Floor',  'study', 5, 'South', 3, true,  100, false, time '07:00', time '23:00', 'Group study space, talking permitted'),
-  ('Group Study Rooms',        'meet',  1, 'North', 3, true,    6, true,  time '07:00', time '23:00', 'Bookable in 2 hour slots, 7am to 11pm. Groups of 2 or more need a second CWID. Up to 5 bookings a week, 2 weeks ahead.'),
-  ('Student Genius Center',    'charge',1, 'North', 3, true,   20, false, time '08:00', time '17:00', 'Laptop checkout and tech help')
+  ('Library North 1st Floor',  'study', 1, 'North', 4, true,  120, false, time '07:00', time '23:59', 'Group study space, talking permitted. Mon to Thu 7am to 11:59pm, Fri 7am to 5pm, Sat and Sun 9am to 5pm'),
+  ('Library North 2nd Floor',  'study', 2, 'North', 4, true,  140, false, time '07:00', time '23:59', 'Group study space, talking permitted. Mon to Thu 7am to 11:59pm, Fri 7am to 5pm, Sat and Sun 9am to 5pm'),
+  ('Library North 3rd Floor',  'study', 3, 'North', 1, true,   90, false, time '07:00', time '23:59', 'Quiet study floor, phones off. Mon to Thu 7am to 11:59pm, Fri 7am to 5pm, Sat and Sun 9am to 5pm'),
+  ('Library North 4th Floor',  'study', 4, 'North', 3, true,  110, false, time '07:00', time '23:59', 'Group study space, talking permitted. Mon to Thu 7am to 11:59pm, Fri 7am to 5pm, Sat and Sun 9am to 5pm'),
+  ('Library South 4th Floor',  'study', 4, 'South', 1, true,   80, false, time '07:00', time '23:59', 'Quiet study floor, phones off. Mon to Thu 7am to 11:59pm, Fri 7am to 5pm, Sat and Sun 9am to 5pm'),
+  ('Library South 5th Floor',  'study', 5, 'South', 3, true,  100, false, time '07:00', time '23:59', 'Group study space, talking permitted. Mon to Thu 7am to 11:59pm, Fri 7am to 5pm, Sat and Sun 9am to 5pm'),
+  ('Group Study Rooms',        'meet',  1, 'North', 3, true,    6, true,  time '07:00', time '23:59', 'Bookable in 2 hour slots, 7am to 11pm. Groups of 2 or more need a second CWID. Up to 5 bookings a week, 2 weeks ahead.'),
+  ('Student Genius Center',    'charge',1, 'North', 3, true,   20, false, time '07:00', time '22:00', 'Laptop checkout and tech help. Mon to Thu 7am to 10pm, Fri 7am to 5pm, Sat 9am to 5pm, closed Sunday. Pollak Library North, first floor.')
 ) as v(name, kind, floor, section, noise, outlets, seats, reservable, opens, closes, note)
 join buildings b on b.code = 'PL';
 
