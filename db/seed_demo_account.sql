@@ -18,7 +18,7 @@ declare
 begin
 
   update profiles set
-    full_name    = 'Demo Titan',
+    full_name    = 'Alex Nguyen',
     major        = 'Computer Science',
     interests    = '{software-engineering,ai,algorithms,music}',
     career_goals = '{career,software-engineering,data-science}',

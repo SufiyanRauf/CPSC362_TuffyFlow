@@ -161,11 +161,11 @@ own, because you cannot fake having read it.
 
 **2026-10-01 — Clubs come from TitanLink, not from us**
 
-Replaced the eight made up clubs with 66 real ones pulled by hand from CSUF's
+Replaced the eight made up clubs with real ones pulled by hand from CSUF's
 own student organization directory at fullerton.campuslabs.com/engage. Names,
 summaries, descriptions and categories are theirs, stored verbatim. 701 orgs in
-the directory, and we kept 66 that cover a decent spread of interests. Nothing
-fetches it at runtime, so there is nothing to break later.
+the directory, and we kept the ones that were Active. Nothing fetches it at
+runtime, so there is nothing to break later.
 
 The directory moves under you, which is worth knowing. At the first pull 392
 orgs were Active. Re-checking the same afternoon it was 391, because Moving
@@ -176,6 +176,33 @@ One trap worth writing down: the paging endpoint needs orderBy[0]=Name asc.
 Without a stable sort the pages drift between requests and 17 orgs come back
 twice while 17 never come back at all. Took a while to notice because the count
 still looked about right.
+
+---
+
+**2026-10-01 — The club list comes from the registration roster, not the directory**
+
+Shipped 66 clubs and that was wrong. Student Life and Leadership say there are
+over 300, and Bhavy spotted immediately that most of his were missing.
+
+The mistake was using TitanLink's own Status field as the filter. The directory
+holds 701 records and only 391 come back Active, but Active is not the same as
+registered this year: it is just whether the page is live. The list that decides
+who is actually registered is the one SLL publish, and it has 320 orgs on it,
+all FULLY RE-REGISTERED as of 22 September 2026.
+
+So the roster decides membership and TitanLink supplies the detail. All 320
+names resolve to a directory record. Three needed to be matched by hand because
+the two systems write them differently: the roster's Pickleball Club is
+TitanLink's Pickleball, its Society of Automotive Engineering is Society of
+Automotive Engineering - Formula, and its CSUF Ski and Snowboard Club is Ski and
+Snowboard Club. That last one matters more than it looks, because the event seed
+joins clubs by name.
+
+Moving Forward Community @ CSUF is the awkward one. It is on the roster but
+TitanLink has frozen it since. Earlier we dropped it; now it is kept with its
+real status in the status column, because the roster is the source of truth for
+who is registered and silently dropping a row is how a list goes wrong without
+anyone noticing.
 
 ---
 
@@ -272,7 +299,7 @@ scorer needs and posts it to the Python function. The fiddly part is the clock.
 It reads campus local time through Intl rather than the laptop's own, because
 the arrival hour decides which occupancy row gets looked up.
 
-**db/seed_clubs.sql** — the 66 TitanLink clubs, with a header recording where
+**db/seed_clubs.sql** — the 320 registered clubs, with a header recording where
 they came from and when.
 
 **db/seed_spots.sql** — Pollak Library floors and the campus dining locations,

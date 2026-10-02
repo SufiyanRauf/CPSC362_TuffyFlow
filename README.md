@@ -182,7 +182,7 @@ two are kept apart on purpose.
 | Parking lot coordinates, same source, for 10 of the 12 lots | Typical parking occupancy curve, including every surface lot figure |
 | Capacities of the five counted structures, from the parking availability board | Capacities of the seven surface lots |
 | Three parking readings on two days, in `data/parking_samples.csv` | Which permit type each lot takes |
-| 66 clubs: names, summaries, descriptions, categories and IDs, from the TitanLink directory, 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
+| 320 clubs: the Student Life and Leadership registered list of 22 Sep 2026, joined to the TitanLink directory for names, summaries, descriptions, categories and IDs, read 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
 | Pollak Library floor designations, room booking rules and opening hours, from the library's own pages | |
 | Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
 | | All events |
