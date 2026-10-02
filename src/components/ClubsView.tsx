@@ -45,7 +45,7 @@ export default function ClubsView() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search clubs"
-          className="flex-1 min-w-48 rounded-lg bg-slate-800 px-3 py-2 text-sm placeholder:text-slate-500"
+          className="w-full sm:flex-1 sm:min-w-48 rounded-lg bg-slate-800 px-3 py-2 text-sm placeholder:text-slate-500"
         />
         <label className="flex items-center gap-2 text-sm text-slate-300">
           <input
@@ -77,10 +77,10 @@ export default function ClubsView() {
               <div className="flex flex-col gap-2">
                 {scored.map(({ club, shared }) => (
                   <div key={club.id} className="rounded-xl bg-slate-800 p-4">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col items-start gap-1 sm:flex-row sm:justify-between sm:gap-3">
                       <h2 className="font-semibold">{club.name}</h2>
                       {shared.length > 0 && (
-                        <span className="shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-400">
+                        <span className="sm:shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-400">
                           matches {shared.join(', ')}
                         </span>
                       )}

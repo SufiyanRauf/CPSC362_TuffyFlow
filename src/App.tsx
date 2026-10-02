@@ -10,10 +10,10 @@ export default function App() {
   const [view, setView] = useState<View>('home')
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex">
+    <div className="min-h-screen bg-slate-900 text-slate-100 md:flex">
       <Sidebar active={view} onSelect={setView} />
 
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-4 pb-24 md:p-6 md:pb-6">
         {view === 'home' && <Dashboard onOpen={setView} />}
         {view === 'parking' && <ParkingView />}
         {view === 'spots' && <SpotsView />}

@@ -54,14 +54,14 @@ export default function RecCard({ rec, onOpen }: RecCardProps) {
   )
 
   if (!onOpen) {
-    return <div className="flex-1 min-w-56 rounded-xl bg-slate-800 p-4">{body}</div>
+    return <div className="basis-full sm:basis-0 sm:flex-1 sm:min-w-56 rounded-xl bg-slate-800 p-4">{body}</div>
   }
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="flex-1 min-w-56 rounded-xl bg-slate-800 p-4 text-left hover:bg-slate-700"
+      className="basis-full sm:basis-0 sm:flex-1 sm:min-w-56 rounded-xl bg-slate-800 p-4 text-left hover:bg-slate-700"
     >
       {body}
     </button>
