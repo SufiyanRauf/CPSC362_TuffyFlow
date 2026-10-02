@@ -189,7 +189,7 @@ def event_config(context):
         This used to check day_offset == 0 against a list of only today's
         classes, so every event on a later day skipped the check entirely and
         the top card could sit on top of a class."""
-        event_day = (ctx["day_of_week"] + event.get("day_offset", 0)) % 7
+        event_day = (ctx.get("day_of_week", 0) + event.get("day_offset", 0)) % 7
         for cls in ctx.get("class_meetings", []):
             if (cls["day_of_week"] == event_day
                     and cls["start"] < event["ends_minutes"]

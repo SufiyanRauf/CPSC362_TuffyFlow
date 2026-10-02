@@ -20,6 +20,27 @@ export function campusNow() {
   }
 }
 
+// Everything the scorer compares has to be in campus time. campusNow already
+// does that for the clock; this does it for an event's own date, which used to
+// be read with getHours() in whatever timezone the laptop happened to be in.
+function campusParts(when: Date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: CAMPUS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(when)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '0'
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    minutes: Number(get('hour')) % 24 * 60 + Number(get('minute')),
+  }
+}
+
+function daysBetween(fromISODate: string, toISODate: string) {
+  const a = Date.parse(`${fromISODate}T00:00:00Z`)
+  const b = Date.parse(`${toISODate}T00:00:00Z`)
+  return Math.round((b - a) / 86400000)
+}
+
 function toMinutes(time: string) {
   const [h, m] = time.split(':').map(Number)
   return h * 60 + m
@@ -116,17 +137,15 @@ export async function getRecommendations(): Promise<RecommendResponse> {
     events: events.flatMap((e) => {
       const b = where(e.building_id)
       if (!b) return []
-      const start = new Date(e.starts_at)
-      const end = new Date(e.ends_at)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const dayOffset = Math.round((new Date(start).setHours(0, 0, 0, 0) - today.getTime()) / 86400000)
+      const start = campusParts(new Date(e.starts_at))
+      const end = campusParts(new Date(e.ends_at))
+      const todayOnCampus = campusParts(new Date()).date
       return [{
         id: e.id, name: e.title, lat: b.lat, lng: b.lng,
         tags: e.tags,
-        starts_minutes: start.getHours() * 60 + start.getMinutes(),
-        ends_minutes: end.getHours() * 60 + end.getMinutes(),
-        day_offset: dayOffset,
+        starts_minutes: start.minutes,
+        ends_minutes: end.minutes,
+        day_offset: daysBetween(todayOnCampus, start.date),
       }]
     }),
     // every meeting, with its day. Sending only today's meant an event on any

@@ -65,7 +65,8 @@ const parkingLots: ParkingLot[] = [
 // point. The two shapes are not the same curve scaled down. On a weekday
 // Eastside fills to about 88 percent because it is closest to the academic
 // buildings, while on a Sunday every structure is under 4 percent except
-// S8 and S10 at 59, which sits by the stadium and the gym.
+// S8 and S10 at 59, which sits by the stadium and the gym. State College is
+// the highest of the four, at almost exactly 4.
 //
 // Only Sunday was sampled, so Saturday is an assumption.
 //
@@ -97,10 +98,11 @@ function buildAvailability(): LotAvailability[] {
         const offset = weekend ? demand?.weekend ?? 0 : demand?.weekday ?? 0
         rows.push({
           lot_id: lot.id, day_of_week: day, hour,
-          // floor 2, ceiling 99: never claim a lot is literally empty or full.
-          // Early and late the offsets exceed the base so the lots converge,
-          // which is right, they really are all empty and the walk decides.
-          typical_pct_full: Math.max(2, Math.min(99, base + offset)),
+          // floor 1, ceiling 99: never claim a lot is literally empty or full.
+          // A floor of 2 would miss the real 0.48 on Eastside North at the
+          // weekend by more than a point. Early and late the offsets exceed the
+          // base so the lots converge, which is right, they really are empty.
+          typical_pct_full: Math.max(1, Math.min(99, base + offset)),
         })
       }
     }
@@ -210,6 +212,18 @@ const clubs: Club[] = [
 
 // Events are dated relative to today, the same as db/seed_events.sql, so they
 // never go stale. Times are campus local.
+const CAMPUS_TZ = 'America/Los_Angeles'
+
+// Campus is on daylight time for part of the year, so the offset has to be
+// asked for per date rather than hard coded.
+function campusOffset(isoDate: string) {
+  const name = new Intl.DateTimeFormat('en-US', {
+    timeZone: CAMPUS_TZ, timeZoneName: 'longOffset',
+  }).formatToParts(new Date(`${isoDate}T12:00:00Z`))
+    .find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-08:00'
+  return name.replace('GMT', '') || '-08:00'
+}
+
 function buildEvents(): CampusEvent[] {
   // Host club, title, day offset, time, building, tags. These have to stay in
   // step with db/seed_events.sql, including the tags, because the scorer
@@ -229,13 +243,19 @@ function buildEvents(): CampusEvent[] {
     ["Behind The Scenes", "Open Mic Night", 6, "19:00", 'b-tsu', ["arts", "music", "social"]],
     ["Offensive Security Society", "Password Cracking Demo", 8, "16:30", 'b-e', ["cybersecurity", "networking"]],
   ]
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Build each event at campus local time, not at the laptop's. Using setHours
+  // meant a 16:00 event was 16:00 wherever the demo was being run from, which
+  // is 23:00 on campus from Sydney, and the scorer compares it against campus
+  // time. en-CA gives YYYY-MM-DD.
+  const campusToday = new Intl.DateTimeFormat('en-CA', {
+    timeZone: CAMPUS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+
   return defs.map(([hostName, title, dayOffset, at, buildingId, tags], i) => {
-    const [h, m] = at.split(':').map(Number)
-    const start = new Date(today)
-    start.setDate(start.getDate() + dayOffset)
-    start.setHours(h, m, 0, 0)
+    const day = new Date(`${campusToday}T00:00:00Z`)
+    day.setUTCDate(day.getUTCDate() + dayOffset)
+    const date = day.toISOString().slice(0, 10)
+    const start = new Date(`${date}T${at}:00${campusOffset(date)}`)
     const end = new Date(start.getTime() + 90 * 60 * 1000)
     // the seed joins the host by name, so look it up the same way rather than
     // taking whichever club happens to sit at this position in the array
