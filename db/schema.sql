@@ -47,25 +47,53 @@ comment on column lot_availability.typical_pct_full is
   'Always 0 to 100, never a 0 to 1 fraction. We only use one scale.';
 
 create table spots (
-  id           uuid primary key default gen_random_uuid(),
-  name         text not null,
-  kind         text not null check (kind in ('study', 'eat', 'charge', 'meet')),
-  building_id  uuid not null references buildings(id) on delete cascade,
-  noise_level  smallint not null check (noise_level between 1 and 5),
-  has_outlets  boolean not null default false,
-  seats        integer,
+  id            uuid primary key default gen_random_uuid(),
+  name          text not null,
+  kind          text not null check (kind in ('study', 'eat', 'charge', 'meet')),
+  building_id   uuid not null references buildings(id) on delete cascade,
+  floor         smallint,
+  section       text check (section in ('North', 'South')),
+  noise_level   smallint not null check (noise_level between 1 and 5),
+  has_outlets   boolean not null default false,
+  is_indoor     boolean not null default true,
+  seats         integer,
+  reservable    boolean not null default false,
+  opens_at      time,
+  closes_at     time,
+  hours_note    text,
+  source_url    text,
   unique (name, building_id)
 );
+
+comment on column spots.floor is
+  'Pollak Library is one building but seven study areas with different rules, so
+   floor and section are what make them separate rows.';
+
+comment on column spots.opens_at is
+  'Where we have published hours. Null means we do not know, not open all day.
+   hours_note carries the exact published wording.';
 
 comment on column spots.noise_level is
   '1 is silent, 5 is loud. Same scale as profiles.noise_pref so the two can be compared.';
 
 create table clubs (
-  id           uuid primary key default gen_random_uuid(),
-  name         text not null unique,
-  description  text,
-  tags         text[] not null default '{}'
+  id            uuid primary key default gen_random_uuid(),
+  titanlink_id  text unique,
+  name          text not null unique,
+  summary       text,
+  description   text,
+  website_key   text,
+  status        text,
+  categories    text[] not null default '{}',
+  tags          text[] not null default '{}'
 );
+
+comment on column clubs.categories is
+  'TitanLink CategoryNames, verbatim. Theirs.';
+
+comment on column clubs.tags is
+  'Our own matching vocabulary. Ours, not a TitanLink field. The mapping lives
+   in db/seed_clubs.sql.';
 
 create table events (
   id           uuid primary key default gen_random_uuid(),
@@ -92,6 +120,7 @@ create index events_starts_at_idx on events (starts_at);
 -- which is what Postgres arrays are good at.
 create index events_tags_idx on events using gin (tags);
 create index clubs_tags_idx  on clubs  using gin (tags);
+create index clubs_categories_idx on clubs using gin (categories);
 
 -- ---------------------------------------------------------------------------
 -- 2. Per student data

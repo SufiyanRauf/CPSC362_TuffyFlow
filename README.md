@@ -42,13 +42,13 @@ Next Class: CPSC 362
 Class Time: 11:30 AM
 
 Recommended Parking:
-Eastside North
+Lot E
 
-Estimated Walk: 4 minutes
-Expected Availability: usually about 20% open at 10:00 AM
+Estimated Walk: 2 minutes
+Expected Availability: usually about 83% full at 10:00 AM
 
 Suggested Arrival Time:
-11:16 AM
+11:10 AM
 ```
 
 ---
@@ -70,14 +70,14 @@ Example:
 
 ```text
 Recommended Location:
-ECS Study Area
+Library North 3rd Floor
 
 Quiet
 Outlets Available
 Indoor
-Same Building As Next Class
+5 minute walk from your next class
 
-Match: 94%
+Match: 93%
 ```
 
 ---
@@ -172,23 +172,60 @@ The factors differ per feature:
 
 ---
 
-## What is real and what is seeded
+## What is real and what is ours
 
-All data in this application is seeded by the development team. There is no live data source.
+Nothing is fetched at runtime, so every row ships inside the repository. That
+is not the same as everything being made up. A good deal of it was read off
+CSUF's own pages and is reproduced as published; the rest we estimated, and the
+two are kept apart on purpose.
 
-| Real | Seeded by us |
+| Read from a named source | Ours, estimated or invented |
 |---|---|
-| Building and lot names | Class schedules |
-| Capacities of the five counted structures | Parking occupancy patterns |
-| | Map coordinates, still approximate |
-| | Clubs and events |
-| | Study spot details |
+| Building names, codes and coordinates, from the campus map `locations.json`, 1 Oct 2026 | Class schedules and the demo student profile |
+| Parking lot coordinates, same source, for 10 of the 12 lots | Typical parking occupancy curve, including every surface lot figure |
+| Capacities of the five counted structures, from the parking availability board | Capacities of the seven surface lots |
+| Two parking readings, Sun 20 Sep 12:23 and Thu 1 Oct 13:11, in `data/parking_samples.csv` | Which permit type each lot takes |
+| 66 clubs: names, summaries, descriptions, categories and IDs, from the TitanLink directory, 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
+| Pollak Library floor designations, room booking rules and opening hours, from the library's own pages | |
+| Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
+| | All events |
 
-Parking availability is a typical occupancy pattern by day and hour rather than a live reading. CSUF does publish current counts for the five parking structures, and we used that board to get the real lot names and capacities, and to sample actual occupancy at different times of day so our pattern is based on something real.
+Two lot coordinates, S8 and S10 and the Visitor Lot, are our estimates because
+neither appears in CSUF's map data. The other 10 are CSUF's own figures.
 
-We are not reading it live in this version. It is a web page rather than an API, so parsing it would break without warning if the page changed, and we would rather the app not depend on that during a demo. Anywhere occupancy appears in the interface it is described as typical or expected, never as current.
+Campus Dining publishes Monday to Thursday and Friday only, so no weekend hours
+are stored for those thirteen. The three Titan Shops convenience stores come
+from a different page, and one of them, Titan Shops and Titan Express, does open
+on a Saturday.
 
-The database is designed so a live source could replace the seeded rows later without redesigning anything, and that is the obvious next step for this project.
+### Parking occupancy
+
+Availability is a typical pattern by day and hour, never a live reading. CSUF
+publishes current counts for the five structures, and we used that board twice:
+once on a Sunday and once on a Thursday. Those two readings set the per lot
+numbers in `db/seed.sql`, and the curve reproduces both to within a point.
+
+Two readings is not a lot, and it is worth being plain about what they do and
+do not support. They cover only the five counted structures, one timestamp per
+day, and only a Sunday on the weekend side, so Saturday is an assumption. The
+seven surface lots are not on the board at all and their figures are guesses.
+
+The weekday and weekend shapes turned out to be genuinely different rather than
+one curve scaled down, which is why the seed carries two columns. On a weekday
+Eastside fills to about 88 per cent because it is nearest the academic
+buildings, while State College sits around 43. On the Sunday reading every
+structure was under 4 per cent except S8 and S10 at 59, which is next to the
+stadium and the gym.
+
+We are not reading the board live in this version. It is a web page rather than
+an API, so parsing it would break without warning if the page changed, and we
+would rather the app not depend on that during a demo. Anywhere occupancy
+appears in the interface it is described as typical or expected, never as
+current.
+
+The database is designed so a live source could replace these rows later
+without redesigning anything, and that is the obvious next step for this
+project.
 
 ---
 
@@ -280,7 +317,11 @@ Semester: Fall 2026
 
 TuffyFlow is an academic project and is not an official California State University, Fullerton application.
 
-Parking availability, campus locations, clubs, events, and other information used in this project are sample or manually collected data.
+Parking occupancy patterns, class schedules, and all events are sample data we
+created. Building and lot details, club records, and library and dining
+information were collected by hand from CSUF's own published pages, and the
+table above says which is which. Club records come from the TitanLink student
+organization directory.
 
 ---
 

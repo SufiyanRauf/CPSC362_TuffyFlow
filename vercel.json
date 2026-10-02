@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/**/*.py": {
+      "excludeFiles": "{tests/**,**/test_*.py,**/*_test.py}"
+    }
+  }
+}

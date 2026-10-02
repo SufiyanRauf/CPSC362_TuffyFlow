@@ -1,10 +1,31 @@
 # Readings from the campus parking availability board.
 # Campus: 800 N. State College Blvd, Fullerton CA 92831.
 # Take a few at different times and days. Weekday mornings matter most.
-# Sunday readings are all near empty and not much use.
+#
+# The Sunday reading is worth keeping: four structures sit under 4 per cent but
+# S8 and S10 is at 59, which is the opposite of the weekday order and is why the
+# seed carries separate weekday and weekend numbers.
+#
+# The 13:57 Thursday reading was taken after the curve was already fitted to the
+# 13:11 one. Every lot came out within 2.7 points, which is the only real check
+# we have that the curve is not just repeating its own input.
+#
+# The board also lists a Fullerton Free Church overflow lot, 800 spaces, shown
+# as open for 24 Aug to 10 Dec rather than counted. It is off campus and has no
+# live number, so it is not in the seed.
 date,day,time,lot,total_spots,spaces_free
 2026-09-20,Sunday,12:23,Nutwood Structure,2484,2436
 2026-09-20,Sunday,12:23,State College Structure,1373,1318
 2026-09-20,Sunday,12:23,Eastside North,1880,1871
 2026-09-20,Sunday,12:23,Eastside South,1341,1320
 2026-09-20,Sunday,12:23,S8 and S10,2104,857
+2026-10-01,Thursday,13:11,Nutwood Structure,2484,1253
+2026-10-01,Thursday,13:11,State College Structure,1373,777
+2026-10-01,Thursday,13:11,Eastside North,1880,269
+2026-10-01,Thursday,13:11,Eastside South,1341,162
+2026-10-01,Thursday,13:11,S8 and S10,2104,745
+2026-10-01,Thursday,13:57,Nutwood Structure,2484,1243
+2026-10-01,Thursday,13:57,State College Structure,1373,820
+2026-10-01,Thursday,13:57,Eastside North,1880,218
+2026-10-01,Thursday,13:57,Eastside South,1341,162
+2026-10-01,Thursday,13:57,S8 and S10,2104,712

@@ -159,6 +159,94 @@ own, because you cannot fake having read it.
 
 ---
 
+**2026-10-01 — Clubs come from TitanLink, not from us**
+
+Replaced the eight made up clubs with 66 real ones pulled by hand from CSUF's
+own student organization directory at fullerton.campuslabs.com/engage. Names,
+summaries, descriptions and categories are theirs, stored verbatim. 701 orgs in
+the directory, and we kept 66 that cover a decent spread of interests. Nothing
+fetches it at runtime, so there is nothing to break later.
+
+The directory moves under you, which is worth knowing. At the first pull 392
+orgs were Active. Re-checking the same afternoon it was 391, because Moving
+Forward Community @ CSUF had been frozen in between. We dropped that one rather
+than leave it in, since a club nobody can join is not worth recommending.
+
+One trap worth writing down: the paging endpoint needs orderBy[0]=Name asc.
+Without a stable sort the pages drift between requests and 17 orgs come back
+twice while 17 never come back at all. Took a while to notice because the count
+still looked about right.
+
+---
+
+**2026-10-01 — Their categories and our tags are separate columns**
+
+TitanLink's categories are broad ("Technology", "Service"). Our matching needs
+narrower things like ai or cybersecurity. Rather than overwrite theirs, clubs
+has both: categories holds their CategoryNames exactly as published, tags holds
+our own vocabulary. That way the UI can cite them for one and own the other,
+and nobody has to wonder which is which.
+
+Keyword matching needed more care than expected. "Collegiate Program" matched
+software-engineering, "we aim to provide" matched ai, and "educational
+programming" matched software-engineering. Dropped "programming" as a keyword
+entirely, since in student org writing it nearly always means events.
+
+---
+
+**2026-10-01 — Parking occupancy is calibrated against two real readings**
+
+The occupancy curve used to be a single time of day shape with a per lot offset
+derived from the length of the lot's name, which is to say no information at
+all. Took readings off the campus parking board on a Sunday and on a Thursday
+and set the per lot numbers from those. Both are in data/parking_samples.csv
+and the curve now reproduces both to within a point.
+
+The useful surprise was that the weekday and weekend shapes are not the same
+curve scaled down. On a Thursday afternoon Eastside is at 88 per cent because
+it is nearest the academic buildings while State College sits at 43. On the
+Sunday reading every structure was under 4 per cent except S8 and S10 at 59,
+which is beside the stadium and the gym. Our first attempt applied the Thursday
+numbers to the weekend too and had Eastside at 54 per cent on a Sunday against
+a real 0.5. The seed carries two columns now.
+
+Worth saying plainly: two readings is not much. One timestamp per day, only the
+five counted structures, and only a Sunday on the weekend side, so Saturday is
+an assumption. The seven surface lots are not on that board at all and their
+numbers are guesses. The README says so and so does the parking screen.
+
+---
+
+**2026-10-01 — The scorer reads the day of the class, not today**
+
+The occupancy lookup matched on hour alone, so asking on a Friday evening about
+a Monday morning class read Friday's row. Worse, whichever day's row happened
+to come first in the list won. It now matches on day as well, and the day is
+worked out from today plus how many days ahead the class is, so nothing new has
+to be passed in from the front end.
+
+The same blindness was in two other places. arrive_by returned nothing for any
+class whose time had already passed today, including one three days out, and
+the countdown rendered a Monday class as "2100 min". Both fixed, and there are
+tests for the Friday to Monday case now because it is the one a teammate is
+most likely to click on a weekend.
+
+---
+
+**2026-10-01 — Seed files run in a fixed order, and events check themselves**
+
+Three seed files now instead of one, so the order matters: schema, seed,
+seed_clubs, seed_spots, seed_events. It is written at the bottom of seed.sql.
+
+Removing the made up clubs broke the events seed and we nearly missed it. The
+events join clubs by name to pick a host, so when the names changed, eleven of
+the twelve events were silently dropped and the insert reported success. There
+is now a check at the end of seed_events.sql that raises if the count is not
+twelve. A seed file that can lose rows without saying anything is worse than
+one that fails.
+
+---
+
 ## What each file does
 
 Short notes so any of us can answer if we get asked about a file we did not
@@ -169,13 +257,25 @@ the student, their next class, and a recommendation. Field names are the same
 as the database columns, underscores and all, so nothing has to be renamed when
 we swap in real data.
 
-**src/data.ts** — sample values so the screen could be built before the database
-was set up. Week 2 replaces this file with Supabase queries and nothing else
-should have to change, which is the point of matching the column names.
+**src/lib/campusData.ts** — every row the app shows, shaped exactly like the
+database rows and handed back from async functions. It started as src/data.ts
+with a handful of sample values. Async matters: when Supabase goes in, these
+functions become queries and nothing that calls them has to change.
+
+**src/lib/recommend.ts** — works out the next class, gathers everything the
+scorer needs and posts it to the Python function. The fiddly part is the clock.
+It reads campus local time through Intl rather than the laptop's own, because
+the arrival hour decides which occupancy row gets looked up.
+
+**db/seed_clubs.sql** — the 66 TitanLink clubs, with a header recording where
+they came from and when.
+
+**db/seed_spots.sql** — Pollak Library floors and the campus dining locations,
+read off CSUF's own pages. Noise ratings and seat counts are ours.
 
 **src/App.tsx** — holds one piece of state for which screen is showing, draws the
 sidebar next to the content, and shows the dashboard when the view is "home".
-Four of the five screens are placeholders right now.
+Parking, spots and clubs are real screens now; the map is still a placeholder.
 
 **src/components/Sidebar.tsx** — the five nav buttons. Takes the active view and
 a function to call when one is clicked, so it does not know or care what the
@@ -199,9 +299,16 @@ everyone. Two belong to a student. The bottom half is the access rules, which
 are the part that actually matters: without them anyone could read every row
 from the browser console, because the key our app ships with is public.
 
-**db/seed.sql and db/seed_events.sql** — the campus data. Events are separate
-because they are dated and have to be re-run before each demo, otherwise they
-have all expired and the events card is empty.
+**db/seed.sql and db/seed_events.sql** — buildings, lots and the occupancy
+curve, then the events. Events are separate because they are dated and have to
+be re-run before each demo, otherwise they have all expired and the events card
+is empty.
 
-**api/recommend.py** — a stub returning ok, so we could confirm the Python half
-deploys before writing the real thing. The ranking lands in week 4.
+**api/recommend.py** — the request and response shapes, and the three calls into
+the ranking engine. The GET is still the health check we used to prove the
+Python half deploys. Pydantic bounds the numbers it accepts, because an
+occupancy of 150 used to sail through and score as if the lot were empty.
+
+**api/scoring.py** — the ranking engine itself: one rank function, configured
+three ways for parking, spots and events. Nothing in here touches the database
+or the network, which is why it is the one part with real tests.
