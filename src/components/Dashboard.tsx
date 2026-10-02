@@ -1,3 +1,4 @@
+import type { View } from '../types'
 import { useAsync } from '../lib/useAsync'
 import { findNextClass, getRecommendations } from '../lib/recommend'
 import { getProfile } from '../lib/campusData'
@@ -5,7 +6,18 @@ import NextClassCard from './NextClassCard'
 import RecCard from './RecCard'
 import Panel from './Panel'
 
-export default function Dashboard() {
+type DashboardProps = {
+  onOpen: (view: View) => void
+}
+
+// each card opens the screen it came from
+const cardView: Record<string, View> = {
+  parking: 'parking',
+  spot: 'spots',
+  event: 'clubs',
+}
+
+export default function Dashboard({ onOpen }: DashboardProps) {
   const profile = useAsync(getProfile)
   const nextClass = useAsync(findNextClass)
   const recs = useAsync(getRecommendations)
@@ -47,7 +59,11 @@ export default function Dashboard() {
             {[data.parking[0], data.spots[0], data.events[0]]
               .filter(Boolean)
               .map((rec) => (
-                <RecCard key={rec.id} rec={rec} />
+                <RecCard
+                  key={rec.id}
+                  rec={rec}
+                  onOpen={() => onOpen(cardView[rec.category])}
+                />
               ))}
           </div>
         )}

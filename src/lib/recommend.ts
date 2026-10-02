@@ -108,7 +108,7 @@ export async function getRecommendations(): Promise<RecommendResponse> {
       const b = where(s.building_id)
       if (!b) return []
       return [{
-        id: s.id, name: s.name, lat: b.lat, lng: b.lng,
+        id: s.id, name: s.name, kind: s.kind, lat: b.lat, lng: b.lng,
         noise_level: s.noise_level, has_outlets: s.has_outlets,
         opens_at: s.opens_at, closes_at: s.closes_at,
       }]

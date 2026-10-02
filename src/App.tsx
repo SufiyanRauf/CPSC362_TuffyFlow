@@ -14,7 +14,7 @@ export default function App() {
       <Sidebar active={view} onSelect={setView} />
 
       <main className="flex-1 p-6">
-        {view === 'home' && <Dashboard />}
+        {view === 'home' && <Dashboard onOpen={setView} />}
         {view === 'parking' && <ParkingView />}
         {view === 'spots' && <SpotsView />}
         {view === 'clubs' && <ClubsView />}

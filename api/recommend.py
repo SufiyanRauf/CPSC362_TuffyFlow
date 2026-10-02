@@ -46,6 +46,7 @@ class Availability(BaseModel):
 class Spot(BaseModel):
     id: str
     name: str
+    kind: str | None = None
     lat: float
     lng: float
     noise_level: int = Field(ge=1, le=5)
@@ -99,6 +100,7 @@ def _result(entry, category, with_arrive_by=None, context=None):
         "reasons": entry["reasons"],
         "lat": item.get("lat"),
         "lng": item.get("lng"),
+        "kind": item.get("kind"),
         "walk_minutes": walk,
         "arrive_by": arrive_by(item, context, walk) if with_arrive_by else None,
     }

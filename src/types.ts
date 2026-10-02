@@ -57,7 +57,7 @@ export type LotAvailability = {
 export type Spot = {
   id: string
   name: string
-  kind: 'study' | 'eat' | 'charge' | 'meet'
+  kind: SpotKind
   building_id: string
   building_name: string
   floor: number | null
@@ -93,11 +93,16 @@ export type CampusEvent = {
   tags: string[]
 }
 
+export type SpotKind = 'study' | 'eat' | 'charge' | 'meet'
+
 export type RecCategory = 'parking' | 'spot' | 'event'
 
 export type Recommendation = {
   id: string
   category: RecCategory
+  // only set for spots: a spot can be a study floor, a food place, somewhere to
+  // meet or somewhere to charge, and the card should not call them all study
+  kind?: SpotKind | null
   title: string
   match_percent: number
   reason: string

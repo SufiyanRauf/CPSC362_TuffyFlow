@@ -1,7 +1,8 @@
-import type { Recommendation, RecCategory } from '../types'
+import type { Recommendation, RecCategory, SpotKind } from '../types'
 
 type RecCardProps = {
   rec: Recommendation
+  onOpen?: () => void
 }
 
 const labels: Record<RecCategory, string> = {
@@ -10,17 +11,38 @@ const labels: Record<RecCategory, string> = {
   event: 'Event',
 }
 
-export default function RecCard({ rec }: RecCardProps) {
+// Most of the spots are food, not study floors, so calling every one of them a
+// study spot reads wrong on the dashboard.
+const spotLabels: Record<SpotKind, string> = {
+  study: 'Study spot',
+  eat: 'Food',
+  meet: 'Meet up',
+  charge: 'Charging',
+}
+
+function labelFor(rec: Recommendation) {
+  if (rec.category === 'spot' && rec.kind) {
+    return spotLabels[rec.kind] ?? 'Study spot'
+  }
+  return labels[rec.category] ?? 'Suggestion'
+}
+
+export default function RecCard({ rec, onOpen }: RecCardProps) {
   const width = Math.max(0, Math.min(100, rec.match_percent))
 
-  return (
-    <div className="flex-1 min-w-56 rounded-xl bg-slate-800 p-4">
+  const body = (
+    <>
       <span className="inline-block rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300">
-        {labels[rec.category] ?? 'Suggestion'}
+        {labelFor(rec)}
       </span>
 
       <h3 className="mt-3 font-semibold">{rec.title}</h3>
       <p className="mt-1 text-sm text-slate-400">{rec.reason}</p>
+      {rec.category === 'parking' && (
+        <p className="mt-1 text-sm text-amber-400">
+          {rec.arrive_by ? `arrive by ${rec.arrive_by}` : 'leave now'}
+        </p>
+      )}
 
       <div className="mt-4 flex items-center gap-2">
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700">
@@ -28,6 +50,20 @@ export default function RecCard({ rec }: RecCardProps) {
         </div>
         <span className="text-xs text-slate-400">{rec.match_percent}%</span>
       </div>
-    </div>
+    </>
+  )
+
+  if (!onOpen) {
+    return <div className="flex-1 min-w-56 rounded-xl bg-slate-800 p-4">{body}</div>
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex-1 min-w-56 rounded-xl bg-slate-800 p-4 text-left hover:bg-slate-700"
+    >
+      {body}
+    </button>
   )
 }
