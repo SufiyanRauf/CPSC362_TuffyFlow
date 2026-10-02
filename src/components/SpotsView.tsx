@@ -35,17 +35,19 @@ export default function SpotsView() {
           ))}
         </select>
 
-        <label className="flex items-center gap-2">
+        <label className="flex min-h-11 items-center gap-2">
           quiet to
           <input
+            className="h-6"
             type="range" min={1} max={5} value={maxNoise}
             onChange={(e) => setMaxNoise(Number(e.target.value))}
           />
           <span className="w-4 text-slate-400">{maxNoise}</span>
         </label>
 
-        <label className="flex items-center gap-2">
+        <label className="flex min-h-11 items-center gap-2">
           <input
+            className="h-5 w-5"
             type="checkbox" checked={outletsOnly}
             onChange={(e) => setOutletsOnly(e.target.checked)}
           />
@@ -80,7 +82,7 @@ export default function SpotsView() {
                         </p>
                       </div>
                       <span className="shrink-0 rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300">
-                        {spotKindLabels[s.kind]}
+                        {spotKindLabels[s.kind] ?? s.kind}
                       </span>
                     </div>
                     {s.hours_note && (

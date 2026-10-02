@@ -19,6 +19,7 @@ const views: { id: View; label: string }[] = [
 export default function Sidebar({ active, onSelect }: SidebarProps) {
   return (
     <nav
+      id="main-nav"
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-10 flex border-t border-slate-800 bg-slate-950
                  md:sticky md:top-0 md:h-screen md:w-48 md:shrink-0 md:flex-col md:gap-1 md:self-start md:border-t-0 md:p-4"
@@ -33,6 +34,7 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
       {views.map((view) => (
         <button
           key={view.id}
+          type="button"
           onClick={() => onSelect(view.id)}
           aria-current={view.id === active ? 'page' : undefined}
           className={

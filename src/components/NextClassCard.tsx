@@ -34,7 +34,7 @@ export default function NextClassCard({ nextClass }: NextClassCardProps) {
   )
 
   return (
-    <div className="rounded-xl bg-slate-800 p-5 flex items-start justify-between">
+    <div className="rounded-xl bg-slate-800 p-5 flex items-start justify-between gap-3">
       <div>
         <p className="text-xs uppercase tracking-wide text-slate-400">Next class</p>
         <h2 className="mt-1 text-2xl font-semibold">{nextClass.course_code}</h2>
@@ -45,7 +45,7 @@ export default function NextClassCard({ nextClass }: NextClassCardProps) {
 
       <div className="text-right">
         <p className="text-xs text-slate-400">{label}</p>
-        <p className="text-2xl font-semibold text-amber-400">{value}</p>
+        <p className="text-2xl font-semibold text-amber-400 whitespace-nowrap">{value}</p>
       </div>
     </div>
   )

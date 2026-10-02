@@ -28,7 +28,7 @@ export default function RecCard({ rec, onOpen }: RecCardProps) {
         {labelFor(rec)}
       </span>
 
-      <h3 className="mt-3 font-semibold">{rec.title}</h3>
+      <p className="mt-3 font-semibold">{rec.title}</p>
       <p className="mt-1 text-sm text-slate-400">{rec.reason}</p>
       {rec.category === 'parking' && (
         <p className="mt-1 text-sm text-amber-400">
