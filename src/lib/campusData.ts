@@ -6,7 +6,7 @@
 //
 // Sources are recorded in db/seed_clubs.sql and db/seed_spots.sql.
 // Coordinates are CSUF's own, from fullerton.edu/campusmap/locations.json, for
-// all 15 buildings and 10 of the 12 lots. S8 and S10 and the Visitor Lot are
+// all 17 buildings and 10 of the 12 lots. S8 and S10 and the Visitor Lot are
 // not in that file, so those two are our estimates.
 
 import type {
@@ -97,8 +97,10 @@ function buildAvailability(): LotAvailability[] {
         const offset = weekend ? demand?.weekend ?? 0 : demand?.weekday ?? 0
         rows.push({
           lot_id: lot.id, day_of_week: day, hour,
-          // 99, not 100: a typical pattern should not claim a lot is literally full.
-          typical_pct_full: Math.max(0, Math.min(99, base + offset)),
+          // floor 2, ceiling 99: never claim a lot is literally empty or full.
+          // Early and late the offsets exceed the base so the lots converge,
+          // which is right, they really are all empty and the walk decides.
+          typical_pct_full: Math.max(2, Math.min(99, base + offset)),
         })
       }
     }
@@ -209,32 +211,39 @@ const clubs: Club[] = [
 // Events are dated relative to today, the same as db/seed_events.sql, so they
 // never go stale. Times are campus local.
 function buildEvents(): CampusEvent[] {
-  const defs: [string, number, string, string, string[]][] = [
-    ["Resume Workshop with Industry Mentors", 0, "16:00", 'b-cs', ["career", "software-engineering"]],
-    ["Intro to Neural Networks", 0, "18:00", 'b-e', ["ai", "data-science"]],
-    ["Algorithms Practice Session", 1, "12:00", 'b-cs', ["algorithms", "software-engineering"]],
-    ["Beginner Capture the Flag Night", 1, "17:30", 'b-cs', ["cybersecurity"]],
-    ["Unity Basics Workshop", 2, "15:00", 'b-va', ["game-dev"]],
-    ["Mock Interview Evening", 2, "17:00", 'b-e', ["career", "mentorship", "engineering"]],
-    ["Kaggle Kickoff", 3, "13:00", 'b-pl', ["data-science"]],
-    ["Pitch Night", 3, "18:30", 'b-sgmh', ["startups", "business", "leadership"]],
-    ["Git and GitHub for Beginners", 4, "14:00", 'b-cs', ["software-engineering", "career"]],
-    ["Trail Hike Planning", 5, "11:00", 'b-tsu', ["outdoors"]],
-    ["Open Mic Night", 6, "19:00", 'b-tsu', ["music"]],
-    ["Password Cracking Demo", 8, "16:30", 'b-e', ["cybersecurity", "networking"]],
+  // Host club, title, day offset, time, building, tags. These have to stay in
+  // step with db/seed_events.sql, including the tags, because the scorer
+  // divides shared tags by the event's own tag count and a short list here
+  // would score higher than the same event out of the database.
+  const defs: [string, string, number, string, string, string[]][] = [
+    ["Association for Computing Machinery", "Resume Workshop with Industry Mentors", 0, "16:00", 'b-cs', ["career", "software-engineering"]],
+    ["Data Science and Machine Learning", "Intro to Neural Networks", 0, "18:00", 'b-e', ["ai", "data-science", "python"]],
+    ["Association for Computing Machinery", "Algorithms Practice Session", 1, "12:00", 'b-cs', ["algorithms", "software-engineering"]],
+    ["Offensive Security Society", "Beginner Capture the Flag Night", 1, "17:30", 'b-cs', ["ctf", "cybersecurity"]],
+    ["Video Game Development Club", "Unity Basics Workshop", 2, "15:00", 'b-va', ["game-dev", "programming"]],
+    ["Society of Women Engineers", "Mock Interview Evening", 2, "17:00", 'b-e', ["career", "engineering", "mentorship"]],
+    ["Data Science and Machine Learning", "Kaggle Kickoff", 3, "13:00", 'b-pl', ["data-science", "python"]],
+    ["Business and Data Analytics Club", "Pitch Night", 3, "18:30", 'b-sgmh', ["business", "leadership", "startups"]],
+    ["Association for Computing Machinery", "Git and GitHub for Beginners", 4, "14:00", 'b-cs', ["career", "software-engineering"]],
+    ["Ski and Snowboard Club", "Trail Hike Planning", 5, "11:00", 'b-tsu', ["outdoors", "social"]],
+    ["Behind The Scenes", "Open Mic Night", 6, "19:00", 'b-tsu', ["arts", "music", "social"]],
+    ["Offensive Security Society", "Password Cracking Demo", 8, "16:30", 'b-e', ["cybersecurity", "networking"]],
   ]
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  return defs.map(([title, dayOffset, at, buildingId, tags], i) => {
+  return defs.map(([hostName, title, dayOffset, at, buildingId, tags], i) => {
     const [h, m] = at.split(':').map(Number)
     const start = new Date(today)
     start.setDate(start.getDate() + dayOffset)
     start.setHours(h, m, 0, 0)
     const end = new Date(start.getTime() + 90 * 60 * 1000)
+    // the seed joins the host by name, so look it up the same way rather than
+    // taking whichever club happens to sit at this position in the array
+    const host = clubs.find((c) => c.name === hostName)
     return {
       id: `event-${i}`,
-      club_id: clubs[i % clubs.length].id,
-      club_name: clubs[i % clubs.length].name,
+      club_id: host?.id ?? '',
+      club_name: host?.name ?? hostName,
       title, starts_at: start.toISOString(), ends_at: end.toISOString(),
       building_id: buildingId, tags,
     }

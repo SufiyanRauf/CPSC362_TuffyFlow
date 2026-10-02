@@ -2,7 +2,7 @@
 -- Run after schema.sql. Safe to run more than once.
 --
 -- Coordinates come from CSUF's own campus map data, fullerton.edu/campusmap/locations.json,
--- retrieved 1 October 2026: all 15 buildings and 10 of the 12 lots. The two
+-- retrieved 1 October 2026: all 17 buildings and 10 of the 12 lots. The two
 -- exceptions are S8 and S10 and the Visitor Lot, which do not appear in that
 -- file at all, so those two are our estimates and are marked below.
 -- Campus is 800 N. State College Blvd.
@@ -37,7 +37,8 @@ on conflict (code) do nothing;
 -- ---------------------------------------------------------------------------
 insert into parking_lots (name, lat, lng, permit_type, total_spaces) values
   -- The five counted structures, names and totals taken from the campus parking
-  -- availability board, and their coordinates are CSUF's own.
+  -- availability board. Four of the five have CSUF's own coordinates; S8 and S10
+  -- is not in that map file, so its position is our estimate.
   ('Nutwood Structure',              33.879029, -117.88852, 'student', 2484),
   ('State College Structure',        33.883055, -117.888671, 'student', 1373),
   ('Eastside North',                 33.880356, -117.881687, 'student', 1880),
@@ -99,9 +100,11 @@ select
   l.id,
   d.day_of_week,
   h.hour,
-  -- Ceiling is 99, not 100: this is a typical pattern, so it should never
-  -- claim a lot is literally completely full.
-  greatest(0, least(99,
+  -- Floor 2, ceiling 99. A typical pattern should not claim a lot is literally
+  -- empty or literally full. Early and late the per lot offsets are larger than
+  -- the base, so the lots converge, which is correct: at 7am they really are all
+  -- empty and the walk is what should decide.
+  greatest(2, least(99,
     case when d.day_of_week in (0, 6)
       then 1 + greatest(0, 3 - abs(h.hour - 13)) + coalesce(dm.weekend_pts, 0)
       else case
