@@ -1,4 +1,5 @@
-import type { Recommendation, RecCategory, SpotKind } from '../types'
+import type { Recommendation, RecCategory } from '../types'
+import { spotKindLabels } from '../lib/labels'
 
 type RecCardProps = {
   rec: Recommendation
@@ -11,18 +12,9 @@ const labels: Record<RecCategory, string> = {
   event: 'Event',
 }
 
-// Most of the spots are food, not study floors, so calling every one of them a
-// study spot reads wrong on the dashboard.
-const spotLabels: Record<SpotKind, string> = {
-  study: 'Study spot',
-  eat: 'Food',
-  meet: 'Meet up',
-  charge: 'Charging',
-}
-
 function labelFor(rec: Recommendation) {
   if (rec.category === 'spot' && rec.kind) {
-    return spotLabels[rec.kind] ?? 'Study spot'
+    return spotKindLabels[rec.kind] ?? 'Study spot'
   }
   return labels[rec.category] ?? 'Suggestion'
 }

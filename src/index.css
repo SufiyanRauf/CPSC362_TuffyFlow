@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* otherwise the checkboxes and the range slider render in light mode */
+:root {
+  color-scheme: dark;
+}

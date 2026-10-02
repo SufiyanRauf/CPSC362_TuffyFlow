@@ -10,10 +10,10 @@ export default function App() {
   const [view, setView] = useState<View>('home')
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 md:flex">
-      <Sidebar active={view} onSelect={setView} />
-
-      <main className="flex-1 p-4 pb-24 md:p-6 md:pb-6">
+    <div className="min-h-screen bg-slate-900 text-slate-100 md:flex md:items-start">
+      {/* main comes first so keyboard focus starts at the heading, not at the
+          bottom bar. On md the nav is ordered back to the left. */}
+      <main className="flex-1 p-4 pb-24 md:order-2 md:p-6 md:pb-6">
         {view === 'home' && <Dashboard onOpen={setView} />}
         {view === 'parking' && <ParkingView />}
         {view === 'spots' && <SpotsView />}
@@ -25,6 +25,8 @@ export default function App() {
           </div>
         )}
       </main>
+
+      <Sidebar active={view} onSelect={setView} />
     </div>
   )
 }

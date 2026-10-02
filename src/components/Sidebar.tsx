@@ -21,7 +21,7 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
     <nav
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-10 flex border-t border-slate-800 bg-slate-950
-                 md:static md:w-48 md:shrink-0 md:flex-col md:gap-1 md:border-t-0 md:p-4"
+                 md:sticky md:top-0 md:h-screen md:w-48 md:shrink-0 md:flex-col md:gap-1 md:self-start md:border-t-0 md:p-4"
     >
       <div className="hidden items-center gap-2 mb-6 md:flex">
         <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-bold grid place-items-center">
@@ -40,7 +40,7 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
             'flex-1 min-h-12 px-2 text-center text-xs ' +
             'md:flex-none md:min-h-0 md:text-left md:px-3 md:py-2 md:rounded-md md:text-sm ' +
             (view.id === active
-              ? 'text-amber-400 md:bg-slate-800 md:text-white'
+              ? 'font-semibold text-amber-400 md:font-normal md:bg-slate-800 md:text-white'
               : 'text-slate-400 hover:text-white md:hover:bg-slate-900')
           }
         >

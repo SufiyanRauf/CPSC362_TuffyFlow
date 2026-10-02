@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAsync } from '../lib/useAsync'
 import { getSpots } from '../lib/campusData'
 import Panel from './Panel'
+import { spotKindLabels } from '../lib/labels'
 
 const KINDS = ['any', 'study', 'eat', 'charge', 'meet'] as const
 
@@ -24,12 +25,13 @@ export default function SpotsView() {
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-800 p-3 text-sm">
         <select
+          aria-label="Filter by kind of spot"
           value={kind}
           onChange={(e) => setKind(e.target.value as (typeof KINDS)[number])}
           className="rounded-md bg-slate-700 px-2 py-1"
         >
           {KINDS.map((k) => (
-            <option key={k} value={k}>{k === 'any' ? 'All kinds' : k}</option>
+            <option key={k} value={k}>{k === 'any' ? 'All kinds' : spotKindLabels[k]}</option>
           ))}
         </select>
 
@@ -64,7 +66,7 @@ export default function SpotsView() {
           }
           return (
             <>
-              <p className="text-xs text-slate-500">{visible.length} of {all.length} spots</p>
+              <p className="text-xs text-slate-400">{visible.length} of {all.length} spots</p>
               <div className="flex flex-col gap-2">
                 {visible.map((s) => (
                   <div key={s.id} className="rounded-xl bg-slate-800 p-4">
@@ -78,11 +80,11 @@ export default function SpotsView() {
                         </p>
                       </div>
                       <span className="shrink-0 rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300">
-                        {s.kind}
+                        {spotKindLabels[s.kind]}
                       </span>
                     </div>
                     {s.hours_note && (
-                      <p className="mt-2 text-xs text-slate-500">{s.hours_note}</p>
+                      <p className="mt-2 text-xs text-slate-400">{s.hours_note}</p>
                     )}
                     <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400">
                       <span>noise {s.noise_level} of 5</span>

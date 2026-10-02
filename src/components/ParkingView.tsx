@@ -28,7 +28,7 @@ export default function ParkingView() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500">{i + 1}</span>
+                      <span className="text-xs text-slate-400">{i + 1}</span>
                       <h2 className="font-semibold">{lot.title}</h2>
                     </div>
                     <ul className="mt-1 text-sm text-slate-400">

@@ -44,8 +44,9 @@ export default function ClubsView() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search clubs"
           placeholder="Search clubs"
-          className="w-full sm:flex-1 sm:min-w-48 rounded-lg bg-slate-800 px-3 py-2 text-sm placeholder:text-slate-500"
+          className="w-full sm:flex-1 sm:min-w-48 rounded-lg bg-slate-800 px-3 py-2 text-sm placeholder:text-slate-400"
         />
         <label className="flex items-center gap-2 text-sm text-slate-300">
           <input
@@ -71,7 +72,7 @@ export default function ClubsView() {
 
           return (
             <>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 {scored.length} of {all.length} clubs
               </p>
               <div className="flex flex-col gap-2">
@@ -105,7 +106,7 @@ export default function ClubsView() {
                       ))}
                     </div>
 
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-slate-400">
                       TitanLink categories: {club.categories.join(', ')}
                     </p>
 
