@@ -45,7 +45,7 @@ Recommended Parking:
 Lot E
 
 Estimated Walk: 2 minutes
-Expected Availability: usually about 92% full when you would arrive
+Expected fullness: usually about 92% full when you would arrive
 
 Suggested Arrival Time:
 11:09 AM
@@ -59,12 +59,11 @@ Students can find campus locations based on what they need at that moment.
 
 Preferences include:
 
-* Quiet study area
-* Power outlets
-* Indoor location
-* Group study space
-* Food nearby
-* Distance from the next class
+* How quiet you want it
+* Whether you need power outlets
+* Distance from your next class
+
+The spots screen also filters by kind: study, food, charging or meeting space.
 
 Example:
 
@@ -76,7 +75,7 @@ Library North 3rd Floor
 silent
 has outlets
 
-Match: 83%
+Match: 93%
 ```
 
 ---
@@ -188,7 +187,7 @@ two are kept apart on purpose.
 | Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
 | | All events |
 
-Two lot coordinates, S8 and S10 and the Visitor Lot, are our estimates because
+Two lots have coordinates we estimated: the one named S8 and S10, and the Visitor Lot because
 neither appears in CSUF's map data. The other 10 are CSUF's own figures.
 
 Campus Dining publishes Monday to Thursday and Friday only, so no weekend hours
@@ -203,8 +202,8 @@ publishes current counts for the five structures, and we read that board three t
 once on a Sunday and twice on the Thursday. Those two readings set the per lot
 numbers in `db/seed.sql`, and the curve reproduces both to within a point.
 
-Two readings is not a lot, and it is worth being plain about what they do and
-do not support. They cover only the five counted structures and only a Sunday on the weekend
+Three readings, but only two independent days, and only two of them set the
+numbers, so it is worth being plain about what they do and do not support. They cover only the five counted structures and only a Sunday on the weekend
 side, so Saturday is an assumption. The
 seven surface lots are not on the board at all and their figures are guesses.
 
@@ -212,7 +211,7 @@ The weekday and weekend shapes turned out to be genuinely different rather than
 one curve scaled down, which is why the seed carries two columns. On a weekday
 Eastside fills to about 88 per cent because it is nearest the academic
 buildings, while State College sits around 43. On the Sunday reading every
-structure was under 4 per cent except S8 and S10 at 59, which is next to the
+structure was at or under 4 per cent except S8 and S10 at 59, which is next to the
 stadium and the gym.
 
 We are not reading the board live in this version. It is a web page rather than

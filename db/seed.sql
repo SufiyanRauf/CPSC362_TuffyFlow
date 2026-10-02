@@ -75,7 +75,8 @@ on conflict (name) do nothing;
 -- are two columns rather than one. On a weekday Eastside fills to about 88 per
 -- cent because it is closest to the academic buildings while State College sits
 -- at 43. On a Sunday every structure is under 4 per cent except S8 and S10 at
--- 59, which is next to the stadium and the gym.
+-- 59, which is next to the stadium and the gym. State College is the highest
+-- of the four at almost exactly 4 per cent.
 --
 -- Only Sunday was sampled for the weekend, so Saturday is an assumption.
 --
@@ -100,11 +101,12 @@ select
   l.id,
   d.day_of_week,
   h.hour,
-  -- Floor 2, ceiling 99. A typical pattern should not claim a lot is literally
-  -- empty or literally full. Early and late the per lot offsets are larger than
-  -- the base, so the lots converge, which is correct: at 7am they really are all
-  -- empty and the walk is what should decide.
-  greatest(2, least(99,
+  -- Floor 1, ceiling 99. A typical pattern should not claim a lot is literally
+  -- empty or literally full. A floor of 2 would have put Eastside North at 2 on
+  -- the weekend against a real 0.48, which breaks the one point claim below.
+  -- Early and late the offsets exceed the base so the lots converge, which is
+  -- right: at 7am they really are all empty and the walk is what should decide.
+  greatest(1, least(99,
     case when d.day_of_week in (0, 6)
       then 1 + greatest(0, 3 - abs(h.hour - 13)) + coalesce(dm.weekend_pts, 0)
       else case

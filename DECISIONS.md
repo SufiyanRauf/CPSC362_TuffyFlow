@@ -194,18 +194,20 @@ entirely, since in student org writing it nearly always means events.
 
 ---
 
-**2026-10-01 — Parking occupancy is calibrated against two real readings**
+**2026-10-01 — Parking occupancy is calibrated against real readings**
 
 The occupancy curve used to be a single time of day shape with a per lot offset
 derived from the length of the lot's name, which is to say no information at
 all. Took readings off the campus parking board on a Sunday and on a Thursday
-and set the per lot numbers from those. Both are in data/parking_samples.csv
-and the curve now reproduces both to within a point.
+and set the per lot numbers from those. Three readings are in data/parking_samples.csv. Two of them set the per lot
+numbers and the curve reproduces those to within a point. The third was taken
+after the curve was fitted and never used to fit it, which makes it the only
+real check we have.
 
 The useful surprise was that the weekday and weekend shapes are not the same
 curve scaled down. On a Thursday afternoon Eastside is at 88 per cent because
 it is nearest the academic buildings while State College sits at 43. On the
-Sunday reading every structure was under 4 per cent except S8 and S10 at 59,
+Sunday reading every structure was at or under 4 per cent except S8 and S10 at 59,
 which is beside the stadium and the gym. Our first attempt applied the Thursday
 numbers to the weekend too and had Eastside at 54 per cent on a Sunday against
 a real 0.5. The seed carries two columns now.
@@ -235,8 +237,9 @@ most likely to click on a weekend.
 
 **2026-10-01 — Seed files run in a fixed order, and events check themselves**
 
-Three seed files now instead of one, so the order matters: schema, seed,
-seed_clubs, seed_spots, seed_events. It is written at the bottom of seed.sql.
+Four seed files now instead of one, so the order matters: schema, seed,
+seed_clubs, seed_spots, seed_events. seed_demo_account.sql runs after those,
+once someone has signed up in the app. It is written at the bottom of seed.sql.
 
 Removing the made up clubs broke the events seed and we nearly missed it. The
 events join clubs by name to pick a host, so when the names changed, eleven of
@@ -252,7 +255,9 @@ one that fails.
 Short notes so any of us can answer if we get asked about a file we did not
 write. Read before a presentation.
 
-**src/types.ts** — the shape of everything the dashboard renders. Three types:
+**src/types.ts** — the shape of everything the dashboard renders. One type per
+database table, plus the view name, the next class, a recommendation and the
+loading wrapper. Fifteen in all:
 the student, their next class, and a recommendation. Field names are the same
 as the database columns, underscores and all, so nothing has to be renamed when
 we swap in real data.

@@ -7,7 +7,7 @@
 # seed carries separate weekday and weekend numbers.
 #
 # The 13:57 Thursday reading was taken after the curve was already fitted to the
-# 13:11 one. Every lot came out within 2.7 points, which is the only real check
+# 13:11 one. Every lot came out within 3 points, which is the only real check
 # we have that the curve is not just repeating its own input.
 #
 # The board also lists a Fullerton Free Church overflow lot, 800 spaces, shown
