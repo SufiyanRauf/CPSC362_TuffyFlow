@@ -45,10 +45,10 @@ Recommended Parking:
 Lot E
 
 Estimated Walk: 2 minutes
-Expected Availability: usually about 83% full at 10:00 AM
+Expected Availability: usually about 92% full when you would arrive
 
 Suggested Arrival Time:
-11:10 AM
+11:09 AM
 ```
 
 ---
@@ -72,12 +72,11 @@ Example:
 Recommended Location:
 Library North 3rd Floor
 
-Quiet
-Outlets Available
-Indoor
-5 minute walk from your next class
+5 min from Computer Science
+silent
+has outlets
 
-Match: 93%
+Match: 83%
 ```
 
 ---
@@ -102,10 +101,10 @@ Resume Workshop with Industry Mentors
 
 Time: 4:00 PM
 
-Match: 92%
+Match: 100%
 
 Reason:
-Software Engineering + Career Development
+matches career and software-engineering
 ```
 
 ---
@@ -135,7 +134,7 @@ The factors differ per feature:
 |---|---|---|
 | Parking | Permit type | Walking distance, typical fullness at arrival hour |
 | Campus spots | Open now | Walking distance, noise level, power outlets |
-| Clubs and events | Time conflicts, already started | Tag overlap with interests, walking distance |
+| Events | Time conflicts with a class, already started | Tag overlap with interests, walking distance, how soon it starts |
 
 ---
 
@@ -151,13 +150,12 @@ The factors differ per feature:
 ### Backend and Database
 
 * Python with FastAPI, for the scoring endpoint
-* PostgreSQL, hosted on Supabase
-* Supabase Authentication
+* PostgreSQL, hosted on Supabase (schema written, project not created yet)
+* Supabase Authentication (planned, no sign in yet)
 
 ### Maps
 
-* Leaflet
-* OpenStreetMap
+* Leaflet and OpenStreetMap (planned, the dashboard shows a placeholder)
 
 ### Deployment
 
@@ -184,7 +182,7 @@ two are kept apart on purpose.
 | Building names, codes and coordinates, from the campus map `locations.json`, 1 Oct 2026 | Class schedules and the demo student profile |
 | Parking lot coordinates, same source, for 10 of the 12 lots | Typical parking occupancy curve, including every surface lot figure |
 | Capacities of the five counted structures, from the parking availability board | Capacities of the seven surface lots |
-| Two parking readings, Sun 20 Sep 12:23 and Thu 1 Oct 13:11, in `data/parking_samples.csv` | Which permit type each lot takes |
+| Three parking readings on two days, in `data/parking_samples.csv` | Which permit type each lot takes |
 | 66 clubs: names, summaries, descriptions, categories and IDs, from the TitanLink directory, 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
 | Pollak Library floor designations, room booking rules and opening hours, from the library's own pages | |
 | Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
@@ -195,19 +193,19 @@ neither appears in CSUF's map data. The other 10 are CSUF's own figures.
 
 Campus Dining publishes Monday to Thursday and Friday only, so no weekend hours
 are stored for those thirteen. The three Titan Shops convenience stores come
-from a different page, and one of them, Titan Shops and Titan Express, does open
+from a different page, and one of them, The Express at Titan Shops, does open
 on a Saturday.
 
 ### Parking occupancy
 
 Availability is a typical pattern by day and hour, never a live reading. CSUF
-publishes current counts for the five structures, and we used that board twice:
-once on a Sunday and once on a Thursday. Those two readings set the per lot
+publishes current counts for the five structures, and we read that board three times:
+once on a Sunday and twice on the Thursday. Those two readings set the per lot
 numbers in `db/seed.sql`, and the curve reproduces both to within a point.
 
 Two readings is not a lot, and it is worth being plain about what they do and
-do not support. They cover only the five counted structures, one timestamp per
-day, and only a Sunday on the weekend side, so Saturday is an assumption. The
+do not support. They cover only the five counted structures and only a Sunday on the weekend
+side, so Saturday is an assumption. The
 seven surface lots are not on the board at all and their figures are guesses.
 
 The weekday and weekend shapes turned out to be genuinely different rather than
@@ -231,14 +229,17 @@ project.
 
 ## Architecture
 
-The application has four parts:
+The application has four parts. Three of them exist today; the database is
+written but not yet created, so the browser reads the same rows from a
+TypeScript file shaped like the tables.
 
 * The browser runs the interface. It holds no permanent data.
 * The database holds every row and decides who can read what.
 * The scoring service is a Python function that ranks candidates.
 * Vercel serves the site and runs the scoring function.
 
-A single recommendation travels like this:
+A single recommendation travels like this, with the database step standing in
+for `src/lib/campusData.ts` until Supabase exists:
 
 ```text
 Browser reads the session
@@ -247,50 +248,52 @@ Browser reads the session
   -> asks for candidate lots, occupancy rows and upcoming events
   -> posts all of it to the scoring service in one request
   -> receives a ranked list with a reason for each
-  -> draws the cards and the map pins
+  -> draws the cards
 ```
 
 The scoring service gets the rows it needs in the request rather than querying the database, so it does not need any credentials of its own.
 
-Access control uses PostgreSQL row level security, so the database enforces per row who may read what. A student can only ever read their own profile and their own class schedule, regardless of what the browser asks for.
+Access control is designed around PostgreSQL row level security, so the database
+enforces per row who may read what. A student would only ever read their own
+profile and their own class schedule, regardless of what the browser asks for.
+The twelve policies are written in `db/schema.sql` and apply cleanly to a real
+Postgres, but nothing is enforcing them yet because there is no database and no
+sign in.
 
 ---
 
 ## Current Project Status
 
-The project is in the **early development stage**.
+Four of the five screens work against real data held in the repository.
 
 Completed:
 
-* Project concept and problem identification
-* Initial presentation
-* UI prototype
-* Database schema and seed data
-* Recommendation algorithm design
-* Technology stack selection
-* React application setup
-* Dashboard interface with sample data
+* Project concept, initial presentation and UI prototype
+* Database schema, security policies and seed data
+* The ranking engine, in Python, with tests
+* Dashboard, parking, spots and clubs screens
+* Campus data read from CSUF's own pages: buildings, lots, clubs, library and dining
+* Deployed to Vercel
 
 In progress:
 
-* Supabase setup
-* Connecting the dashboard to real data
+* Supabase setup, which is the one thing blocking real queries and sign in
+
+Not started:
+
+* Authentication, the map, and the profile screen
 
 ---
 
 ## Planned Development
 
-1. Set up the React application
-2. Build the dashboard interface
-3. Set up Supabase and load the schema
-4. Implement authentication and student profiles
-5. Build the ranking engine
-6. Develop parking recommendations
-7. Develop club and event recommendations
-8. Integrate maps
-9. Develop campus space search
-10. Test the application
-11. Deploy
+1. Set up Supabase and load the schema
+2. Swap the data accessors over to real queries
+3. Implement authentication and student profiles
+4. Integrate the map
+5. Build the profile screen
+6. Test with two accounts to prove the security policies hold
+7. Final deployment
 
 ---
 
@@ -299,7 +302,7 @@ In progress:
 | Name | Role |
 |---|---|
 | Sufiyan Rauf | Development, database, recommendation engine |
-| Phillip Bryan | Development, campus data |
+| Phillip Bryan | Campus data |
 | Bhavy Patel | Development, System design, documentation |
 
 ---
