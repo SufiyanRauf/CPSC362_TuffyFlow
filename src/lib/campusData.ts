@@ -57,7 +57,7 @@ const parkingLots: ParkingLot[] = [
 ]
 
 // Mirrors the generate_series in db/seed.sql and has to stay in step with it.
-// Hours 6 to 21, clamped to 0..100.
+// Hours 6 to 21, clamped to 0..99.
 //
 // The five counted structures are measured, from data/parking_samples.csv:
 // Thursday 1 October 2026 13:11 for the weekday figure and Sunday 20 September
@@ -266,6 +266,8 @@ const classMeetings: ClassMeeting[] = [
   { id: 'cm-13', profile_id: 'demo-profile', course_code: "HIST 110", day_of_week: 2, start_time: "15:30:00", end_time: "16:45:00", building_id: 'b-lh' },
   { id: 'cm-14', profile_id: 'demo-profile', course_code: "CPSC 349", day_of_week: 4, start_time: "08:00:00", end_time: "09:15:00", building_id: 'b-e' },
   { id: 'cm-15', profile_id: 'demo-profile', course_code: "PHYS 225", day_of_week: 4, start_time: "10:30:00", end_time: "11:45:00", building_id: 'b-mh' },
+  { id: 'cm-18', profile_id: 'demo-profile', course_code: "CPSC 349", day_of_week: 2, start_time: "18:00:00", end_time: "19:15:00", building_id: 'b-e' },
+  { id: 'cm-19', profile_id: 'demo-profile', course_code: "CPSC 349", day_of_week: 4, start_time: "18:00:00", end_time: "19:15:00", building_id: 'b-e' },
   { id: 'cm-16', profile_id: 'demo-profile', course_code: "CPSC 351", day_of_week: 4, start_time: "13:00:00", end_time: "14:15:00", building_id: 'b-cs' },
   { id: 'cm-17', profile_id: 'demo-profile', course_code: "HIST 110", day_of_week: 4, start_time: "15:30:00", end_time: "16:45:00", building_id: 'b-lh' },
 ]

@@ -134,7 +134,7 @@ The factors differ per feature:
 | Feature | Filters | Factors |
 |---|---|---|
 | Parking | Permit type | Walking distance, typical fullness at arrival hour |
-| Campus spots | Building | Walking distance, noise level, power outlets |
+| Campus spots | Open now | Walking distance, noise level, power outlets |
 | Clubs and events | Time conflicts, already started | Tag overlap with interests, walking distance |
 
 ---
