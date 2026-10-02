@@ -129,9 +129,13 @@ export async function getRecommendations(): Promise<RecommendResponse> {
         day_offset: dayOffset,
       }]
     }),
-    todays_classes: meetings
-      .filter((m) => m.day_of_week === dayOfWeek)
-      .map((m) => ({ start: toMinutes(m.start_time), end: toMinutes(m.end_time) })),
+    // every meeting, with its day. Sending only today's meant an event on any
+    // later day was never checked for a clash with a class.
+    class_meetings: meetings.map((m) => ({
+      day_of_week: m.day_of_week,
+      start: toMinutes(m.start_time),
+      end: toMinutes(m.end_time),
+    })),
   }
 
   const res = await fetch('/api/recommend', {

@@ -38,7 +38,7 @@ class Lot(BaseModel):
 
 class Availability(BaseModel):
     lot_id: str
-    day_of_week: int
+    day_of_week: int = Field(ge=0, le=6)
     hour: int
     typical_pct_full: int = Field(ge=0, le=100)
 
@@ -67,6 +67,7 @@ class Event(BaseModel):
 
 
 class ClassWindow(BaseModel):
+    day_of_week: int = Field(ge=0, le=6)
     start: int
     end: int
 
@@ -76,16 +77,16 @@ class RecommendRequest(BaseModel):
     dest_lat: float
     dest_lng: float
     dest_name: str
-    now_minutes: int
-    day_of_week: int
-    arrival_hour: int
+    now_minutes: int = Field(ge=0, le=1439)
+    day_of_week: int = Field(ge=0, le=6)
+    arrival_hour: int = Field(ge=0, le=23)
     class_start_minutes: int
     class_day_offset: int = Field(default=0, ge=0, le=7)
     lots: list[Lot]
     availability: list[Availability]
     spots: list[Spot]
     events: list[Event]
-    todays_classes: list[ClassWindow] = []
+    class_meetings: list[ClassWindow] = []
 
 
 def _result(entry, category, with_arrive_by=None, context=None):

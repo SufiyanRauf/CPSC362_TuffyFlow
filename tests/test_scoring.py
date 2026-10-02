@@ -154,27 +154,79 @@ def test_event_tag_overlap_uses_sets_not_counts():
                     "career_goals": ["software-engineering", "career"],
                     "permit_type": "student", "noise_pref": 2},
         "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "CS",
-        "now_minutes": 600, "todays_classes": [],
+        "now_minutes": 600, "day_of_week": 1, "class_meetings": [],
     }
     cfg = scoring.event_config(ctx)
     events = [{"id": "e1", "name": "Resume Workshop", "tags": ["career", "software-engineering"],
                "lat": 33.882349, "lng": -117.882750,
                "starts_minutes": 900, "ends_minutes": 990, "day_offset": 0}]
     out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
-    assert out[0]["match_percent"] <= 100
+    # both of the event's tags are wanted, so the tag factor is a full 1.0 and
+    # the reason names both. Asserting only "<= 100" could never fail.
+    assert out[0]["match_percent"] == 100, out[0]
+    assert "matches career and software-engineering" in out[0]["reasons"]
 
 
 def test_event_clashing_with_a_class_is_filtered_out():
     ctx = {
         "profile": {"interests": ["ai"], "career_goals": [], "permit_type": "student", "noise_pref": 2},
         "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "CS",
-        "now_minutes": 600, "todays_classes": [{"start": 890, "end": 970}],
+        "now_minutes": 600, "day_of_week": 1,
+        "class_meetings": [{"day_of_week": 1, "start": 890, "end": 970}],
     }
     cfg = scoring.event_config(ctx)
     events = [{"id": "clash", "name": "Clashes", "tags": ["ai"], "lat": 33.8823, "lng": -117.8827,
                "starts_minutes": 900, "ends_minutes": 990, "day_offset": 0}]
     out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx)
     assert out == []
+
+
+def test_a_class_on_a_later_day_still_blocks_an_event():
+    # the filter used to look at today only, so anything further out sailed past
+    ctx = {
+        "profile": {"interests": ["ai"], "career_goals": [], "permit_type": "student", "noise_pref": 2},
+        "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "CS",
+        "now_minutes": 600, "day_of_week": 1,
+        "class_meetings": [{"day_of_week": 3, "start": 890, "end": 970}],
+    }
+    cfg = scoring.event_config(ctx)
+    events = [{"id": "clash", "name": "Two days out", "tags": ["ai"], "lat": 33.8823, "lng": -117.8827,
+               "starts_minutes": 900, "ends_minutes": 990, "day_offset": 2}]
+    assert scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx) == []
+
+
+def test_sooner_always_scores_at_least_as_well():
+    ctx = {
+        "profile": {"interests": [], "career_goals": [], "permit_type": "student", "noise_pref": 2},
+        "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "CS",
+        "now_minutes": 600, "day_of_week": 1, "class_meetings": [],
+    }
+    cfg = scoring.event_config(ctx)
+    scores = []
+    for day in range(0, 6):
+        e = {"id": "e", "name": "E", "tags": [], "lat": 33.882349, "lng": -117.882750,
+             "starts_minutes": 900, "ends_minutes": 990, "day_offset": day}
+        out = scoring.rank([e], cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
+        scores.append(out[0]["match_percent"])
+    assert scores == sorted(scores, reverse=True), scores
+
+
+def test_a_quieter_spot_is_never_worse_than_a_louder_one():
+    # noise_pref is a ceiling in the interface, so silence must not be penalised
+    ctx = {
+        "profile": {"interests": [], "career_goals": [], "permit_type": "student", "noise_pref": 3},
+        "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "CS",
+        "now_minutes": 600, "day_of_week": 1, "arrival_hour": 10,
+    }
+    cfg = scoring.spot_config(ctx)
+    spots = [
+        {"id": "silent", "name": "Silent", "lat": 33.882349, "lng": -117.882750,
+         "noise_level": 1, "has_outlets": True},
+        {"id": "loud", "name": "Loud", "lat": 33.882349, "lng": -117.882750,
+         "noise_level": 5, "has_outlets": True},
+    ]
+    out = scoring.rank(spots, cfg["filters"], cfg["factors"], cfg["weights"], 2, ctx)
+    assert out[0]["item"]["id"] == "silent", [(r["item"]["id"], r["match_percent"]) for r in out]
 
 
 def test_spot_in_the_same_building_says_so():

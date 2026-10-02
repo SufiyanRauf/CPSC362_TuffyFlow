@@ -160,7 +160,8 @@ def spot_config(context):
 
     def noise_factor(spot, ctx):
         pref = ctx["profile"]["noise_pref"]
-        value = 1 - abs(spot["noise_level"] - pref) / 4
+        # quieter than asked for is fine, louder is what costs
+        value = 1.0 if spot["noise_level"] <= pref else 1 - (spot["noise_level"] - pref) / 4
         labels = {1: "silent", 2: "quiet", 3: "some background noise", 4: "lively", 5: "loud"}
         return max(0.0, value), labels.get(spot["noise_level"], "")
 
@@ -183,8 +184,16 @@ def event_config(context):
         return event["starts_minutes"] > ctx["now_minutes"] or event["day_offset"] > 0
 
     def no_class_clash(event, ctx):
-        for cls in ctx.get("todays_classes", []):
-            if event["day_offset"] == 0 and cls["start"] < event["ends_minutes"] and event["starts_minutes"] < cls["end"]:
+        """An event the student cannot attend is not a recommendation.
+
+        This used to check day_offset == 0 against a list of only today's
+        classes, so every event on a later day skipped the check entirely and
+        the top card could sit on top of a class."""
+        event_day = (ctx["day_of_week"] + event.get("day_offset", 0)) % 7
+        for cls in ctx.get("class_meetings", []):
+            if (cls["day_of_week"] == event_day
+                    and cls["start"] < event["ends_minutes"]
+                    and event["starts_minutes"] < cls["end"]):
                 return False
         return True
 
@@ -211,9 +220,11 @@ def event_config(context):
         days = event.get("day_offset", 0)
         if days <= 0:
             return 1.0, "today"
-        if days == 1:
-            return 0.8, "tomorrow"
-        return normalize(days, 1, 9), "in %d days" % days
+        # anchored from 0 so the curve falls the whole way. The old version
+        # special cased one day at 0.8 while two days came out at 0.875, so an
+        # event the day after tomorrow outranked one tomorrow.
+        label = "tomorrow" if days == 1 else "in %d days" % days
+        return normalize(days, 0, 9), label
 
     return {
         "filters": [not_started, no_class_clash],
