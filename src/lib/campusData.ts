@@ -529,14 +529,14 @@ function buildEvents(): CampusEvent[] {
 }
 const events = buildEvents()
 
-const profile: Profile = {
+let profile: Profile = {
   id: 'demo-profile', full_name: 'Alex Nguyen', major: 'Computer Science',
   interests: ['software-engineering', 'ai', 'algorithms', 'music'],
   career_goals: ['career', 'software-engineering', 'data-science'],
   permit_type: 'student', noise_pref: 2,
 }
 
-const classMeetings: ClassMeeting[] = [
+let classMeetings: ClassMeeting[] = [
   { id: 'cm-0', profile_id: 'demo-profile', course_code: "CPSC 335", day_of_week: 1, start_time: "09:00:00", end_time: "10:15:00", building_id: 'b-cs' },
   { id: 'cm-1', profile_id: 'demo-profile', course_code: "CPSC 362", day_of_week: 1, start_time: "11:30:00", end_time: "12:45:00", building_id: 'b-cs' },
   { id: 'cm-2', profile_id: 'demo-profile', course_code: "MATH 338", day_of_week: 1, start_time: "14:00:00", end_time: "15:15:00", building_id: 'b-mh' },
@@ -559,6 +559,12 @@ const classMeetings: ClassMeeting[] = [
   { id: 'cm-17', profile_id: 'demo-profile', course_code: "HIST 110", day_of_week: 4, start_time: "15:30:00", end_time: "16:45:00", building_id: 'b-lh' },
 ]
 
+// What the demo starts from, kept aside so signing out can put it back. A
+// spread would share the interests and career_goals arrays with the live
+// profile, and one in place edit anywhere would quietly wreck the seed.
+const seedProfile: Profile = structuredClone(profile)
+const seedClassMeetings: ClassMeeting[] = structuredClone(classMeetings)
+
 // Async on purpose. These become Supabase queries later and the callers
 // already handle loading and errors, so nothing outside this file changes.
 export async function getBuildings(): Promise<Building[]> { return buildings }
@@ -575,4 +581,56 @@ export async function getAvailabilityAround(day: number, hour: number): Promise<
   return lotAvailability.filter(
     (r) => r.day_of_week === day && Math.abs(r.hour - hour) <= 1,
   )
+}
+
+// ---------------------------------------------------------------------------
+// Writes
+//
+// There is no database yet, so these change the arrays in this file and tell
+// anything that is showing them to reload. Edits last for the session. When
+// Supabase is connected these become update and insert calls and the callers
+// still do not change.
+// ---------------------------------------------------------------------------
+let version = 0
+const listeners = new Set<() => void>()
+
+export function subscribeToData(listener: () => void) {
+  listeners.add(listener)
+  return () => { listeners.delete(listener) }
+}
+
+export function dataVersion() { return version }
+
+function changed() {
+  version += 1
+  for (const listener of listeners) listener()
+}
+
+export async function saveProfile(next: Profile) {
+  profile = { ...next }
+  changed()
+}
+
+let nextClassId = 0
+
+export async function addClassMeeting(meeting: Omit<ClassMeeting, 'id' | 'profile_id'>) {
+  nextClassId += 1
+  const id = `cm-new-${nextClassId}`
+  classMeetings = [...classMeetings, { ...meeting, id, profile_id: profile.id }]
+  changed()
+}
+
+export async function removeClassMeeting(id: string) {
+  classMeetings = classMeetings.filter((m) => m.id !== id)
+  changed()
+}
+
+// The login card calls it a sample schedule, so signing out has to make that
+// true again. Without this the next person gets the last one's name, major and
+// classes, which reads as a bug rather than as a demo with no accounts yet.
+export async function resetDemoData() {
+  profile = structuredClone(seedProfile)
+  classMeetings = structuredClone(seedClassMeetings)
+  nextClassId = 0
+  changed()
 }

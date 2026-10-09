@@ -1,0 +1,69 @@
+import { useAsync } from '../lib/useAsync'
+import { getAvailabilityAround, getParkingLots } from '../lib/campusData'
+import { campusNow } from '../lib/recommend'
+import { BUSY_PERCENT } from '../lib/time'
+import { useMinuteTick } from '../lib/useMinuteTick'
+import Panel from './Panel'
+
+// The five structures CSUF actually counts. The surface lots are our estimates,
+// so they are deliberately not in this strip.
+const COUNTED = [
+  'Nutwood Structure',
+  'State College Structure',
+  'Eastside North',
+  'Eastside South',
+  'S8 and S10',
+]
+
+async function fillNow() {
+  const { dayOfWeek, minutes } = campusNow()
+  const hour = Math.min(21, Math.max(6, Math.floor(minutes / 60)))
+  const [lots, rows] = await Promise.all([
+    getParkingLots(), getAvailabilityAround(dayOfWeek, hour),
+  ])
+  const atHour = new Map(rows.filter((r) => r.hour === hour).map((r) => [r.lot_id, r.typical_pct_full]))
+  return {
+    hour,
+    lots: COUNTED.map((name) => {
+      const lot = lots.find((l) => l.name === name)
+      return { name, pct: lot ? atHour.get(lot.id) ?? 0 : 0 }
+    }),
+  }
+}
+
+export default function StructureFill() {
+  const data = useAsync(fillNow, [useMinuteTick()])
+
+  return (
+    <Panel source={data}>
+      {({ hour, lots }) => (
+        <>
+          <p className="text-xs text-ink-faint">
+            What these usually look like around {String(hour).padStart(2, '0')}:00.
+          </p>
+          <ul className="mt-3 flex flex-col gap-3">
+            {lots.map((l) => (
+              <li key={l.name}>
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-ink">{l.name}</span>
+                  <span className="shrink-0 tabular-nums text-ink-soft">
+                    {l.pct}%
+                    {/* the bar turning orange is the only cue otherwise, and a
+                        color on its own is not a cue for everyone */}
+                    {l.pct >= BUSY_PERCENT && <span className="ml-1 font-semibold text-flame-ink">full</span>}
+                  </span>
+                </div>
+                <div className="mt-1.5 h-1.5 w-full rounded-full bg-rule">
+                  <div
+                    className={'h-1.5 rounded-full ' + (l.pct >= BUSY_PERCENT ? 'bg-flame' : 'bg-titan')}
+                    style={{ width: `${l.pct}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Panel>
+  )
+}

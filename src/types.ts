@@ -1,4 +1,4 @@
-export type View = 'home' | 'parking' | 'spots' | 'clubs' | 'profile'
+export type View = 'home' | 'parking' | 'spots' | 'clubs' | 'events' | 'profile'
 
 export type Building = {
   id: string

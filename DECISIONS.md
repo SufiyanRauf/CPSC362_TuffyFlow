@@ -179,6 +179,39 @@ still looked about right.
 
 ---
 
+**2026-10-09 — We have a router after all, in the URL hash**
+
+Reversing the 20 September decision. That one was right at the time: one user,
+five screens, nothing to link to. Three things changed. There are six screens
+now, the browser Back button was doing nothing on any of them, and we want to
+be able to send each other a link to the screen we are looking at.
+
+The objection back then was that real routes need a rewrite rule on the host so
+a refresh on /parking does not 404. Hash routes do not, because everything after
+the # never reaches the server. src/lib/useHashRoute.ts is about thirty lines
+and no dependency. A hash that is not one of the six views leaves the screen
+alone rather than bouncing to the dashboard, which is what kept catching us out
+while we were testing.
+
+---
+
+**2026-10-09 — CSUF's own colours, and one font**
+
+The interface was stock Tailwind greys, which looked like every other project.
+It uses the campus palette now, read off fullerton.edu: #00274c navy and #ff6800
+orange. Two oranges, because #ff6800 only manages 2.9:1 on white, so it is for
+fills and anything orange carrying a word uses the darker #a33f00.
+
+The stock Tailwind palettes are switched off in the @theme block with
+--color-slate-*: initial and friends. Worth knowing the trap: a leftover class
+like bg-gray-100 then generates nothing at all and fails silently rather than
+erroring, so it has to be caught by reading the built CSS.
+
+IBM Plex Sans comes from Google Fonts in index.html. It falls back to the system
+sans, so a slow campus network costs a font swap and not a broken page.
+
+---
+
 **2026-10-01 — The club list comes from the registration roster, not the directory**
 
 Shipped 66 clubs and that was wrong. Student Life and Leadership say there are
@@ -292,11 +325,6 @@ the student, their next class, and a recommendation. Field names are the same
 as the database columns, underscores and all, so nothing has to be renamed when
 we swap in real data.
 
-**src/lib/campusData.ts** — every row the app shows, shaped exactly like the
-database rows and handed back from async functions. It started as src/data.ts
-with a handful of sample values. Async matters: when Supabase goes in, these
-functions become queries and nothing that calls them has to change.
-
 **src/lib/recommend.ts** — works out the next class, gathers everything the
 scorer needs and posts it to the Python function. The fiddly part is the clock.
 It reads campus local time through Intl rather than the laptop's own, because
@@ -308,13 +336,45 @@ they came from and when.
 **db/seed_spots.sql** — Pollak Library floors and the campus dining locations,
 read off CSUF's own pages. Noise ratings and seat counts are ours.
 
-**src/App.tsx** — holds one piece of state for which screen is showing, draws the
-sidebar next to the content, and shows the dashboard when the view is "home".
-Parking, spots and clubs are real screens now; the map is still a placeholder.
+**src/App.tsx** — reads the screen from the URL hash, draws the sidebar and the
+top bar around the content, and shows the right rail next to the dashboard and
+the parking screen. It also holds the login gate: until someone picks View demo
+it renders src/components/LoginView.tsx instead of the app, and Sign out in the
+top bar puts it back, resets the hash to the dashboard and calls resetDemoData
+so the next person starts from the sample profile again. The gate is state, not
+auth, so a reload also returns to the login card. All six screens are real now.
+The map is the only one still missing.
 
-**src/components/Sidebar.tsx** — the five nav buttons. Takes the active view and
-a function to call when one is clicked, so it does not know or care what the
-views actually do. Real buttons, not clickable divs, so keyboard works.
+**src/components/Sidebar.tsx** — six nav buttons under three group headings, so
+the list says what the app is for instead of reading as six loose words. Takes
+the active view and a function to call when one is clicked, so it does not know
+or care what the views actually do. Real buttons, not clickable divs, so
+keyboard works. On a phone it becomes the bar across the bottom.
+
+**src/components/TopBar.tsx** — the date on the left, the signed-in name on the
+right. Clicking the name opens a two-item popover: Profile and settings, and
+Sign out. It is written as a disclosure rather than with role="menu", because
+that role promises arrow-key navigation and a roving tabindex, and two buttons
+do not need either. Escape closes it, a click outside closes it, and focus goes
+to the first item on open, and back to the name when you press Escape or pick
+one of the two.
+
+**src/components/LoginView.tsx** — the login card. View demo enters the app with
+the sample profile. Google, Create an account and Log in are separate handlers
+waiting on Firebase, and until that lands they say so rather than doing nothing.
+
+**src/components/ProfileView.tsx** — the only screen that writes. Permit, noise
+preference, interests, goals and the weekly schedule are all editable, and
+saving bumps a version counter in campusData.ts that every scored screen
+subscribes to, so they reload. Changes last until you reload or sign out,
+because there is nowhere to put them yet.
+
+**src/lib/campusData.ts** — every row the app shows, shaped exactly like the
+database rows and handed back from async functions. It started as src/data.ts
+with a handful of sample values. Async matters: when Supabase goes in, these
+functions become queries and nothing that calls them has to change. At the
+bottom are the writes that back the profile screen, plus the reset that Sign out
+calls. These become Supabase calls later and nothing outside the file changes.
 
 **src/components/NextClassCard.tsx** — course code, time, building, and minutes
 until it starts. Returns a different card when there is no next class, which is
@@ -327,7 +387,7 @@ outside that range would either spill past the bar or render backwards as a
 full one.
 
 **src/components/Dashboard.tsx** — the greeting, the next class card, the three
-recommendation cards in a row, and a placeholder where the map goes.
+recommendation cards in a row, and today's classes as a table.
 
 **db/schema.sql** — eight tables. Six describe the campus and are the same for
 everyone. Two belong to a student. The bottom half is the access rules, which

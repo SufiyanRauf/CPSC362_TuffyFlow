@@ -152,11 +152,11 @@ The factors differ per feature:
 
 * Python with FastAPI, for the scoring endpoint
 * PostgreSQL, hosted on Supabase (schema written, project not created yet)
-* Supabase Authentication (planned, no sign in yet)
+* Firebase Authentication for Google sign in (planned, the login screen is built but not wired up)
 
 ### Maps
 
-* Leaflet and OpenStreetMap (planned, the dashboard shows a placeholder)
+* Leaflet and OpenStreetMap (planned, not built yet)
 
 ### Deployment
 
@@ -265,14 +265,16 @@ sign in.
 
 ## Current Project Status
 
-Four of the five screens work against real data held in the repository.
+All six screens work against real data held in the repository, behind a login screen.
 
 Completed:
 
 * Project concept, initial presentation and UI prototype
 * Database schema, security policies and seed data
 * The ranking engine, in Python, with tests
-* Dashboard, parking, spots and clubs screens
+* Dashboard, parking, spots, clubs, events and profile screens
+* Login screen, with a demo entry that needs no account
+* Profile editing: permit, noise preference, interests, goals and the weekly schedule
 * Campus data read from CSUF's own pages: buildings, lots, clubs, library and dining
 * Deployed to Vercel
 
@@ -282,7 +284,7 @@ In progress:
 
 Not started:
 
-* Authentication, the map, and the profile screen
+* Authentication and the map
 
 ---
 
@@ -290,11 +292,10 @@ Not started:
 
 1. Set up Supabase and load the schema
 2. Swap the data accessors over to real queries
-3. Implement authentication and student profiles
+3. Wire the login screen up to Firebase
 4. Integrate the map
-5. Build the profile screen
-6. Test with two accounts to prove the security policies hold
-7. Final deployment
+5. Test with two accounts to prove the security policies hold
+6. Final deployment
 
 ---
 

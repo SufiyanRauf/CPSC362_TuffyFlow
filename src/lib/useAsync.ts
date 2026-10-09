@@ -6,7 +6,10 @@ export function useAsync<T>(load: () => Promise<T>, deps: unknown[] = []): Loada
 
   useEffect(() => {
     let cancelled = false
-    setState({ state: 'loading' })
+    // only blank the panel on a first load. The dashboard refetches every
+    // minute, and resetting here made the rail collapse to "Loading…" and
+    // spring back each time.
+    setState((current) => (current.state === 'ready' ? current : { state: 'loading' }))
     load()
       .then((data) => {
         if (!cancelled) setState({ state: 'ready', data })

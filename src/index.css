@@ -1,6 +1,91 @@
 @import "tailwindcss";
 
-/* otherwise the checkboxes and the range slider render in light mode */
+/* CSUF's own colors, read off fullerton.edu. It is a campus app, so the campus
+   palette is the honest choice and it is one nobody else's project will have.
+
+   Two oranges on purpose. #FF6800 is the brand color but it only manages 2.9:1
+   on white, so it is for fills on dark. Anything orange that carries a word uses
+   the darker one, which clears 6.4:1. */
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-titan: #00274c;
+  --color-titan-700: #002f5f;
+  --color-titan-200: #a9bdd4;
+  --color-titan-50: #eef3f8;
+
+  --color-flame: #ff6800;
+  /* #b34700 cleared 5.5:1 on white but only 4.2:1 once the translucent orange
+     pill backgrounds composite onto a tinted card, so it is a shade darker */
+  --color-flame-ink: #a33f00;
+
+  --color-ink: #222222;
+  --color-ink-soft: #5b6472;
+  --color-ink-faint: #6b6b6b;
+
+  --color-paper: #f4f2ee;
+  --color-rule: #e2ded7;
+  /* rule is right for a card edge sitting on the paper background, but at
+     1.3:1 on white it almost disappears, so a button outline or a popup edge
+     that has to be seen uses this instead. 3.8:1 on white. */
+  --color-rule-strong: #8a8373;
+
+  /* one tint per category, so the color on a card means "this is a lot" or
+     "this is an event" rather than just being decoration */
+  --color-tint-parking: #fdf1e7;
+  --color-tint-parking-edge: #f2d8bf;
+  --color-tint-spot: #edf3f9;
+  --color-tint-spot-edge: #cedded;
+  --color-tint-event: #edf3ec;
+  --color-tint-event-edge: #cedccd;
+
+  /* status pills in the schedule table */
+  --color-ok: #1b6b3a;
+  --color-ok-soft: #e3f0e8;
+
+  /* turn off the stock palettes we used to use, so a stray slate-800 stops
+     generating anything instead of quietly surviving a find and replace */
+  --color-slate-*: initial;
+  --color-amber-*: initial;
+  --color-sky-*: initial;
+  --color-gray-*: initial;
+}
+
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+  /* the noise slider and the checkboxes are native controls, and without this
+     they render default gray against everything else */
+  accent-color: var(--color-titan);
+}
+
+/* the browser default focus ring is easy to miss on a light background */
+:focus-visible {
+  outline: 2px solid var(--color-flame-ink);
+  outline-offset: 2px;
+}
+
+/* The nav rows run edge to edge, so a ring drawn outside the box falls off the
+   screen. Pulling it inside keeps all four sides visible. The account menu
+   rounds its corners by clipping, which ate the sides of the ring the same way. */
+.sidebar:focus-visible,
+.sidebar :focus-visible,
+.menu :focus-visible {
+  outline-offset: -2px;
+}
+
+/* The content area is what the skip link and the login screen hand focus to,
+   so it is the first thing a keyboard lands on. Its ring was drawn outside the
+   box, where the top went under the sticky header, the sides under the nav and
+   the rail, and the bottom off the end of a long page. Nobody ever saw it. */
+#content:focus-visible {
+  outline-offset: -2px;
+}
+
+/* The nav is only navy from md up. On a phone it is the white bottom bar, where
+   the orange ring would drop to 2.9:1, so the flip is scoped to match. */
+@media (width >= 48rem) {
+  .sidebar:focus-visible,
+  .sidebar :focus-visible {
+    outline-color: var(--color-flame);
+  }
 }

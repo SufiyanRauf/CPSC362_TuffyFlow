@@ -93,7 +93,9 @@ function assertResponse(json: unknown): RecommendResponse {
 
 export async function getRecommendations(): Promise<RecommendResponse> {
   const next = await findNextClass()
-  if (!next) throw new Error('No classes on the schedule')
+  if (!next) // Nothing to rank against is an empty result, not a failure. Deleting every
+    // class on the profile screen used to put an error box on three screens.
+    return { parking: [], spots: [], events: [] }
 
   const { dayOfWeek, minutes } = campusNow()
   const arrivalHour = Math.floor(

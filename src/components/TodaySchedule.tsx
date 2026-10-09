@@ -1,0 +1,82 @@
+import { useAsync } from '../lib/useAsync'
+import { getBuildings, getClassMeetings } from '../lib/campusData'
+import { campusNow } from '../lib/recommend'
+import { toMinutes } from '../lib/time'
+import { useMinuteTick } from '../lib/useMinuteTick'
+import { useDataVersion } from '../lib/useDataVersion'
+import Panel from './Panel'
+import Pill from './Pill'
+
+type Status = 'now' | 'upcoming' | 'done'
+
+const statusLabels: Record<Status, string> = {
+  now: 'In class',
+  upcoming: 'Upcoming',
+  done: 'Done',
+}
+
+async function todaysClasses() {
+  const [meetings, buildings] = await Promise.all([getClassMeetings(), getBuildings()])
+  const { dayOfWeek, minutes } = campusNow()
+  const where = new Map(buildings.map((b) => [b.id, b.name]))
+  return meetings
+    .filter((m) => m.day_of_week === dayOfWeek)
+    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+    .map((m) => {
+      const from = toMinutes(m.start_time)
+      const to = toMinutes(m.end_time)
+      // read off the clock rather than hard coded, so the table is never telling
+      // someone they are still in a class that finished two hours ago
+      const status: Status = minutes >= to ? 'done' : minutes >= from ? 'now' : 'upcoming'
+      return {
+        id: m.id,
+        course: m.course_code,
+        from: m.start_time.slice(0, 5),
+        to: m.end_time.slice(0, 5),
+        where: where.get(m.building_id) ?? 'Campus',
+        status,
+      }
+    })
+}
+
+export default function TodaySchedule() {
+  const classes = useAsync(todaysClasses, [useMinuteTick(), useDataVersion()])
+
+  return (
+    <Panel source={classes} empty="Nothing scheduled today.">
+      {(rows) => (
+        // the status column fell off the right edge of a phone and overflow-hidden
+        // meant there was no way to reach it
+        <div className="overflow-x-auto rounded-xl border border-rule">
+          <table className="w-full min-w-[26rem] border-collapse text-sm">
+            <caption className="sr-only">Your classes today, in order</caption>
+            <thead>
+              <tr className="bg-paper text-left text-[0.7rem] uppercase tracking-[0.1em] text-ink-faint">
+                <th scope="col" className="px-4 py-2.5 font-semibold">Time</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Course</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Building</th>
+                <th scope="col" className="px-4 py-2.5 text-right font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((c, i) => (
+                <tr key={c.id} className={i % 2 === 1 ? 'bg-paper/50' : 'bg-white'}>
+                  <td className="whitespace-nowrap px-4 py-3 tabular-nums text-ink-soft">
+                    {c.from}–{c.to}
+                  </td>
+                  <th scope="row" className="px-4 py-3 text-left font-semibold text-titan">
+                    {c.course}
+                  </th>
+                  <td className="px-4 py-3 text-ink-soft">{c.where}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Pill tone={c.status}>{statusLabels[c.status]}</Pill>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
+  )
+}

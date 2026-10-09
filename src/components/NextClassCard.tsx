@@ -1,10 +1,11 @@
-import type { NextClass } from '../types'
+import type { NextClass, Recommendation } from '../types'
+import { ArrowRightIcon, WalkIcon } from './icons'
+import { DAYS } from '../lib/time'
 
 type NextClassCardProps = {
   nextClass: NextClass
+  lot: Recommendation | null
 }
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 // Raw minutes read fine for a class this morning and badly for one on Monday,
 // where it comes out as "2100 min".
@@ -19,12 +20,22 @@ function countdown(minutes: number, dayOffset: number, dayOfWeek: number) {
   return { value: DAYS[dayOfWeek] ?? 'Later', label: 'Next up' }
 }
 
-export default function NextClassCard({ nextClass }: NextClassCardProps) {
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+      {children}
+    </p>
+  )
+}
+
+// The one panel on the page that answers the whole question: when is class, and
+// where should the car go. Everything below it is detail.
+export default function NextClassCard({ nextClass, lot }: NextClassCardProps) {
   if (nextClass.minutes_until === null) {
     return (
-      <div className="rounded-xl bg-slate-800 p-5">
-        <p className="text-xs uppercase tracking-wide text-slate-400">Next class</p>
-        <p className="mt-2 text-slate-300">No more classes today.</p>
+      <div className="rounded-xl border border-rule bg-paper px-6 py-6">
+        <Eyebrow>Next class</Eyebrow>
+        <p className="mt-2 text-ink-soft">No more classes today.</p>
       </div>
     )
   }
@@ -32,21 +43,68 @@ export default function NextClassCard({ nextClass }: NextClassCardProps) {
   const { value, label } = countdown(
     nextClass.minutes_until, nextClass.day_offset, nextClass.day_of_week,
   )
+  const fullness = lot?.reasons.find((r) => r.includes('% full'))
 
   return (
-    <div className="rounded-xl bg-slate-800 p-5 flex items-start justify-between gap-3">
-      <div>
-        <p className="text-xs uppercase tracking-wide text-slate-400">Next class</p>
-        <h2 className="mt-1 text-2xl font-semibold">{nextClass.course_code}</h2>
-        <p className="text-sm text-slate-400">
-          {nextClass.start_time} · {nextClass.building_name}
-        </p>
+    <div className="rounded-xl border border-rule bg-paper px-6 py-6">
+      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-3">
+        <div>
+          <Eyebrow>Next class</Eyebrow>
+          <h2 className="mt-1.5 text-3xl font-semibold tracking-tight text-titan">
+            {nextClass.course_code}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            {nextClass.start_time} · {nextClass.building_name}
+          </p>
+        </div>
+
+        <div className="text-right">
+          <Eyebrow>{label}</Eyebrow>
+          <p className="mt-1.5 whitespace-nowrap text-2xl font-semibold tracking-tight text-flame-ink">
+            {value}
+          </p>
+        </div>
       </div>
 
-      <div className="text-right">
-        <p className="text-xs text-slate-400">{label}</p>
-        <p className="text-2xl font-semibold text-amber-400 whitespace-nowrap">{value}</p>
-      </div>
+      {lot && (
+        <div className="mt-5 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-t border-rule pt-5">
+          <div className="min-w-0">
+            <Eyebrow>Park here</Eyebrow>
+            <p className="mt-1.5 text-lg font-semibold text-titan">{lot.title}</p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-soft">
+              {lot.walk_minutes !== null && (
+                <span className="inline-flex items-center gap-1.5">
+                  <WalkIcon className="h-4 w-4 text-ink-faint" />
+                  {lot.walk_minutes} min walk
+                </span>
+              )}
+              {fullness && <span>{fullness}</span>}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-5">
+            <div className="text-right">
+              <Eyebrow>{lot.arrive_by ? 'Arrive by' : 'Leave'}</Eyebrow>
+              <p className="mt-1 whitespace-nowrap text-2xl font-semibold tabular-nums tracking-tight text-titan">
+                {lot.arrive_by ?? 'now'}
+              </p>
+            </div>
+
+            {lot.lat !== null && lot.lng !== null && (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${lot.lat},${lot.lng}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-titan px-4 py-2.5 text-sm
+                           font-medium text-white hover:bg-titan-700"
+              >
+                Directions
+                <ArrowRightIcon className="h-4 w-4" />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
