@@ -5,9 +5,8 @@
 // same reason.
 //
 // Sources are recorded in db/seed_clubs.sql and db/seed_spots.sql.
-// Coordinates are CSUF's own, from fullerton.edu/campusmap/locations.json, for
-// all 17 buildings and 10 of the 12 lots. S8 and S10 and the Visitor Lot are
-// not in that file, so those two are our estimates.
+// Building coordinates are CSUF's own, from fullerton.edu/campusmap/locations.json.
+// The parking lots come from a different sheet: see the note above parkingLots.
 
 import type {
   Building, Profile, ClassMeeting, ParkingLot, LotAvailability,
@@ -37,53 +36,99 @@ const buildings: Building[] = [
 ]
 
 const parkingLots: ParkingLot[] = [
-  { id: 'lot-0', name: "Nutwood Structure", lat: 33.879029, lng: -117.88852, permit_type: 'student', total_spaces: 2484 },
-  { id: 'lot-1', name: "State College Structure", lat: 33.883055, lng: -117.888671, permit_type: 'student', total_spaces: 1373 },
-  { id: 'lot-2', name: "Eastside North", lat: 33.880356, lng: -117.881687, permit_type: 'student', total_spaces: 1880 },
-  // CSUF's map data still titles this one "Eastside Parking Structure 2 (Under
-  // Construction)", but the availability board reports counts for it, so it
-  // looks open and the map entry stale.
-  { id: 'lot-3', name: "Eastside South", lat: 33.881079, lng: -117.881804, permit_type: 'student', total_spaces: 1341 },
-  // Our estimate: not in CSUF's map data.
-  { id: 'lot-4', name: "S8 and S10", lat: 33.8862, lng: -117.8848, permit_type: 'student', total_spaces: 2104 },
-  { id: 'lot-5', name: "Lot A", lat: 33.887246, lng: -117.888922, permit_type: 'student', total_spaces: 420 },
-  { id: 'lot-6', name: "Lot C", lat: 33.878331, lng: -117.88835, permit_type: 'student', total_spaces: 380 },
-  { id: 'lot-7', name: "Lot D", lat: 33.884152, lng: -117.887855, permit_type: 'student', total_spaces: 310 },
-  { id: 'lot-8', name: "Lot E", lat: 33.88188, lng: -117.881648, permit_type: 'student', total_spaces: 260 },
-  { id: 'lot-9', name: "Lot G", lat: 33.888301, lng: -117.886538, permit_type: 'student', total_spaces: 340 },
-  { id: 'lot-10', name: "Staff Lot J", lat: 33.88344, lng: -117.882967, permit_type: 'staff', total_spaces: 180 },
-  // Our estimate: CSUF's map data has no visitor lot entry.
-  { id: 'lot-11', name: "Visitor Lot", lat: 33.88, lng: -117.8895, permit_type: 'visitor', total_spaces: 120 },
+  // Read off CSUF's parking map, parking.fullerton.edu/_resources/pdfs/campus-parking-map.pdf,
+  // on 9 October 2026. That map, not the general campus map, is the one that
+  // names the lots. CSUF renumbered everything in summer 2025 against the
+  // campus entrance numbers, so Lot A, C, D, E, G and J no longer exist and
+  // the gaps in the S and E numbering are real, not missing rows.
+  //
+  // Capacities are only published for the facilities on the live counts board,
+  // so everything else is null rather than a number we made up. The board also
+  // reports S8 and S10 as one combined 2,104, which is not a figure for either
+  // lot on its own, so neither carries it.
+
+  // The four structures. Eastside North is student only; the other three also
+  // take employee and hourly permits.
+  { id: 'lot-nps', name: "Nutwood Parking Structure", lat: 33.879051, lng: -117.888524,
+    permits: ['student', 'employee', 'visitor'], total_spaces: 2484 },
+  { id: 'lot-scps', name: "State College Parking Structure", lat: 33.883053, lng: -117.888598,
+    permits: ['student', 'employee', 'visitor'], total_spaces: 1373 },
+  { id: 'lot-enps', name: "Eastside North Parking Structure", lat: 33.881079, lng: -117.881804,
+    permits: ['student'], total_spaces: 1880 },
+  // The parking map calls this Eastside South, but locations.json and Google
+  // both still use the older name, Eastside Parking Structure, from before the
+  // north one was built. That is why the directions link searches for the old
+  // name: the real one does not resolve.
+  { id: 'lot-esps', name: "Eastside South Parking Structure", lat: 33.880356, lng: -117.881687,
+    permits: ['student', 'employee', 'visitor'], total_spaces: 1341 },
+
+  // The two big surface lots at the top of campus, by the stadium. Freshmen in
+  // the residence halls park at S8 and take the shuttle in.
+  { id: 'lot-s8', name: "S8", lat: 33.887313, lng: -117.888798,
+    permits: ['student', 'employee', 'resident'], total_spaces: null },
+  { id: 'lot-s10', name: "S10", lat: 33.888324, lng: -117.886559,
+    permits: ['student', 'employee', 'visitor'], total_spaces: null },
+
+  // Employee lots.
+  { id: 'lot-e1', name: "E1", lat: 33.881478, lng: -117.882968,
+    permits: ['employee'], total_spaces: null },
+  { id: 'lot-e3', name: "E3", lat: 33.878491, lng: -117.888764,
+    permits: ['employee'], total_spaces: null },
+  { id: 'lot-e6', name: "E6", lat: 33.883894, lng: -117.883608,
+    permits: ['employee'], total_spaces: null },
+
+  // Resident lots, for students living on campus.
+  { id: 'lot-r1', name: "R1", lat: 33.88188, lng: -117.881648,
+    permits: ['resident'], total_spaces: null },
+  { id: 'lot-r2', name: "R2", lat: 33.884217, lng: -117.881243,
+    permits: ['resident'], total_spaces: null },
+
+  // The one hourly facility that is its own lot rather than a zone inside a
+  // structure. Small, so it goes early.
+  // CSUF marks this one with the hourly symbol but gives it no code and no
+  // coordinate, so this point is ours, read off satellite imagery: it is the
+  // middle of the aisle between the two rows of stalls. An earlier guess at
+  // 33.881731 sat on the Student Union roof, the wrong side of the road.
+  { id: 'lot-suw', name: "Hourly | Student Union Way", lat: 33.881858, lng: -117.889334,
+    permits: ['visitor'], total_spaces: null },
 ]
 
 // Mirrors the generate_series in db/seed.sql and has to stay in step with it.
 // Hours 6 to 21, clamped to 0..99.
 //
-// The five counted structures are measured, from data/parking_samples.csv:
+// The six counted facilities are measured, from data/parking_samples.csv:
 // Thursday 1 October 2026 13:11 for the weekday figure and Sunday 20 September
 // 2026 12:23 for the weekend one. Both reproduce their reading to within a
 // point. The two shapes are not the same curve scaled down. On a weekday
 // Eastside fills to about 88 percent because it is closest to the academic
 // buildings, while on a Sunday every structure is under 4 percent except
-// S8 and S10 at 59, which sits by the stadium and the gym. State College is
+// S8 and S10 at 59, which sit by the stadium and the gym. State College is
 // the highest of the four, at almost exactly 4.
 //
 // Only Sunday was sampled, so Saturday is an assumption.
 //
-// The seven surface lots are not on the board. Those numbers are guesses.
+// The six lots that are not on the board carry guesses, marked below.
 const LOT_DEMAND: Record<string, { weekday: number; weekend: number }> = {
-  "Nutwood Structure":           { weekday:  -24, weekend:  -1 },
-  "State College Structure":     { weekday:  -31, weekend:   1 },
-  "Eastside North":              { weekday:   12, weekend:  -3 },
-  "Eastside South":              { weekday:   14, weekend:  -1 },
-  "S8 and S10":                  { weekday:   -9, weekend:  56 },
-  "Lot A":                       { weekday:  -18, weekend:   0 },
-  "Lot C":                       { weekday:  -13, weekend:   0 },
-  "Lot D":                       { weekday:   -3, weekend:   0 },
-  "Lot E":                       { weekday:    0, weekend:   0 },
-  "Lot G":                       { weekday:  -20, weekend:   0 },
-  "Staff Lot J":                 { weekday:  -28, weekend:   0 },
-  "Visitor Lot":                 { weekday:  -33, weekend:   0 },
+  // Measured, from data/parking_samples.csv.
+  "Nutwood Parking Structure":       { weekday: -24, weekend:  -1 },
+  "State College Parking Structure": { weekday: -31, weekend:   1 },
+  "Eastside North Parking Structure": { weekday: 12, weekend:  -3 },
+  "Eastside South Parking Structure": { weekday: 14, weekend:  -1 },
+  // The board reports these two as one row, so the pair's reading is the best
+  // we have for either of them on its own.
+  "S8":                { weekday:  -9, weekend:  56 },
+  "S10":                             { weekday:  -9, weekend:  56 },
+  // Guesses from here down. None of these are on the board. Employee lots are
+  // small and fill early, then empty out at the weekend when nobody is at work.
+  "E1":               { weekday: -10, weekend:   0 },
+  "E3":             { weekday: -13, weekend:   0 },
+  "E6":                              { weekday: -18, weekend:   0 },
+  // Resident lots are the other way round: the cars belong to people who live
+  // there, so they stay put at the weekend instead of going home.
+  "R1":          { weekday:  -5, weekend:  45 },
+  "R2":                              { weekday:  -5, weekend:  45 },
+  // A small lot that fills before the structures do.
+  "Hourly | Student Union Way":      { weekday:   5, weekend: -30 },
 }
 function buildAvailability(): LotAvailability[] {
   const rows: LotAvailability[] = []

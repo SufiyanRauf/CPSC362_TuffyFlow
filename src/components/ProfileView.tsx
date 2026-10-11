@@ -11,7 +11,9 @@ import SectionHeader from './SectionHeader'
 import { CalendarIcon, UserIcon } from './icons'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const PERMITS: Profile['permit_type'][] = ['student', 'staff', 'visitor']
+// CSUF's own four categories. Visitor means an hourly permit, which is what
+// CSUF sells guests instead of giving them a lot of their own.
+const PERMITS: Profile['permit_type'][] = ['student', 'employee', 'resident', 'visitor']
 
 async function loadProfile() {
   const [profile, meetings, buildings] = await Promise.all([

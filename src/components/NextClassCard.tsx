@@ -1,6 +1,7 @@
 import type { NextClass, Recommendation } from '../types'
 import { ArrowRightIcon, WalkIcon } from './icons'
 import { DAYS } from '../lib/time'
+import { directionsUrl } from '../lib/maps'
 
 type NextClassCardProps = {
   nextClass: NextClass
@@ -92,9 +93,9 @@ export default function NextClassCard({ nextClass, lot }: NextClassCardProps) {
 
             {lot.lat !== null && lot.lng !== null && (
               <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${lot.lat},${lot.lng}`}
+                href={directionsUrl(lot.title, lot.lat, lot.lng)}
                 target="_blank"
-                rel="noreferrer"
+                rel="noreferrer noopener"
                 className="inline-flex items-center gap-2 rounded-lg bg-titan px-4 py-2.5 text-sm
                            font-medium text-white hover:bg-titan-700"
               >

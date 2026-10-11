@@ -49,21 +49,33 @@ def _parking_context(hour=10, rows=None, day=1, day_offset=0):
 
 LOTS = [
     {"id": "near-empty", "name": "Near and empty", "lat": 33.882349, "lng": -117.882900,
-     "permit_type": "student"},
+     "permits": ["student"]},
     {"id": "far-empty", "name": "Far and empty", "lat": 33.879029, "lng": -117.888520,
-     "permit_type": "student"},
-    {"id": "staff-only", "name": "Staff only", "lat": 33.882349, "lng": -117.882800,
-     "permit_type": "staff"},
+     "permits": ["student"]},
+    {"id": "employee-only", "name": "Employee only", "lat": 33.882349, "lng": -117.882800,
+     "permits": ["employee"]},
+    # the structures really do take three permits at once, so one of these has to
+    { "id": "shared", "name": "Takes anything", "lat": 33.879029, "lng": -117.888521,
+     "permits": ["student", "employee", "visitor"]},
 ]
 
 
 def test_permit_is_a_filter_not_a_penalty():
-    # The staff lot is the closest and empty. It must not appear at all,
+    # The employee lot is the closest and empty. It must not appear at all,
     # because recommending a lot you would be ticketed in is worse than nothing.
     ctx = _parking_context()
     cfg = scoring.parking_config(ctx)
     out = scoring.rank(LOTS, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
-    assert "staff-only" not in [r["item"]["id"] for r in out]
+    assert "employee-only" not in [r["item"]["id"] for r in out]
+
+
+def test_a_lot_that_takes_several_permits_shows_up_for_each_of_them():
+    for permit in ("student", "employee", "visitor"):
+        ctx = _parking_context()
+        ctx["profile"]["permit_type"] = permit
+        cfg = scoring.parking_config(ctx)
+        out = scoring.rank(LOTS, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+        assert "shared" in [r["item"]["id"] for r in out], permit
 
 
 def test_closer_lot_outranks_further_lot_when_equally_full():
@@ -79,8 +91,8 @@ def test_a_full_lot_loses_to_an_emptier_one_at_the_same_distance():
         {"lot_id": "b", "day_of_week": 1, "hour": 10, "typical_pct_full": 20},
     ]
     lots = [
-        {"id": "a", "name": "Busy", "lat": 33.8823, "lng": -117.8829, "permit_type": "student"},
-        {"id": "b", "name": "Quiet", "lat": 33.8823, "lng": -117.8829, "permit_type": "student"},
+        {"id": "a", "name": "Busy", "lat": 33.8823, "lng": -117.8829, "permits": ["student"]},
+        {"id": "b", "name": "Quiet", "lat": 33.8823, "lng": -117.8829, "permits": ["student"]},
     ]
     ctx = _parking_context(rows=rows)
     cfg = scoring.parking_config(ctx)
@@ -92,8 +104,8 @@ def test_missing_availability_does_not_score_as_empty():
     # No row for this hour. The lot must not beat one known to be nearly empty.
     rows = [{"lot_id": "known", "day_of_week": 1, "hour": 10, "typical_pct_full": 10}]
     lots = [
-        {"id": "known", "name": "Known quiet", "lat": 33.8823, "lng": -117.8829, "permit_type": "student"},
-        {"id": "unknown", "name": "No data", "lat": 33.8823, "lng": -117.8829, "permit_type": "student"},
+        {"id": "known", "name": "Known quiet", "lat": 33.8823, "lng": -117.8829, "permits": ["student"]},
+        {"id": "unknown", "name": "No data", "lat": 33.8823, "lng": -117.8829, "permits": ["student"]},
     ]
     ctx = _parking_context(rows=rows)
     cfg = scoring.parking_config(ctx)
@@ -114,7 +126,7 @@ def test_scores_are_not_all_near_100_on_a_bad_day():
     rows = [{"lot_id": "f%d" % i, "day_of_week": 1, "hour": 10, "typical_pct_full": 95}
             for i in range(3)]
     lots = [{"id": "f%d" % i, "name": "Far %d" % i, "lat": 33.8700, "lng": -117.8700,
-             "permit_type": "student"} for i in range(3)]
+             "permits": ["student"]} for i in range(3)]
     ctx = _parking_context(rows=rows)
     cfg = scoring.parking_config(ctx)
     out = scoring.rank(lots, cfg["filters"], cfg["factors"], cfg["weights"], 3, ctx)
@@ -262,7 +274,7 @@ def test_fullness_reads_the_class_day_not_today():
         {"lot_id": "a", "day_of_week": 1, "hour": 10, "typical_pct_full": 95},
     ]
     lot = {"id": "a", "name": "A", "lat": 33.8823, "lng": -117.8829,
-           "permit_type": "student"}
+           "permits": ["student"]}
     ctx = _parking_context(rows=rows, day=5, day_offset=3)
     assert scoring.lot_fullness(lot, ctx) == (95, True)
 
@@ -277,5 +289,5 @@ def test_arrive_by_stands_for_a_class_on_another_day():
     ctx = _parking_context(day_offset=1)
     ctx["now_minutes"] = 1400
     lot = {"id": "a", "name": "A", "lat": 33.8823, "lng": -117.8829,
-           "permit_type": "student"}
+           "permits": ["student"]}
     assert scoring.arrive_by(lot, ctx, 5) is not None

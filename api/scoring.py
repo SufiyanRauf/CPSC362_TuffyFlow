@@ -99,7 +99,7 @@ def lot_fullness(lot, context):
 
 def parking_config(context):
     def permit_allows(lot, ctx):
-        return lot["permit_type"] == ctx["profile"]["permit_type"]
+        return ctx["profile"]["permit_type"] in lot["permits"]
 
     def walk_factor(lot, ctx):
         metres = haversine(lot["lat"], lot["lng"], ctx["dest_lat"], ctx["dest_lng"])

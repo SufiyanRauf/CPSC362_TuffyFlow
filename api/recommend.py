@@ -33,7 +33,9 @@ class Lot(BaseModel):
     name: str
     lat: float
     lng: float
-    permit_type: str
+    # A lot can take more than one. The structures take student, employee and
+    # hourly permits all at once.
+    permits: list[str]
 
 
 class Availability(BaseModel):

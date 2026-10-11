@@ -124,7 +124,7 @@ export async function getRecommendations(): Promise<RecommendResponse> {
     class_start_minutes: next.start_minutes,
     class_day_offset: next.day_offset,
     lots: lots.map((l) => ({
-      id: l.id, name: l.name, lat: l.lat, lng: l.lng, permit_type: l.permit_type,
+      id: l.id, name: l.name, lat: l.lat, lng: l.lng, permits: l.permits,
     })),
     availability,
     spots: spots.flatMap((s) => {

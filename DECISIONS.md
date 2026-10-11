@@ -65,9 +65,38 @@ list makes the top result read as 100% every single time.
 
 ---
 
+**2026-10-09 — Rebuilt the parking lots after finding the data was stale**
+
+Someone asked a simple question: does the Directions button go to the right
+place? Checking it properly turned up something worse than a bad link. CSUF
+renamed every lot in summer 2025 and numbered them against the campus
+entrances, E for employee, S for student, R for resident. The campus map's
+locations.json has not caught up, and that file is where we built the lots
+from, so we had a list of names that no longer exist sitting on top of
+coordinates that were still fine.
+
+Three things were actually wrong, not just out of date. The two Eastside
+structures were swapped, so the app sent you to the north one when it said
+south. S8 and S10 were in the list as their own lot and also as Lot A and Lot
+G, which are the same two places under their old names, so the same parking was
+offered twice and the capacity was overcounted. And the Visitor Lot did not
+exist at all: CSUF has no visitor lot, visitors buy an hourly permit and use an
+hourly zone, so that row was a lot we had invented.
+
+The lots now come from the parking map at parking.fullerton.edu, which is the
+sheet that actually names them, and capacity is null wherever CSUF does not
+publish one.
+
+The permit column became an array in the same pass. It had to: the structures
+take student, employee and hourly permits at the same time, and a single value
+per lot cannot say that. It is one line in the scorer, `permit in lot.permits`
+rather than `==`.
+
+---
+
 **2026-09-20 — Permit type is a filter, not a scoring factor**
 
-If it were a factor, a staff lot that happened to be empty and close could
+If it were a factor, an employee lot that happened to be empty and close could
 outrank every lot we are actually allowed to park in, and the app would tell a
 student to park somewhere they would get ticketed. Impossible options get
 removed before anything is scored.
@@ -276,9 +305,10 @@ numbers to the weekend too and had Eastside at 54 per cent on a Sunday against
 a real 0.5. The seed carries two columns now.
 
 Worth saying plainly: two readings is not much. One timestamp per day, only the
-five counted structures, and only a Sunday on the weekend side, so Saturday is
-an assumption. The seven surface lots are not on that board at all and their
-numbers are guesses. The README says so and so does the parking screen.
+counted facilities, and only a Sunday on the weekend side, so Saturday is an
+assumption. The employee, resident and hourly lots are not on that board at all
+and their numbers are guesses. The README says so and so does the parking
+screen.
 
 ---
 

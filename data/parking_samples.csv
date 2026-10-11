@@ -1,4 +1,7 @@
 # Readings from the campus parking availability board.
+# The names below are the board's own labels, which are not the names the lots
+# carry in the app: the board still writes the structures without "Parking
+# Structure" and reports S8 and S10 as one row. See db/seed.sql for the mapping.
 # Campus: 800 N. State College Blvd, Fullerton CA 92831.
 # Take a few at different times and days. Weekday mornings matter most.
 #

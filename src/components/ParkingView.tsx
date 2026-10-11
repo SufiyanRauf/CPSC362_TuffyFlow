@@ -6,6 +6,7 @@ import Pill from './Pill'
 import { ArrowRightIcon, ClockIcon, WalkIcon } from './icons'
 import { BUSY_PERCENT, DAYS } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
+import { directionsUrl } from '../lib/maps'
 import type { Recommendation } from '../types'
 
 // Parking apps label why an option is in the list rather than printing a raw
@@ -124,9 +125,9 @@ export default function ParkingView() {
 
                         {lot.lat !== null && lot.lng !== null && (
                           <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${lot.lat},${lot.lng}`}
+                            href={directionsUrl(lot.title, lot.lat, lot.lng)}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noreferrer noopener"
                             className={
                               'inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium ' +
                               (i === 0
@@ -149,8 +150,9 @@ export default function ParkingView() {
       </Panel>
 
       <p className="text-xs text-ink-faint">
-        Occupancy is a typical pattern for that hour, not a live count. The five structures come
-        from CSUF's availability board; the seven surface lots are our own estimates.
+        Occupancy is a typical pattern for that hour, not a live count. The four structures and
+        the two stadium lots come from CSUF's availability board; the employee, resident and
+        hourly lots are not counted, so those are our own estimates.
       </p>
     </div>
   )

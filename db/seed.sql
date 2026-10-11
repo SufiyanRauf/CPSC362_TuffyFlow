@@ -1,10 +1,12 @@
 -- Tuffy Flow seed data
 -- Run after schema.sql. Safe to run more than once.
 --
--- Coordinates come from CSUF's own campus map data, fullerton.edu/campusmap/locations.json,
--- retrieved 1 October 2026: all 17 buildings and 10 of the 12 lots. The two
--- exceptions are S8 and S10 and the Visitor Lot, which do not appear in that
--- file at all, so those two are our estimates and are marked below.
+-- Building coordinates come from CSUF's own campus map data,
+-- fullerton.edu/campusmap/locations.json, retrieved 1 October 2026.
+-- Parking is a different story: that file still uses the lot letters CSUF
+-- retired in summer 2025, so the lots below were rebuilt from the parking
+-- map at parking.fullerton.edu on 9 October 2026 instead. See the note above
+-- the parking insert.
 -- Campus is 800 N. State College Blvd.
 
 -- ---------------------------------------------------------------------------
@@ -35,28 +37,40 @@ on conflict (code) do nothing;
 -- ---------------------------------------------------------------------------
 -- Parking lots
 -- ---------------------------------------------------------------------------
-insert into parking_lots (name, lat, lng, permit_type, total_spaces) values
-  -- The five counted structures, names and totals taken from the campus parking
-  -- availability board. Four of the five have CSUF's own coordinates; S8 and S10
-  -- is not in that map file, so its position is our estimate.
-  ('Nutwood Structure',              33.879029, -117.88852, 'student', 2484),
-  ('State College Structure',        33.883055, -117.888671, 'student', 1373),
-  ('Eastside North',                 33.880356, -117.881687, 'student', 1880),
-  -- CSUF's map still titles this "Eastside Parking Structure 2 (Under
-  -- Construction)", but the availability board reports live counts for it, so
-  -- it looks open and the map entry stale.
-  ('Eastside South',                 33.881079, -117.881804, 'student', 1341),
-  -- Our estimate: not in CSUF's map data.
-  ('S8 and S10',                     33.8862, -117.8848, 'student', 2104),
-  -- Surface lots, not on the counts board
-  ('Lot A',                          33.887246, -117.888922, 'student',  420),
-  ('Lot C',                          33.878331, -117.88835, 'student',  380),
-  ('Lot D',                          33.884152, -117.887855, 'student',  310),
-  ('Lot E',                          33.88188, -117.881648, 'student',  260),
-  ('Lot G',                          33.888301, -117.886538, 'student',  340),
-  ('Staff Lot J',                    33.88344, -117.882967, 'staff',    180),
-  -- Our estimate: CSUF's map data has no visitor lot entry.
-  ('Visitor Lot',                    33.8800, -117.8895, 'visitor',  120)
+insert into parking_lots (name, lat, lng, permits, total_spaces) values
+  -- Read off CSUF's parking map, parking.fullerton.edu/_resources/pdfs/campus-parking-map.pdf,
+  -- on 9 October 2026. That is the sheet that names the lots; the general campus
+  -- map's locations.json still uses the pre-2025 letters and is only good for
+  -- geometry now. CSUF renumbered everything in summer 2025 against the campus
+  -- entrance numbers, so there is no Lot A, C, D, E, G or J any more, and the
+  -- gaps in the S and E numbering are real.
+  --
+  -- total_spaces is null unless CSUF publishes a figure. Only the counts board
+  -- does, and it reports S8 and S10 together as 2,104, which is not a number
+  -- for either lot on its own, so neither one carries it.
+  ('Nutwood Parking Structure',       33.879051, -117.888524, array['student','employee','visitor'],  2484),
+  ('State College Parking Structure', 33.883053, -117.888598, array['student','employee','visitor'],  1373),
+  ('Eastside North Parking Structure',33.881079, -117.881804, array['student'],                       1880),
+  -- The parking map calls this Eastside South, but locations.json and Google
+  -- both still use the older name, Eastside Parking Structure, from before the
+  -- north one was built. That is why the directions link searches for the old
+  -- name: the real one does not resolve.
+  ('Eastside South Parking Structure',33.880356, -117.881687, array['student','employee','visitor'],  1341),
+  -- The stadium lots. Freshmen in the halls park at S8 and shuttle in.
+  ('S8',                33.887313, -117.888798, array['student','employee','resident'], null),
+  ('S10',                             33.888324, -117.886559, array['student','employee','visitor'],  null),
+  -- Employee lots
+  ('E1',               33.881478, -117.882968, array['employee'],                      null),
+  ('E3',             33.878491, -117.888764, array['employee'],                      null),
+  ('E6',                              33.883894, -117.883608, array['employee'],                      null),
+  -- Resident lots, for students living on campus
+  ('R1',          33.88188,  -117.881648, array['resident'],                      null),
+  ('R2',                              33.884217, -117.881243, array['resident'],                      null),
+  -- The only hourly facility that is a lot of its own rather than a zone
+  -- inside a structure
+  -- CSUF marks this one hourly but gives it no code and no coordinate, so the
+  -- point is ours, read off satellite imagery.
+  ('Hourly | Student Union Way',      33.881858, -117.889334, array['visitor'],                       null)
 on conflict (name) do nothing;
 
 -- ---------------------------------------------------------------------------
@@ -66,7 +80,7 @@ on conflict (name) do nothing;
 -- ---------------------------------------------------------------------------
 -- Per lot demand, in percentage points above or below the time of day curve.
 --
--- The five counted structures are measured, from data/parking_samples.csv:
+-- The six counted facilities are measured, from data/parking_samples.csv:
 -- Thursday 1 October 2026 13:11 for the weekday column and Sunday 20 September
 -- 2026 12:23 for the weekend column. Both columns reproduce their reading to
 -- within one point.
@@ -75,26 +89,34 @@ on conflict (name) do nothing;
 -- are two columns rather than one. On a weekday Eastside fills to about 88 per
 -- cent because it is closest to the academic buildings while State College sits
 -- at 43. On a Sunday every structure is under 4 per cent except S8 and S10 at
--- 59, which is next to the stadium and the gym. State College is the highest
+-- 59, which are next to the stadium and the gym. State College is the highest
 -- of the four at almost exactly 4 per cent.
 --
 -- Only Sunday was sampled for the weekend, so Saturday is an assumption.
 --
--- The seven surface lots are not on the board and never have been. Their
--- numbers below are guesses, not measurements and not derived from anything.
+-- The six employee, resident and hourly lots are not on the board and never
+-- have been. Their numbers below are guesses, not measurements and not derived
+-- from anything.
 with demand(name, weekday_pts, weekend_pts) as (values
-    ('Nutwood Structure', -24, -1),
-    ('State College Structure', -31, 1),
-    ('Eastside North', 12, -3),
-    ('Eastside South', 14, -1),
-    ('S8 and S10', -9, 56),
-    ('Lot A', -18, 0),
-    ('Lot C', -13, 0),
-    ('Lot D', -3, 0),
-    ('Lot E', 0, 0),
-    ('Lot G', -20, 0),
-    ('Staff Lot J', -28, 0),
-    ('Visitor Lot', -33, 0)
+    ('Nutwood Parking Structure', -24, -1),
+    ('State College Parking Structure', -31, 1),
+    ('Eastside North Parking Structure', 12, -3),
+    ('Eastside South Parking Structure', 14, -1),
+    -- the board reports these two as one row, so the pair's reading is the
+    -- best there is for either of them alone
+    ('S8', -9, 56),
+    ('S10', -9, 56),
+    -- Guesses from here down. Employee lots are small and fill early, then
+    -- empty out at the weekend when nobody is at work.
+    ('E1', -10, 0),
+    ('E3', -13, 0),
+    ('E6', -18, 0),
+    -- Resident lots go the other way: the cars belong to people who live
+    -- there, so they stay put at the weekend instead of going home.
+    ('R1', -5, 45),
+    ('R2', -5, 45),
+    -- A small lot that fills before the structures do.
+    ('Hourly | Student Union Way', 5, -30)
 )
 insert into lot_availability (lot_id, day_of_week, hour, typical_pct_full)
 select

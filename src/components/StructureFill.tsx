@@ -5,14 +5,16 @@ import { BUSY_PERCENT } from '../lib/time'
 import { useMinuteTick } from '../lib/useMinuteTick'
 import Panel from './Panel'
 
-// The five structures CSUF actually counts. The surface lots are our estimates,
-// so they are deliberately not in this strip.
+// What CSUF actually counts. The employee, resident and hourly lots are our
+// estimates, so they are deliberately not in this strip. S8 and S10 are counted
+// as one row on the board, which is why they sit together here too.
 const COUNTED = [
-  'Nutwood Structure',
-  'State College Structure',
-  'Eastside North',
-  'Eastside South',
-  'S8 and S10',
+  'Nutwood Parking Structure',
+  'State College Parking Structure',
+  'Eastside North Parking Structure',
+  'Eastside South Parking Structure',
+  'S8',
+  'S10',
 ]
 
 async function fillNow() {

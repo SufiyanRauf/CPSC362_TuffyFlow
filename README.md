@@ -44,7 +44,7 @@ Next Class: CPSC 362
 Class Time: 11:30 AM
 
 Recommended Parking:
-Lot E
+Eastside North Parking Structure
 
 Estimated Walk: 2 minutes
 Expected fullness: usually about 92% full when you would arrive
@@ -181,16 +181,28 @@ two are kept apart on purpose.
 | Read from a named source | Ours, estimated or invented |
 |---|---|
 | Building names, codes and coordinates, from the campus map `locations.json`, 1 Oct 2026 | Class schedules and the demo student profile |
-| Parking lot coordinates, same source, for 10 of the 12 lots | Typical parking occupancy curve, including every surface lot figure |
-| Capacities of the five counted structures, from the parking availability board | Capacities of the seven surface lots |
-| Three parking readings on two days, in `data/parking_samples.csv` | Which permit type each lot takes |
+| Parking lot names, coordinates and permit types, from the parking map at `parking.fullerton.edu`, 9 Oct 2026 | Typical parking occupancy for the six lots CSUF does not count |
+| Capacities of the four structures, from the parking availability board | |
+| Three parking readings on two days, in `data/parking_samples.csv` | |
 | 320 clubs: the Student Life and Leadership registered list of 22 Sep 2026, joined to the TitanLink directory for names, summaries, descriptions, categories and IDs, read 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
 | Pollak Library floor designations, room booking rules and opening hours, from the library's own pages | |
 | Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
 | | All events |
 
-Two lots have coordinates we estimated: the one named S8 and S10, and the Visitor Lot because
-neither appears in CSUF's map data. The other 10 are CSUF's own figures.
+The lots were rebuilt on 9 October 2026 and the earlier version of this file was
+wrong about them. CSUF renamed every lot in summer 2025, numbering them against
+the campus entrances: E for employee, S for student, R for resident, and no
+visitor lot at all, because visitors buy an hourly permit and use an hourly zone.
+The campus map's `locations.json` still carries the old letters, so building the
+lots from it produced names that no longer exist, two lots that were really the
+same place listed twice, and the two Eastside structures the wrong way round.
+Everything here now comes from the parking map at
+`parking.fullerton.edu/_resources/pdfs/campus-parking-map.pdf`.
+
+Capacity is only published for the facilities on the counts board, so every
+other lot stores null rather than a number we invented. The board reports S8 and
+S10 as one combined figure, which is not a capacity for either of them alone, so
+neither one carries it.
 
 Campus Dining publishes Monday to Thursday and Friday only, so no weekend hours
 are stored for those thirteen. The three Titan Shops convenience stores come
@@ -200,21 +212,23 @@ on a Saturday.
 ### Parking occupancy
 
 Availability is a typical pattern by day and hour, never a live reading. CSUF
-publishes current counts for the five structures, and we read that board three times:
-once on a Sunday and twice on the Thursday. Those two readings set the per lot
-numbers in `db/seed.sql`, and the curve reproduces both to within a point.
+publishes current counts for six facilities, the four structures plus S8 and S10
+as one combined row, and we read that board three times: once on a Sunday and
+twice on the Thursday. Those two readings set the per lot numbers in
+`db/seed.sql`, and the curve reproduces both to within a point.
 
 Three readings, but only two independent days, and only two of them set the
-numbers, so it is worth being plain about what they do and do not support. They cover only the five counted structures and only a Sunday on the weekend
-side, so Saturday is an assumption. The
-seven surface lots are not on the board at all and their figures are guesses.
+numbers, so it is worth being plain about what they do and do not support. They
+cover only the six counted facilities and only a Sunday on the weekend side, so
+Saturday is an assumption. The six employee, resident and hourly lots are not on
+the board at all and their figures are guesses.
 
 The weekday and weekend shapes turned out to be genuinely different rather than
 one curve scaled down, which is why the seed carries two columns. On a weekday
 Eastside fills to about 88 per cent because it is nearest the academic
 buildings, while State College sits around 43. On the Sunday reading every
-structure was at or under 4 per cent except S8 and S10 at 59, which is next to the
-stadium and the gym.
+structure was at or under 4 per cent except S8 and S10 at 59, which are next to
+the stadium and the gym.
 
 We are not reading the board live in this version. It is a web page rather than
 an API, so parsing it would break without warning if the page changed, and we

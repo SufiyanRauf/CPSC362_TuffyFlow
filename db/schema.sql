@@ -22,12 +22,22 @@ create table parking_lots (
   name          text not null unique,
   lat           double precision not null,
   lng           double precision not null,
-  permit_type   text not null check (permit_type in ('student', 'staff', 'visitor')),
-  total_spaces  integer not null check (total_spaces > 0)
+  -- An array because a lot can take more than one. The structures take
+  -- student, employee and hourly permits at the same time.
+  permits       text[] not null check (
+                  cardinality(permits) > 0
+                  and permits <@ array['student', 'employee', 'resident', 'visitor']
+                ),
+  -- Nullable: CSUF only publishes a capacity for the facilities on its live
+  -- counts board, and a made up number is worse than no number.
+  total_spaces  integer check (total_spaces > 0)
 );
 
+comment on column parking_lots.permits is
+  'Which permit types may park here. CSUF renamed every lot in summer 2025: E is employee, S is student, R is resident, and visitors buy an hourly permit.';
+
 comment on column parking_lots.total_spaces is
-  'Display only. Fullness for scoring comes from lot_availability.';
+  'Display only, and null where CSUF publishes no figure. Fullness for scoring comes from lot_availability.';
 
 -- Typical fullness by day and hour. Seeded pattern, not a live measurement, so the
 -- UI has to say "typically" rather than giving a live number.
@@ -132,7 +142,7 @@ create table profiles (
   major         text,
   interests     text[] not null default '{}',
   career_goals  text[] not null default '{}',
-  permit_type   text check (permit_type in ('student', 'staff', 'visitor')),
+  permit_type   text check (permit_type in ('student', 'employee', 'resident', 'visitor')),
   noise_pref    smallint check (noise_pref between 1 and 5),
   created_at    timestamptz not null default now()
 );

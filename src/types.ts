@@ -14,7 +14,7 @@ export type Profile = {
   major: string
   interests: string[]
   career_goals: string[]
-  permit_type: 'student' | 'staff' | 'visitor'
+  permit_type: Permit
   noise_pref: number
 }
 
@@ -38,13 +38,22 @@ export type NextClass = {
   minutes_until: number | null
 }
 
+// CSUF renamed every lot in summer 2025. E is employee, S is student, R is
+// resident, and there is no visitor lot at all: visitors buy an hourly permit
+// and use one of the hourly zones.
+export type Permit = 'student' | 'employee' | 'resident' | 'visitor'
+
 export type ParkingLot = {
   id: string
   name: string
   lat: number
   lng: number
-  permit_type: 'student' | 'staff' | 'visitor'
-  total_spaces: number
+  // a list, not one value, because the structures take several. Nutwood is
+  // student, employee and hourly all at once.
+  permits: Permit[]
+  // null where CSUF does not publish a capacity, which is most of them. Only
+  // the facilities on the live counts board have a real figure.
+  total_spaces: number | null
 }
 
 export type LotAvailability = {
