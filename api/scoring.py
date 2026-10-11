@@ -14,6 +14,16 @@ WORST_WALK_MINUTES = 20
 UNKNOWN_FULLNESS = 50
 BASE_PARKING_BUFFER_MINUTES = 10
 
+# How far either side of a class we are willing to claim it still says where
+# you are. Three hours covers getting there, being there and leaving. Past
+# that, a class that ended this morning tells you nothing about where someone
+# is at seven in the evening.
+MAX_ANCHOR_GAP_MINUTES = 180
+
+# What the walk factor scores when nothing anchors the day. The midpoint, so
+# distance neither helps nor hurts and the other factors decide.
+NEUTRAL_WALK = 0.5
+
 PARKING_WEIGHTS = {"walk": 0.6, "fullness": 0.4}
 SPOT_WEIGHTS = {"walk": 0.4, "noise": 0.4, "outlets": 0.2}
 EVENT_WEIGHTS = {"tags": 0.6, "walk": 0.2, "soon": 0.2}
@@ -44,6 +54,40 @@ def normalize(value, best, worst):
 def minutes_to_time(minutes):
     minutes %= 24 * 60
     return "%02d:%02d" % (minutes // 60, minutes % 60)
+
+
+def anchor_for(context, day, minutes):
+    """The class that says where the student is at that point in the week, or
+    None when nothing does.
+
+    Everything used to be measured from the building of the next class. That is
+    right for parking, because the next class is what you are parking for, and
+    wrong for everything else. On a Friday afternoon it would tell you a study
+    spot was two minutes away when it meant two minutes from Monday morning's
+    lecture hall, which is not a walk anyone is about to take.
+
+    So each day is looked at on its own, and only a class close enough in time
+    counts. Returning None rather than guessing a point on campus matters: the
+    guess would quietly rank whatever sits nearest that point first, and it
+    would be a ranking built on nothing.
+    """
+    nearest = None
+    for cls in context.get("class_meetings", []):
+        if cls["day_of_week"] != day or cls.get("lat") is None or cls.get("lng") is None:
+            continue
+        if cls["start"] <= minutes <= cls["end"]:
+            gap = 0
+        else:
+            gap = min(abs(cls["start"] - minutes), abs(cls["end"] - minutes))
+        # a class still to come beats one already over at the same distance,
+        # otherwise the answer depends on the order the schedule happens to be in
+        key = (gap, 0 if cls["end"] >= minutes else 1, cls["start"])
+        if nearest is None or key < nearest[0]:
+            nearest = (key, cls)
+    if nearest is None or nearest[0][0] > MAX_ANCHOR_GAP_MINUTES:
+        return None
+    cls = nearest[1]
+    return cls["lat"], cls["lng"], cls.get("building_name") or "your class"
 
 
 def rank(candidates, filters, factors, weights, top_n, context):
@@ -151,12 +195,18 @@ def spot_config(context):
         return opens <= at <= closes
 
     def walk_factor(spot, ctx):
-        metres = haversine(spot["lat"], spot["lng"], ctx["dest_lat"], ctx["dest_lng"])
+        # measured from where you are today, not from your next class, which
+        # may be on another day entirely
+        anchor = anchor_for(ctx, ctx.get("day_of_week", 0), ctx["now_minutes"])
+        if anchor is None:
+            return NEUTRAL_WALK, "no class today to measure a walk from", None
+        lat, lng, place = anchor
+        metres = haversine(spot["lat"], spot["lng"], lat, lng)
         mins = walk_minutes(metres)
         if mins <= 1:
-            return 1.0, "in the same building as your next class", mins
+            return 1.0, "right by %s" % place, mins
         return (normalize(mins, BEST_WALK_MINUTES, WORST_WALK_MINUTES),
-                "%d min from %s" % (mins, ctx["dest_name"]), mins)
+                "measured from %s" % place, mins)
 
     def noise_factor(spot, ctx):
         pref = ctx["profile"]["noise_pref"]
@@ -211,10 +261,20 @@ def event_config(context):
         return min(1.0, value), "matches " + " and ".join(sorted(shared))
 
     def walk_factor(event, ctx):
-        metres = haversine(event["lat"], event["lng"], ctx["dest_lat"], ctx["dest_lng"])
+        # from wherever you will be on the event's own day. "9 min away" used to
+        # mean nine minutes from your next class, so a Saturday event was
+        # measured from a Monday lecture.
+        day = (ctx.get("day_of_week", 0) + event.get("day_offset", 0)) % 7
+        anchor = anchor_for(ctx, day, event["starts_minutes"])
+        if anchor is None:
+            return NEUTRAL_WALK, "no class that day to measure a walk from", None
+        lat, lng, place = anchor
+        metres = haversine(event["lat"], event["lng"], lat, lng)
         mins = walk_minutes(metres)
+        if mins <= 1:
+            return 1.0, "right by %s" % place, mins
         return (normalize(mins, BEST_WALK_MINUTES, WORST_WALK_MINUTES),
-                "%d min away" % mins, mins)
+                "measured from %s" % place, mins)
 
     def soon_factor(event, ctx):
         days = event.get("day_offset", 0)

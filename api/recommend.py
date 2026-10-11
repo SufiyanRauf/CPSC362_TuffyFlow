@@ -72,6 +72,11 @@ class ClassWindow(BaseModel):
     day_of_week: int = Field(ge=0, le=6)
     start: int
     end: int
+    # where the class is, so a walk can be measured from the right place on
+    # the right day. Optional because a clash check does not need it.
+    lat: float | None = None
+    lng: float | None = None
+    building_name: str | None = None
 
 
 class RecommendRequest(BaseModel):

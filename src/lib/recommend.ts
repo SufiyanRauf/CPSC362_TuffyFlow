@@ -150,13 +150,21 @@ export async function getRecommendations(): Promise<RecommendResponse> {
         day_offset: daysBetween(todayOnCampus, start.date),
       }]
     }),
-    // every meeting, with its day. Sending only today's meant an event on any
-    // later day was never checked for a clash with a class.
-    class_meetings: meetings.map((m) => ({
-      day_of_week: m.day_of_week,
-      start: toMinutes(m.start_time),
-      end: toMinutes(m.end_time),
-    })),
+    // Every meeting, with its day and its building. The day is what stops an
+    // event on a later day skipping the clash check; the building is what lets
+    // a walk be measured from wherever you actually are that day rather than
+    // from whatever your next class happens to be.
+    class_meetings: meetings.map((m) => {
+      const b = where(m.building_id)
+      return {
+        day_of_week: m.day_of_week,
+        start: toMinutes(m.start_time),
+        end: toMinutes(m.end_time),
+        lat: b?.lat ?? null,
+        lng: b?.lng ?? null,
+        building_name: b?.name ?? null,
+      }
+    }),
   }
 
   const res = await fetch('/api/recommend', {

@@ -35,14 +35,12 @@ function labelFor(rec: Recommendation) {
   return labels[rec.category] ?? 'Suggestion'
 }
 
-// The scorer writes the distance three different ways: "min walk to" for a lot,
-// "min from" for a spot and "min away" for an event. The walk row above already
-// says it, so the card read "5 min walk / 5 min away". Dropping it also makes
-// room for the reason that was being pushed out, which on an event is the day
-// it falls on.
+// A lot's reason is "3 min walk to Computer Science" and the row above it
+// already says "3 min walk", so the card was printing the number twice. Spots
+// and events say "measured from Computer Science" with no number in it, which
+// is the one thing the walk row cannot tell you, so those stay.
 function saysWalk(reason: string) {
-  return reason.includes('min walk') || reason.includes('min from') ||
-    reason.includes('min away')
+  return reason.includes('min walk')
 }
 
 function rowsFor(rec: Recommendation) {

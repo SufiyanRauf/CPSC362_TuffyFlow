@@ -8,6 +8,10 @@ import { ClockIcon, PinIcon, UsersIcon, WalkIcon } from './icons'
 import { CAMPUS_TZ } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
 
+// The three things the walk factor can say. The card prints the minutes
+// itself, so this is only here to carry what they are measured from.
+const WALK_REASON = /^(measured from |right by |no class )/
+
 // The scorer already ranks every event and the dashboard was showing only the
 // top one, so the rest of that work was being thrown away.
 async function rankedEvents() {
@@ -35,6 +39,7 @@ async function rankedEvents() {
       where: e ? where.get(e.building_id) ?? '' : '',
       when,
       walk: r.walk_minutes,
+      measuredFrom: r.reasons.find((x) => WALK_REASON.test(x)) ?? '',
     }
   })
 }
@@ -45,7 +50,8 @@ export default function EventsView() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Events">
-        Ranked on how well the tags match your interests, how far it is, and how soon it
+        Ranked on how well the tags match your interests, how far it is from your classes
+        that day, and how soon it
         starts. Anything clashing with one of your classes is left out.
       </PageHeader>
 
@@ -92,6 +98,11 @@ export default function EventsView() {
                       <UsersIcon className="h-4 w-4" />
                       {e.host}
                     </p>
+                    {/* what the walk is measured from, or that nothing on that
+                        day says where you would be starting from */}
+                    {e.measuredFrom && (
+                      <p className="mt-1 text-sm text-ink-faint">{e.measuredFrom}</p>
+                    )}
                   </div>
 
                   <Pill tone="match">{e.match}% match</Pill>

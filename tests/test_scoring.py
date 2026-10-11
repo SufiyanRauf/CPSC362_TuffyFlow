@@ -166,7 +166,10 @@ def test_event_tag_overlap_uses_sets_not_counts():
                     "career_goals": ["software-engineering", "career"],
                     "permit_type": "student", "noise_pref": 2},
         "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "CS",
-        "now_minutes": 600, "day_of_week": 1, "class_meetings": [],
+        "now_minutes": 600, "day_of_week": 1,
+        "class_meetings": [{"day_of_week": 1, "start": 780, "end": 855,
+                            "lat": 33.882349, "lng": -117.882750,
+                            "building_name": "Computer Science"}],
     }
     cfg = scoring.event_config(ctx)
     events = [{"id": "e1", "name": "Resume Workshop", "tags": ["career", "software-engineering"],
@@ -241,21 +244,25 @@ def test_a_quieter_spot_is_never_worse_than_a_louder_one():
     assert out[0]["item"]["id"] == "silent", [(r["item"]["id"], r["match_percent"]) for r in out]
 
 
-def test_spot_in_the_same_building_says_so():
+def test_spot_in_the_building_you_are_already_in_says_so():
     ctx = {
         "profile": {"noise_pref": 1, "interests": [], "career_goals": [], "permit_type": "student"},
         "dest_lat": 33.881414, "dest_lng": -117.885361, "dest_name": "Pollak Library",
-        "now_minutes": 600,
+        "now_minutes": 600, "day_of_week": 1,
+        "class_meetings": [{"day_of_week": 1, "start": 540, "end": 615,
+                            "lat": 33.881414, "lng": -117.885361,
+                            "building_name": "Pollak Library"}],
     }
     cfg = scoring.spot_config(ctx)
     spots = [{"id": "s1", "name": "Library North 3rd Floor", "lat": 33.881414, "lng": -117.885361,
               "noise_level": 1, "has_outlets": True, "opens_at": "07:00", "closes_at": "23:00"}]
     out = scoring.rank(spots, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
-    assert any("same building" in r for r in out[0]["reasons"])
+    assert any("right by Pollak Library" in r for r in out[0]["reasons"])
 
 
 def test_closed_spot_is_filtered_out():
     ctx = {
+        "day_of_week": 1,
         "profile": {"noise_pref": 2, "interests": [], "career_goals": [], "permit_type": "student"},
         "dest_lat": 33.8814, "dest_lng": -117.8853, "dest_name": "PL",
         "now_minutes": 1380,                      # 11pm
@@ -291,3 +298,123 @@ def test_arrive_by_stands_for_a_class_on_another_day():
     lot = {"id": "a", "name": "A", "lat": 33.8823, "lng": -117.8829,
            "permits": ["student"]}
     assert scoring.arrive_by(lot, ctx, 5) is not None
+
+
+# ---------------------------------------------------------------- the anchor
+#
+# Everything used to be measured from the building of the next class. For
+# parking that is right, you are parking for that class. For a study spot you
+# want now, or an event three days out, it measured a walk nobody was about to
+# take. These pin the day each walk is measured from.
+
+FRIDAY, SATURDAY, MONDAY = 5, 6, 1
+
+# far apart on purpose: about 650 m, which is an 11 minute walk
+CS_LAT, CS_LNG = 33.882349, -117.882750
+NUTWOOD_LAT, NUTWOOD_LNG = 33.879051, -117.888524
+
+
+def _week_context(day, minutes):
+    return {
+        "profile": {"interests": ["ai"], "career_goals": [], "noise_pref": 3,
+                    "permit_type": "student"},
+        # the next class is Monday in Computer Science, which is what the old
+        # code measured everything against
+        "dest_lat": CS_LAT, "dest_lng": CS_LNG, "dest_name": "Computer Science",
+        "now_minutes": minutes, "day_of_week": day,
+        "class_meetings": [
+            {"day_of_week": MONDAY, "start": 540, "end": 615,
+             "lat": CS_LAT, "lng": CS_LNG, "building_name": "Computer Science"},
+            {"day_of_week": FRIDAY, "start": 960, "end": 1035,
+             "lat": NUTWOOD_LAT, "lng": NUTWOOD_LNG, "building_name": "Titan Hall"},
+        ],
+    }
+
+
+def test_spot_walk_is_measured_from_todays_class_not_the_next_one():
+    # Friday 16:30, sitting in the Friday class. A spot in that building is a
+    # nothing walk. Measured from Monday's lecture it would read as 9 minutes.
+    ctx = _week_context(FRIDAY, 990)
+    cfg = scoring.spot_config(ctx)
+    spots = [{"id": "near", "name": "Next door", "lat": NUTWOOD_LAT, "lng": NUTWOOD_LNG,
+              "noise_level": 2, "has_outlets": True, "opens_at": "07:00", "closes_at": "23:00"}]
+    out = scoring.rank(spots, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
+    assert out[0]["walk_minutes"] == 0
+    assert any("Titan Hall" in r for r in out[0]["reasons"])
+
+
+def test_event_walk_is_measured_from_its_own_day():
+    # A Saturday event next to the Computer Science building. There is no class
+    # on Saturday, so nothing says where the student would be, and the card has
+    # to admit that rather than quietly measuring from Monday.
+    ctx = _week_context(FRIDAY, 990)
+    cfg = scoring.event_config(ctx)
+    events = [{"id": "e", "name": "Hack night", "tags": ["ai"],
+               "lat": CS_LAT, "lng": CS_LNG,
+               "starts_minutes": 1080, "ends_minutes": 1200, "day_offset": 1}]
+    out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
+    assert out[0]["walk_minutes"] is None
+    assert any("no class that day" in r for r in out[0]["reasons"]), out[0]["reasons"]
+
+
+def test_a_day_with_no_classes_has_no_anchor():
+    assert scoring.anchor_for(_week_context(FRIDAY, 990), SATURDAY, 600) is None
+
+
+def test_a_class_hours_away_does_not_anchor_the_evening():
+    # the 16:00 Friday class does not say where anyone is at 22:00
+    ctx = _week_context(FRIDAY, 1320)
+    assert scoring.anchor_for(ctx, FRIDAY, 1320) is None
+    # but an hour after it ends, it still does
+    assert scoring.anchor_for(ctx, FRIDAY, 1095)[2] == "Titan Hall"
+
+
+def test_tie_break_prefers_the_class_still_to_come():
+    # two classes the same distance away in time, one over, one upcoming
+    ctx = _week_context(MONDAY, 600)
+    ctx["class_meetings"] = [
+        {"day_of_week": MONDAY, "start": 450, "end": 540,
+         "lat": CS_LAT, "lng": CS_LNG, "building_name": "Already finished"},
+        {"day_of_week": MONDAY, "start": 660, "end": 720,
+         "lat": NUTWOOD_LAT, "lng": NUTWOOD_LNG, "building_name": "Still to come"},
+    ]
+    assert scoring.anchor_for(ctx, MONDAY, 600)[2] == "Still to come"
+    # and the answer does not depend on the order the schedule arrives in
+    ctx["class_meetings"].reverse()
+    assert scoring.anchor_for(ctx, MONDAY, 600)[2] == "Still to come"
+
+
+def test_anchor_picks_the_class_nearest_in_time():
+    ctx = _week_context(MONDAY, 600)
+    ctx["class_meetings"].append(
+        {"day_of_week": MONDAY, "start": 1020, "end": 1095,
+         "lat": NUTWOOD_LAT, "lng": NUTWOOD_LNG, "building_name": "Titan Hall"})
+    # 10:00 is inside the 09:00 class, so that one wins over the 17:00 one
+    assert scoring.anchor_for(ctx, MONDAY, 600)[2] == "Computer Science"
+    # by 16:00 the later class is the nearer of the two
+    assert scoring.anchor_for(ctx, MONDAY, 960)[2] == "Titan Hall"
+
+
+def test_parking_still_measures_from_the_next_class():
+    # the one place the old behavior was correct, so it must not have changed
+    ctx = _week_context(FRIDAY, 990)
+    ctx.update({"arrival_hour": 8, "class_start_minutes": 540, "class_day_offset": 3,
+                "availability": []})
+    cfg = scoring.parking_config(ctx)
+    lots = [{"id": "far", "name": "Far", "lat": NUTWOOD_LAT, "lng": NUTWOOD_LNG,
+             "permits": ["student"]}]
+    out = scoring.rank(lots, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
+    assert any("Computer Science" in r for r in out[0]["reasons"]), out[0]["reasons"]
+
+
+def test_the_walk_reason_does_not_repeat_the_number():
+    # the card prints "4 min walk" on its own row, so a reason carrying the
+    # number too made it read "4 min walk / 4 min from Humanities"
+    ctx = _week_context(FRIDAY, 990)
+    cfg = scoring.spot_config(ctx)
+    spots = [{"id": "far", "name": "Across campus", "lat": CS_LAT, "lng": CS_LNG,
+              "noise_level": 2, "has_outlets": True, "opens_at": "07:00", "closes_at": "23:59"}]
+    out = scoring.rank(spots, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
+    assert out[0]["walk_minutes"] == 11
+    assert "measured from Titan Hall" in out[0]["reasons"]
+    assert not any("min" in r for r in out[0]["reasons"]), out[0]["reasons"]

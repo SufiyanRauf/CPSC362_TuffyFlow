@@ -63,7 +63,7 @@ Preferences include:
 
 * How quiet you want it
 * Whether you need power outlets
-* Distance from your next class
+* Distance from wherever today's classes put you, when they put you anywhere
 
 The spots screen also filters by kind: study, food, charging or meeting space.
 

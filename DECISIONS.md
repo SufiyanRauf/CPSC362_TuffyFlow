@@ -65,6 +65,40 @@ list makes the top result read as 100% every single time.
 
 ---
 
+**2026-10-11 — Walks are measured from the right day now**
+
+Every distance in the app was measured from the building of your next class.
+That is correct for parking, because the next class is the whole reason you are
+parking, and it is wrong for everything else.
+
+On a Friday afternoon your next class is Monday morning. So a study spot across
+the road from where you were actually sitting was scored on how far it is from
+Monday's lecture hall, and a Saturday event was measured the same way. The
+numbers were not wrong arithmetic, they were answering a question nobody asked.
+
+Each day is looked at on its own now: the anchor is the class nearest in time
+that day, and only if it is within three hours. Spots use today, events use the
+day the event is on, parking still uses the next class.
+
+When nothing anchors a day, the walk simply does not get a vote. The first
+version of this picked the middle of campus instead, which was worse than it
+sounds: it is a real coordinate, so it produced a confident ranking, and what
+it actually ranked was whatever happened to sit nearest the arithmetic center
+of the campus. On a Sunday that put Pollak Library top at a hundred per cent
+for no reason anyone could defend. Now the walk scores a flat half, the other
+factors decide, and the card says there is no class that day to measure from.
+
+The three hour cap is the same argument. A class that ended at 10:15 does not
+say where someone is at seven in the evening, and guessing with a building name
+attached is worse than admitting the gap.
+
+This needed the class schedule to carry its buildings, not just its times, so
+class_meetings now sends lat, lng and the building name. It was already sending
+every meeting for the clash check, so nothing new goes over the wire per class
+beyond the location.
+
+---
+
 **2026-10-09 — Rebuilt the parking lots after finding the data was stale**
 
 Someone asked a simple question: does the Directions button go to the right
