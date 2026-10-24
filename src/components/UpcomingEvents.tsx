@@ -1,7 +1,7 @@
 import { useAsync } from '../lib/useAsync'
 import { getBuildings, getEvents } from '../lib/campusData'
 import { getRecommendations } from '../lib/recommend'
-import { useMinuteTick } from '../lib/useMinuteTick'
+import { useCampusHour } from '../lib/useMinuteTick'
 import { useDataVersion } from '../lib/useDataVersion'
 import Panel from './Panel'
 import { CAMPUS_TZ, campusDate } from '../lib/time'
@@ -41,7 +41,11 @@ async function upcoming() {
 // Cards rather than rows, because this sits in the narrow rail where a row with
 // four columns would wrap into mush.
 export default function UpcomingEvents() {
-  const events = useAsync(upcoming, [useMinuteTick(), useDataVersion()])
+  // The hour. This one reads the scored events, which means a whole round of
+  // recommendations and a request to the scorer, so it was the expensive part
+  // of refetching every minute: 115 documents and a POST, to notice that an
+  // event starting at half past had started.
+  const events = useAsync(upcoming, [useCampusHour(), useDataVersion()])
 
   return (
     <Panel source={events} empty="Nothing coming up.">

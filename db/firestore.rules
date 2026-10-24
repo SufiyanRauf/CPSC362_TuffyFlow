@@ -1,0 +1,205 @@
+rules_version = '2';
+
+// Tuffy Flow access rules.
+//
+// Publish with: firebase deploy --only firestore:rules
+// (firebase.json at the repository root is what points that command here.)
+//
+// This is the whole security model, and it is the Firestore replacement for
+// the twelve row level security policies this project used to have in
+// Postgres. It matters for the same reason they did: the Firebase config ships
+// inside the JavaScript bundle, so anybody can open the site, read the config
+// out of it and talk to this database directly. Nothing in the React code is a
+// restriction. These rules are, because they run on Google's side.
+//
+// Firestore denies anything these rules do not explicitly allow, so a
+// collection nobody mentions here is closed. That is the opposite default from
+// Postgres, where a table with security switched off is wide open.
+//
+// The seed script writes with the Admin SDK, which bypasses all of this on
+// purpose: it runs on your own machine with your own key, not in a browser.
+//
+// Two things Postgres gave for free that have to be written out here, because
+// a document database has no schema to lean on:
+//
+//   hasOnly and hasAll. A table has a fixed set of columns and an update
+//   cannot invent one. A document has whatever you put in it, and a rule that
+//   checks six fields says nothing about a seventh, so without hasOnly anyone
+//   could park a megabyte of their own on their profile.
+//
+//   Sizes. text was unbounded in Postgres too, but a row could not be a
+//   megabyte; a document can be, right up to Firestore's own limit.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Not just "has an auth token". Anonymous sign in is one switch in the
+    // Firebase console and somebody will turn it on for a demo one day, and
+    // the moment they do, request.auth stops meaning a person and the whole
+    // campus data set is public. Naming the provider here is what stops a
+    // console toggle quietly changing what this file means.
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    function isMe(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // -----------------------------------------------------------------------
+    // The campus. The same for everybody, and read only from a browser.
+    //
+    // Signed in rather than open, so a logged out visitor cannot pull down the
+    // whole data set. That is a low wall and worth being honest about: anybody
+    // can make an account in a few seconds, and nothing here checks the email
+    // is a CSUF one. It stops a drive-by, not somebody determined.
+    //
+    // Writes are refused outright: the only thing that should ever change
+    // these is the seed script.
+    // -----------------------------------------------------------------------
+
+    match /buildings/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /parking_lots/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /spots/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /clubs/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /events/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // -----------------------------------------------------------------------
+    // The student.
+    //
+    // The document is named after the Firebase user id, so "is this yours" is
+    // a comparison rather than a lookup, and there is no field anybody could
+    // reassign to somebody else.
+    // -----------------------------------------------------------------------
+
+    function aPermit(value) {
+      return value == null
+        || value in ['student', 'employee', 'resident', 'visitor'];
+    }
+
+    function aNoiseLevel(value) {
+      return value == null || (value is int && value >= 1 && value <= 5);
+    }
+
+    function someText(value, limit) {
+      return value == null || (value is string && value.size() <= limit);
+    }
+
+    // A list of short tags. Rules cannot walk a list, so the elements
+    // themselves are not type checked here: what is bounded is how many there
+    // are. Postgres could say text[] and mean it; this is the honest limit of
+    // what a rule can do.
+    function someTags(value) {
+      return value is list && value.size() <= 30;
+    }
+
+    function aProfile(data) {
+      return data.keys().hasOnly(
+          ['full_name', 'major', 'interests', 'career_goals', 'permit_type', 'noise_pref'])
+        && data.keys().hasAll(
+          ['full_name', 'major', 'interests', 'career_goals', 'permit_type', 'noise_pref'])
+        && aPermit(data.permit_type)
+        && aNoiseLevel(data.noise_pref)
+        && someTags(data.interests)
+        && someTags(data.career_goals)
+        && someText(data.full_name, 200)
+        && someText(data.major, 200);
+    }
+
+    match /profiles/{uid} {
+      // get, not read. read would also grant list, and a listing of this
+      // collection is refused only because the rule happens to mention the
+      // document id, which is not a thing to rely on: write "allow list" with
+      // any condition that does not and every student's name, major and
+      // interests go to anybody with an account. Nothing in the app lists
+      // profiles, so nothing here should allow it.
+      allow get: if isMe(uid);
+
+      // Creating your own. Postgres had a trigger on the users table for
+      // this; Firebase's equivalent is a Cloud Function, which needs a paid
+      // plan, so the app writes the document itself the first time somebody
+      // signs in. That hands authorship to the browser, so the shape is
+      // pinned to what a brand new profile actually is: a name and nothing
+      // else. Everything after that goes through update.
+      allow create: if isMe(uid)
+        && aProfile(request.resource.data)
+        && request.resource.data.major == null
+        && request.resource.data.permit_type == null
+        && request.resource.data.noise_pref == null
+        && request.resource.data.interests.size() == 0
+        && request.resource.data.career_goals.size() == 0;
+
+      allow update: if isMe(uid) && aProfile(request.resource.data);
+
+      // Somebody has to be able to erase themselves. Postgres did it without
+      // being asked: the profile row hung off auth.users with on delete
+      // cascade, and the schedule hung off the profile the same way, so
+      // removing the account took the lot. Firebase cascades nothing and a
+      // document's subcollections outlive it, so refusing this left a
+      // withdrawn student's whole week of whereabouts sitting at a path
+      // nobody could reach. Clearing the schedule first is the caller's job,
+      // and db/delete_account.mjs does it.
+      allow delete: if isMe(uid);
+
+      // A week of somebody's whereabouts, which is the most private thing
+      // here. It lives under the profile so that owning it is the path rather
+      // than a field anybody could set.
+      match /class_meetings/{id} {
+        // "HH:MM" or "HH:MM:SS". Postgres had a time column and would not
+        // take anything else; here the format is the only thing keeping the
+        // end > start test below honest, because that compares two strings
+        // and only lines up with a comparison of two times while both are
+        // zero padded.
+        function aTime(value) {
+          return value is string
+            && value.matches('^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$');
+        }
+
+        function aMeeting(data) {
+          return data.keys().hasOnly(
+              ['course_code', 'day_of_week', 'start_time', 'end_time', 'building_id'])
+            && data.keys().hasAll(
+              ['course_code', 'day_of_week', 'start_time', 'end_time', 'building_id'])
+            && data.course_code is string
+            && data.course_code.size() > 0
+            && data.course_code.size() <= 32
+            && data.day_of_week is int
+            && data.day_of_week >= 0 && data.day_of_week <= 6
+            && aTime(data.start_time)
+            && aTime(data.end_time)
+            && data.end_time > data.start_time
+            // Postgres had a foreign key here and this cannot. Checking the
+            // building exists would mean a document read on every write, so
+            // what is checked is that something was given at all; a building
+            // id that matches nothing shows as "Campus" rather than breaking.
+            && data.building_id is string
+            && data.building_id.size() > 0
+            && data.building_id.size() <= 64;
+        }
+
+        allow list, delete: if isMe(uid);
+        allow create, update: if isMe(uid) && aMeeting(request.resource.data);
+      }
+    }
+  }
+}

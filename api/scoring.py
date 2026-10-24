@@ -24,8 +24,27 @@ MAX_ANCHOR_GAP_MINUTES = 180
 # distance neither helps nor hurts and the other factors decide.
 NEUTRAL_WALK = 0.5
 
+
+
 PARKING_WEIGHTS = {"walk": 0.6, "fullness": 0.4}
 SPOT_WEIGHTS = {"walk": 0.4, "noise": 0.4, "outlets": 0.2}
+
+# What spot scoring weighs when the profile has no noise preference on it,
+# which is every account until somebody fills the profile screen in.
+#
+# The first attempt scored the factor at the midpoint instead, on the reasoning
+# that half is neutral. It is not. Noise is a ceiling, so a stated preference
+# scores 1.0 for every spot at or under it, which is most of them; half is
+# therefore the bottom of the range that actually comes up, not the middle.
+# Measured, it cost a new account about twenty points on every study spot, and
+# it handed the ordering to outlets, a factor with half the weight.
+#
+# So the factor is not scored at all and the other two take its share. The
+# noise function still runs, because how loud somewhere is is worth reading
+# whether or not we know what was wanted, but it is multiplied by nothing. A
+# percentage then means the same thing it always did: how much of what we can
+# judge this place gets right.
+SPOT_WEIGHTS_NO_NOISE = {"walk": 2 / 3, "noise": 0.0, "outlets": 1 / 3}
 EVENT_WEIGHTS = {"tags": 0.6, "walk": 0.2, "soon": 0.2}
 
 
@@ -48,7 +67,10 @@ def normalize(value, best, worst):
     if best == worst:
         return 0.5
     score = (worst - value) / (worst - best) if best < worst else (value - worst) / (best - worst)
-    return max(0.0, min(1.0, score))
+    # same guard as the one in rank, and for the same reason: max and min hand
+    # not-a-number straight back, so clamping it alone would read as a perfect
+    # score rather than no score
+    return 0.0 if score != score else max(0.0, min(1.0, score))
 
 
 def minutes_to_time(minutes):
@@ -104,9 +126,12 @@ def rank(candidates, filters, factors, weights, top_n, context):
             value, reason = out[0], out[1]
             if len(out) > 2:
                 walk = out[2]
-            # clamp rather than assert: an assert becomes a 500 in one build and
-            # disappears under python -O in another
-            value = max(0.0, min(1.0, value))
+            # Clamp rather than assert: an assert becomes a 500 in one build
+            # and disappears under python -O in another. The first test is for
+            # not-a-number, which is only false for itself: min and max would
+            # both hand it straight back, and max(0.0, min(1.0, nan)) is 1.0,
+            # so a factor that went wrong would score a perfect match.
+            value = 0.0 if value != value else max(0.0, min(1.0, value))
             total += value * weights[name]
             if reason:
                 reasons.append(reason)
@@ -143,7 +168,12 @@ def lot_fullness(lot, context):
 
 def parking_config(context):
     def permit_allows(lot, ctx):
-        return ctx["profile"]["permit_type"] in lot["permits"]
+        # None until the profile screen is filled in, and None matches nothing
+        # on purpose. Every lot takes some permits and not others, so without
+        # knowing which one you hold there is no lot we can stand behind. The
+        # profile screen says that is why parking is empty.
+        permit = ctx["profile"].get("permit_type")
+        return permit is not None and permit in lot["permits"]
 
     def walk_factor(lot, ctx):
         metres = haversine(lot["lat"], lot["lng"], ctx["dest_lat"], ctx["dest_lng"])
@@ -183,14 +213,24 @@ def arrive_by(lot, context, walk):
 
 def spot_config(context):
     def is_open(spot, ctx):
-        # Only filter when we actually know the hours. Unknown hours are not a
-        # claim that somewhere is open all day.
+        # Shut today is the end of it, whatever the clock says. Almost every
+        # food place on this campus publishes Monday to Thursday hours and
+        # nothing else, so without this the app offered fifteen of the sixteen
+        # on a Saturday and all sixteen on a Sunday, each with a match score.
+        if spot.get("closed_today"):
+            return False
+        # Only filter on the clock when we actually know the hours. Unknown
+        # hours are not a claim that somewhere is open all day.
         if not spot.get("opens_at") or not spot.get("closes_at"):
             return True
         opens = int(spot["opens_at"][:2]) * 60 + int(spot["opens_at"][3:5])
         closes = int(spot["closes_at"][:2]) * 60 + int(spot["closes_at"][3:5])
         at = ctx["now_minutes"]
-        if closes < opens:                      # closes after midnight
+        # Closing after midnight. Nothing on campus does at the moment, and
+        # per day hours cannot express it properly anyway: the small hours of
+        # Saturday belong to Saturday, which would read as shut. Left in
+        # because it is right for the one pair of times it is given.
+        if closes < opens:
             return at >= opens or at <= closes
         return opens <= at <= closes
 
@@ -209,19 +249,25 @@ def spot_config(context):
                 "measured from %s" % place, mins)
 
     def noise_factor(spot, ctx):
-        pref = ctx["profile"]["noise_pref"]
+        pref = ctx["profile"].get("noise_pref")
+        labels = {1: "silent", 2: "quiet", 3: "some background noise", 4: "lively", 5: "loud"}
+        label = labels.get(spot["noise_level"], "")
+        if pref is None:
+            # Carried for the label alone. Its weight is zero, so the number
+            # here cannot move anything.
+            return 0.0, label
         # quieter than asked for is fine, louder is what costs
         value = 1.0 if spot["noise_level"] <= pref else 1 - (spot["noise_level"] - pref) / 4
-        labels = {1: "silent", 2: "quiet", 3: "some background noise", 4: "lively", 5: "loud"}
-        return max(0.0, value), labels.get(spot["noise_level"], "")
+        return max(0.0, value), label
 
     def outlets_factor(spot, ctx):
         return (1.0, "has outlets") if spot.get("has_outlets") else (0.0, "")
 
+    known_preference = context["profile"].get("noise_pref") is not None
     return {
         "filters": [is_open],
         "factors": {"walk": walk_factor, "noise": noise_factor, "outlets": outlets_factor},
-        "weights": SPOT_WEIGHTS,
+        "weights": SPOT_WEIGHTS if known_preference else SPOT_WEIGHTS_NO_NOISE,
     }
 
 

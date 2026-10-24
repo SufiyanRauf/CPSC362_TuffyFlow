@@ -1,17 +1,32 @@
 import { useState } from 'react'
 import { useAsync } from '../lib/useAsync'
+import { useDataVersion } from '../lib/useDataVersion'
 import { getSpots } from '../lib/campusData'
+import type { Spot } from '../types'
 import Panel from './Panel'
 import PageHeader from './PageHeader'
 import { spotKindLabels } from '../lib/labels'
+import { campusNow } from '../lib/recommend'
 
 const KINDS = ['any', 'study', 'eat', 'charge', 'meet'] as const
+
+// Shut today, which is most of the food on a weekend. This screen is for
+// browsing rather than for being told where to go now, so a place that is
+// closed stays on the list and says so. Hiding it would be worse: you cannot
+// plan a Monday on a Sunday if Monday's options are invisible.
+function closedToday(hours: Spot['hours'], day: number) {
+  return Object.keys(hours).length > 0 && !hours[day]
+}
 
 export default function SpotsView() {
   const [kind, setKind] = useState<(typeof KINDS)[number]>('any')
   const [maxNoise, setMaxNoise] = useState(5)
   const [outletsOnly, setOutletsOnly] = useState(false)
-  const spots = useAsync(getSpots)
+  // every other loader in the app takes the version. Without it this keeps
+  // whichever account's fetch it started with, and a first fetch that failed
+  // is never tried again.
+  const spots = useAsync(getSpots, [useDataVersion()])
+  const today = campusNow().dayOfWeek
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,8 +91,15 @@ export default function SpotsView() {
                   >
                     <div className="flex items-baseline justify-between gap-3">
                       <h2 className="font-semibold text-titan">{s.name}</h2>
-                      <span className="shrink-0 rounded-md bg-titan-50 px-2 py-0.5 text-xs font-medium text-titan">
-                        {spotKindLabels[s.kind] ?? s.kind}
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {closedToday(s.hours, today) && (
+                          <span className="rounded-md bg-tint-parking px-2 py-0.5 text-xs font-medium text-flame-ink">
+                            Closed today
+                          </span>
+                        )}
+                        <span className="rounded-md bg-titan-50 px-2 py-0.5 text-xs font-medium text-titan">
+                          {spotKindLabels[s.kind] ?? s.kind}
+                        </span>
                       </span>
                     </div>
                     <p className="mt-0.5 text-sm text-ink-soft">
@@ -103,8 +125,10 @@ export default function SpotsView() {
       </Panel>
 
       <p className="text-xs text-ink-faint">
-        Buildings, floors, booking rules and opening hours come from CSUF. Hours shown are
-        Monday to Thursday; each spot lists the rest of its week. Noise, seats and outlets are
+        Buildings, floors, booking rules and opening hours come from CSUF, and each
+        spot shows its published week. Everywhere stays on the list, including
+        what is shut today, so that you can plan ahead; the recommendations on
+        the dashboard leave out anything closed. Noise, seats and outlets are
         our own estimates.
       </p>
     </div>

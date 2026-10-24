@@ -4,7 +4,7 @@ dist/
 dist-ssr/
 *.local
 
-# holds the Supabase keys
+# holds the Firebase config
 .env
 .env.local
 .env.*.local
@@ -35,3 +35,13 @@ yarn-error.log*
 # TypeScript build info
 *.tsbuildinfo
 .venv
+
+# Firebase service account keys. These bypass every security rule, so they
+# never belong in the repository.
+serviceAccountKey*.json
+*-firebase-adminsdk-*.json
+.firebase/
+
+# Which Firebase project you are pointed at. Made by `firebase use --add`,
+# and it is yours rather than the project's.
+.firebaserc

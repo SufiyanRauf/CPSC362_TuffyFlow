@@ -14,16 +14,16 @@ const TITANLINK = 'https://fullerton.campuslabs.com/engage/organization/'
 // learning club. Tags and the summary carry that.
 //
 // Matching anywhere in the string was too loose once the list grew to 320:
-// "ai" came back with 97 of them, mostly off the middle of a word, the faith
+// "ai" came back with 95 of them, mostly off the middle of a word, the faith
 // tag being the worst offender. Anchoring to the start of a word brings that
-// back to 28 and keeps short queries usable.
+// back to 27 and keeps short queries usable.
 function matches(club: Club, query: string) {
   const q = query.trim().toLowerCase()
   if (!q) return true
   const atWordStart = new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i')
   return (
     atWordStart.test(club.name) ||
-    atWordStart.test(club.summary) ||
+    (club.summary !== null && atWordStart.test(club.summary)) ||
     club.tags.some((t) => atWordStart.test(t)) ||
     club.categories.some((c) => atWordStart.test(c))
   )
@@ -38,15 +38,22 @@ export default function ClubsView() {
   const [tag, setTag] = useState('any')
   const [onlyMatches, setOnlyMatches] = useState(false)
   const [showAll, setShowAll] = useState(false)
-  const clubs = useAsync(getClubs)
-  const profile = useAsync(getProfile, [useDataVersion()])
+  // Both loaders take the version. The club list used to take nothing, so it
+  // kept whichever fetch it started with for the life of the mount while the
+  // profile next to it reloaded, and a first fetch that failed was never
+  // retried.
+  const version = useDataVersion()
+  const clubs = useAsync(getClubs, [version])
+  const profile = useAsync(getProfile, [version])
 
   const mine = profile.state === 'ready'
     ? new Set([...profile.data.interests, ...profile.data.career_goals])
     : new Set<string>()
 
-  // the interests the list actually contains, with how many carry each one, so
-  // nobody picks a filter that returns nothing
+  // the interests the whole list contains, with how many carry each one. It
+  // counts across every club rather than the filtered set, so a search and an
+  // interest together can still come back empty. The count is there to show
+  // which interests are worth picking, not to promise a result.
   const counts = new Map<string, number>()
   if (clubs.state === 'ready') {
     for (const club of clubs.data) {
@@ -78,7 +85,7 @@ export default function ClubsView() {
           onChange={(e) => { setQuery(e.target.value); setShowAll(false) }}
           aria-label="Search clubs"
           placeholder="Search clubs"
-          className="w-full rounded-md border border-rule bg-white px-3 py-2 text-sm
+          className="min-h-11 w-full rounded-md border border-rule-strong bg-white px-3 py-2 text-sm
                      placeholder:text-ink-faint sm:min-w-48 sm:flex-1"
         />
 
@@ -86,7 +93,7 @@ export default function ClubsView() {
           aria-label="Filter by interest"
           value={tag}
           onChange={(e) => { setTag(e.target.value); setShowAll(false) }}
-          className="rounded-md border border-rule bg-white px-2.5 py-2 text-sm"
+          className="min-h-11 rounded-md border border-rule-strong bg-white px-2.5 py-2 text-sm"
         >
           <option value="any">All interests</option>
           {interests.map(([name, n]) => (
@@ -127,11 +134,11 @@ export default function ClubsView() {
           if (scored.length === 0) {
             return (
               <div className="py-6 text-sm text-ink-faint">
-                <p>Nothing matches those filters.</p>
+                <p role="status">Nothing matches those filters.</p>
                 <button
                   type="button"
                   onClick={reset}
-                  className="mt-1 font-medium text-titan hover:underline"
+                  className="mt-1 min-h-11 font-medium text-titan hover:underline"
                 >
                   Reset filters
                 </button>
@@ -183,17 +190,23 @@ export default function ClubsView() {
                       TitanLink categories: {club.categories.join(', ')}
                     </p>
 
-                    {/* a bare 16px link was too small a target, so it is a proper button */}
-                    <a
-                      href={TITANLINK + club.website_key}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-rule
-                                 px-2.5 py-1.5 text-xs font-medium text-titan hover:border-titan"
-                    >
-                      View on TitanLink
-                      <ArrowRightIcon className="h-3.5 w-3.5" />
-                    </a>
+                    {/* a bare 16px link was too small a target, so it is a proper button.
+                        Not every club has a page: the column is nullable, and a link
+                        built from nothing points at a live 404, which is worse than
+                        not offering one. */}
+                    {club.website_key && (
+                      <a
+                        href={TITANLINK + club.website_key}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-md
+                                   border border-rule-strong px-2.5 text-xs font-medium text-titan
+                                   hover:border-titan"
+                      >
+                        View on TitanLink
+                        <ArrowRightIcon className="h-3.5 w-3.5" />
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>
@@ -202,7 +215,7 @@ export default function ClubsView() {
                 <button
                   type="button"
                   onClick={() => setShowAll(true)}
-                  className="mt-3 w-full rounded-xl border border-rule bg-white px-4 py-3 text-sm
+                  className="mt-3 w-full rounded-xl border border-rule-strong bg-white px-4 py-3 text-sm
                              font-medium text-titan hover:border-titan"
                 >
                   Show the other {scored.length - visible.length}

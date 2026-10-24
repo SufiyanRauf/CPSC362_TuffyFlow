@@ -2,7 +2,8 @@ import { useAsync } from '../lib/useAsync'
 import { getAvailabilityAround, getParkingLots } from '../lib/campusData'
 import { campusNow } from '../lib/recommend'
 import { BUSY_PERCENT } from '../lib/time'
-import { useMinuteTick } from '../lib/useMinuteTick'
+import { useCampusHour } from '../lib/useMinuteTick'
+import { useDataVersion } from '../lib/useDataVersion'
 import Panel from './Panel'
 
 // What CSUF actually counts. The employee, resident and hourly lots are our
@@ -34,7 +35,10 @@ async function fillNow() {
 }
 
 export default function StructureFill() {
-  const data = useAsync(fillNow, [useMinuteTick()])
+  // The hour, not the minute. Which occupancy row this shows only changes on
+  // the hour, so asking again every minute was sixty times the reads for the
+  // same answer.
+  const data = useAsync(fillNow, [useCampusHour(), useDataVersion()])
 
   return (
     <Panel source={data}>

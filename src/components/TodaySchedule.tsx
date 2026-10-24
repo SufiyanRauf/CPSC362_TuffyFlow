@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useAsync } from '../lib/useAsync'
 import { getBuildings, getClassMeetings } from '../lib/campusData'
 import { campusNow } from '../lib/recommend'
@@ -15,8 +16,16 @@ const statusLabels: Record<Status, string> = {
   done: 'Done',
 }
 
-async function todaysClasses() {
+// Fetching and working out are separate on purpose. The rows change when the
+// schedule does; the statuses change when the clock does. Doing both in one
+// loader meant asking the database for the same 37 documents every minute to
+// find out whether a class had started.
+async function todaysRows() {
   const [meetings, buildings] = await Promise.all([getClassMeetings(), getBuildings()])
+  return { meetings, buildings }
+}
+
+function shape({ meetings, buildings }: Awaited<ReturnType<typeof todaysRows>>) {
   const { dayOfWeek, minutes } = campusNow()
   const where = new Map(buildings.map((b) => [b.id, b.name]))
   return meetings
@@ -40,7 +49,16 @@ async function todaysClasses() {
 }
 
 export default function TodaySchedule() {
-  const classes = useAsync(todaysClasses, [useMinuteTick(), useDataVersion()])
+  const source = useAsync(todaysRows, [useDataVersion()])
+  // in the dependencies on purpose, and not used in the body: it is the clock
+  // moving that makes the statuses worth working out again
+  const tick = useMinuteTick()
+  const classes = useMemo(
+    () => (source.state === 'ready'
+      ? { state: 'ready' as const, data: shape(source.data) }
+      : source),
+    [source, tick],
+  )
 
   return (
     <Panel source={classes} empty="Nothing scheduled today.">

@@ -73,6 +73,15 @@
   outline-offset: -2px;
 }
 
+/* The login card hands focus to its heading when the form behind it changes,
+   so that a reader hears which card it is now. Programmatic focus does not
+   count as :focus-visible, so without this the ring simply disappears and a
+   sighted keyboard user loses their place in a card that just rearranged. */
+h1[tabindex="-1"]:focus {
+  outline: 2px solid var(--color-flame-ink);
+  outline-offset: 4px;
+}
+
 /* The content area is what the skip link and the login screen hand focus to,
    so it is the first thing a keyboard lands on. Its ring was drawn outside the
    box, where the top went under the sticky header, the sides under the nav and

@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { useAsync } from '../lib/useAsync'
 import { getRecommendations, findNextClass } from '../lib/recommend'
 import Panel from './Panel'
@@ -7,18 +8,40 @@ import { ArrowRightIcon, ClockIcon, WalkIcon } from './icons'
 import { BUSY_PERCENT, DAYS } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
 import { directionsUrl } from '../lib/maps'
+import type { MapPoint } from './CampusMap'
 import type { Recommendation } from '../types'
 
-// Parking apps label why an option is in the list rather than printing a raw
-// score, which reads far better than "74%". These come out of the same numbers.
+// Leaflet and its stylesheet are about a quarter of the whole bundle and this
+// is the one screen that wants them, so they are fetched when somebody opens
+// it rather than on the way to the dashboard. The type above is imported
+// separately because a type import disappears at compile time and would
+// otherwise drag the module back into the first download.
+//
+// The catch matters more than it looks. A tab left open across a deploy asks
+// for a file name that no longer exists, and an import that rejects with
+// nothing to catch it takes the whole screen down to a blank page. The list is
+// the answer on this screen and the map is the illustration, so losing the
+// list to the illustration is the wrong way round.
+const CampusMap = lazy(() =>
+  import('./CampusMap').catch(() => ({
+    default: () => (
+      <p className="rounded-xl border border-rule bg-paper px-4 py-6 text-center text-xs text-ink-faint">
+        The map could not load. Everything it shows is in the list above.
+      </p>
+    ),
+  })),
+)
+
+// A label for why an option is in the list, alongside the score rather than
+// instead of it. "Shortest walk" is what somebody actually wants to know;
+// "74%" is how it was worked out. Both come from the same numbers.
 function badges(lots: Recommendation[]) {
   const mark = new Map<string, string>()
   const walkable = lots.filter((l) => l.walk_minutes !== null)
   const closest = [...walkable].sort((a, b) => Number(a.walk_minutes) - Number(b.walk_minutes))[0]
-  const pct = (l: Recommendation) => {
-    const r = l.reasons.find((x) => x.includes('% full'))
-    return r ? Number(r.replace(/\D+/g, '')) : 101
-  }
+  // 101 for a lot with no reading, so it sorts behind every real one rather
+  // than ahead of them as a zero would
+  const pct = (l: Recommendation) => l.pct_full ?? 101
   const emptiest = [...lots].sort((a, b) => pct(a) - pct(b))[0]
   if (lots[0]) mark.set(lots[0].id, 'Best overall')
   if (closest && !mark.has(closest.id)) mark.set(closest.id, 'Shortest walk')
@@ -44,6 +67,21 @@ export default function ParkingView() {
       `${when(next.data.day_offset, next.data.day_of_week)} in ${next.data.building_name}`
     : 'your next class'
 
+  // Where the walks are measured to, so the map shows what the ranking is
+  // relative to rather than a scatter of lots. findNextClass falls back to
+  // zero for a class whose building has gone missing, and a marker at 0, 0 is
+  // in the Atlantic, which would zoom the map out to the whole world.
+  const classPoint: MapPoint | null =
+    next.state === 'ready' && next.data && next.data.building_lat !== 0
+      ? {
+          id: 'next-class',
+          label: `${next.data.course_code} in ${next.data.building_name}`,
+          lat: next.data.building_lat,
+          lng: next.data.building_lng,
+          tone: 'here',
+        }
+      : null
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Parking">
@@ -53,18 +91,38 @@ export default function ParkingView() {
       <Panel source={recs}>
         {(data) => {
           if (data.parking.length === 0) {
+            // Two different reasons, and they want different sentences. If
+            // there is a next class then the schedule is fine and the permit
+            // is the only thing that can have emptied this, so say that rather
+            // than listing both and making the student work out which.
+            const haveClass = next.state === 'ready' && next.data !== null
             return (
               <p className="rounded-xl border border-rule bg-paper px-5 py-6 text-sm text-ink-soft">
-                No lots to rank. Add a class on your profile, or check your permit type.
+                {haveClass
+                  ? 'No lots to rank, because your profile does not say which permit you hold. Every lot takes some permits and not others, so there is no lot we can stand behind until it does.'
+                  : 'No lots to rank. Add a class on your profile and these fill in.'}
               </p>
             )
           }
           const marks = badges(data.parking)
+          const points: MapPoint[] = [
+            ...(classPoint ? [classPoint] : []),
+            ...data.parking.flatMap((lot, i) =>
+              lot.lat !== null && lot.lng !== null
+                ? [{
+                    id: lot.id,
+                    label: lot.title,
+                    lat: lot.lat,
+                    lng: lot.lng,
+                    tone: (i === 0 ? 'pick' : 'rest') as MapPoint['tone'],
+                  }]
+                : []),
+          ]
           return (
+            <>
             <ul className="flex flex-col gap-3">
               {data.parking.map((lot, i) => {
-                const fullness = lot.reasons.find((r) => r.includes('% full'))
-                const pct = fullness ? Number(fullness.replace(/\D+/g, '')) : null
+                const pct = lot.pct_full
                 const mark = marks.get(lot.id)
                 return (
                   <li
@@ -145,6 +203,25 @@ export default function ParkingView() {
                 )
               })}
             </ul>
+
+            {/* After the list, not before it. The list is the answer; this is
+                for working out where the answer actually is. */}
+            <Suspense
+              fallback={
+                <p className="rounded-xl border border-rule bg-paper px-4 py-6 text-center text-xs text-ink-faint">
+                  Loading the map…
+                </p>
+              }
+            >
+              <CampusMap
+                points={points}
+                caption={
+                  'Orange is the top pick, pale blue the rest of the ranking' +
+                  (classPoint ? ', navy where your class is.' : '.')
+                }
+              />
+            </Suspense>
+            </>
           )
         }}
       </Panel>

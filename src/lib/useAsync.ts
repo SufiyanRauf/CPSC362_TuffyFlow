@@ -6,9 +6,11 @@ export function useAsync<T>(load: () => Promise<T>, deps: unknown[] = []): Loada
 
   useEffect(() => {
     let cancelled = false
-    // only blank the panel on a first load. The dashboard refetches every
-    // minute, and resetting here made the rail collapse to "Loading…" and
-    // spring back each time.
+    // only blank the panel on a first load. Back when the dashboard refetched
+    // every minute, resetting here made the rail collapse to "Loading…" and
+    // spring back each time. Nothing refetches on the clock any more, but a
+    // refetch still happens whenever the rows change, and the flicker would
+    // be the same.
     setState((current) => (current.state === 'ready' ? current : { state: 'loading' }))
     load()
       .then((data) => {

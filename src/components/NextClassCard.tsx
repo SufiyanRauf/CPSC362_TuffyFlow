@@ -32,19 +32,21 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 // The one panel on the page that answers the whole question: when is class, and
 // where should the car go. Everything below it is detail.
 export default function NextClassCard({ nextClass, lot }: NextClassCardProps) {
-  if (nextClass.minutes_until === null) {
-    return (
-      <div className="rounded-xl border border-rule bg-paper px-6 py-6">
-        <Eyebrow>Next class</Eyebrow>
-        <p className="mt-2 text-ink-soft">No more classes today.</p>
-      </div>
-    )
-  }
+  // There used to be a "No more classes today" card here, guarded on
+  // minutes_until being null. Nothing could reach it: a Friday evening still
+  // has a next class, it is just days out, which is why this says Monday
+  // rather than counting down. Having no classes at all is a different case
+  // and the dashboard answers it before this card is rendered.
 
   const { value, label } = countdown(
     nextClass.minutes_until, nextClass.day_offset, nextClass.day_of_week,
   )
-  const fullness = lot?.reasons.find((r) => r.includes('% full'))
+  // From the number on the result rather than by picking the sentence that
+  // happens to contain a percent sign. The parking screen used to do the same
+  // thing and it tied the wording of the scorer to the wording of a card.
+  const fullness = lot?.pct_full === null || lot?.pct_full === undefined
+    ? null
+    : `usually about ${lot.pct_full}% full when you would arrive`
 
   return (
     <div className="rounded-xl border border-rule bg-paper px-6 py-6">

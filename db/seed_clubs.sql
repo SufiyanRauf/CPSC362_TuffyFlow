@@ -7,7 +7,9 @@
 --      https://www.fullerton.edu/sll/involvement/clubs/
 --   2. TitanLink, CSUF's student organization directory, read 1 October 2026
 --      from /engage/api/discovery/search/organizations?top=1000
---      701 records, 391 of them Active. This supplies the id, the summary, the
+--      701 records, 391 of them Active by the time we settled on the list.
+--      One organization was frozen between the two pulls, which is why the
+--      number below says 392. This supplies the id, the summary, the
 --      description, the website key and the categories.
 --      https://fullerton.campuslabs.com/engage
 --
@@ -24,7 +26,8 @@
 --   in the status column, because the roster says who is registered.
 --
 --   An earlier version of this file carried 66. The directory was filtered to
---   Active and Public, which leaves 392, and then hand picked down to a spread
+--   Active and Public, which left 392 on the day of that pull, and then hand
+--   picked down to a spread
 --   of interests. Active only means an org's page is live, so it never answered
 --   the question we were really asking, and with nothing else to go on we
 --   curated. The roster answers it, so there is no reason to curate at all.

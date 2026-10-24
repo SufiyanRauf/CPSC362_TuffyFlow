@@ -1,4 +1,4 @@
-import type { RecommendResponse } from '../types'
+import type { Building, ClassMeeting, RecommendResponse, Spot } from '../types'
 import {
   getAvailabilityAround, getBuildings, getClassMeetings, getEvents,
   getParkingLots, getProfile, getSpots,
@@ -46,8 +46,17 @@ function toMinutes(time: string) {
   return h * 60 + m
 }
 
-export async function findNextClass() {
-  const [meetings, buildings] = await Promise.all([getClassMeetings(), getBuildings()])
+// Split out from findNextClass so that getRecommendations can work it out
+// from rows it has already fetched. It used to call findNextClass, which did
+// its own fetch, and then fetch everything else in a second round. Signing in
+// between the two rounds meant the class came from the sample campus and the
+// buildings came from the database, and since nothing joined across the two, every
+// spot and every event was dropped and the dashboard looked like a working
+// account with nothing to recommend. Everything that has to join now comes
+// out of one round. The occupancy rows still follow in a second, because
+// which ones to ask for depends on when the class is; the comment down there
+// says what that costs.
+function nextClassFrom(meetings: ClassMeeting[], buildings: Building[]) {
   const { dayOfWeek, minutes } = campusNow()
 
   const upcoming = meetings.map((m) => {
@@ -59,8 +68,9 @@ export async function findNextClass() {
       daysAhead = (m.day_of_week - dayOfWeek + 7) % 7
       if (daysAhead === 0) daysAhead = 7
     }
-    // Counted in calendar days, not minutes divided by 1440. Friday 23:00 to a
-    // Monday 10:00 class is three days ahead but only 2100 minutes away.
+    // Counted in calendar days, not minutes divided by 1440. Saturday 23:00 to
+    // a Monday 10:00 class is two days ahead but only 2100 minutes away, so
+    // dividing the gap by 1440 would call it one.
     return { meeting: m, until: daysAhead * 1440 + start - minutes, start, daysAhead }
   })
 
@@ -83,6 +93,17 @@ export async function findNextClass() {
   }
 }
 
+// A spot with no hours at all is one we do not know about, which the scorer
+// treats as open rather than guessing. A spot with hours but not for today is
+// shut today, and saying so is the whole reason the hours are per day.
+function todaysHours(spot: Spot, day: number) {
+  const known = Object.keys(spot.hours).length > 0
+  const today = spot.hours[day]
+  if (!known) return { opens_at: null, closes_at: null, closed_today: false }
+  if (!today) return { opens_at: null, closes_at: null, closed_today: true }
+  return { opens_at: today[0], closes_at: today[1], closed_today: false }
+}
+
 function assertResponse(json: unknown): RecommendResponse {
   const r = json as RecommendResponse
   if (!r || !Array.isArray(r.parking) || !Array.isArray(r.spots) || !Array.isArray(r.events)) {
@@ -91,8 +112,19 @@ function assertResponse(json: unknown): RecommendResponse {
   return r
 }
 
+export async function findNextClass() {
+  const [meetings, buildings] = await Promise.all([getClassMeetings(), getBuildings()])
+  return nextClassFrom(meetings, buildings)
+}
+
 export async function getRecommendations(): Promise<RecommendResponse> {
-  const next = await findNextClass()
+  // Everything the ranking needs, in one go, so it is all from whichever
+  // source answered first.
+  const [profile, lots, spots, events, buildings, meetings] = await Promise.all([
+    getProfile(), getParkingLots(), getSpots(), getEvents(), getBuildings(), getClassMeetings(),
+  ])
+
+  const next = nextClassFrom(meetings, buildings)
   if (!next) // Nothing to rank against is an empty result, not a failure. Deleting every
     // class on the profile screen used to put an error box on three screens.
     return { parking: [], spots: [], events: [] }
@@ -101,11 +133,13 @@ export async function getRecommendations(): Promise<RecommendResponse> {
   const arrivalHour = Math.floor(
     Math.max(0, next.start_minutes - 20) / 60,
   )
+  // The one query that has to wait, because which rows to ask for depends on
+  // when the class is. Worst case it answers from the other source, and since
+  // the seed writes campus documents at the sample rows' own ids, those would
+  // quietly join rather than visibly fail. Not reachable today: every change
+  // of person remounts the tree, so nothing survives across one.
+  const availability = await getAvailabilityAround(next.day_of_week, arrivalHour)
 
-  const [profile, lots, availability, spots, events, buildings, meetings] = await Promise.all([
-    getProfile(), getParkingLots(), getAvailabilityAround(next.day_of_week, arrivalHour),
-    getSpots(), getEvents(), getBuildings(), getClassMeetings(),
-  ])
   const where = (id: string) => buildings.find((b) => b.id === id)
 
   const body = {
@@ -133,7 +167,11 @@ export async function getRecommendations(): Promise<RecommendResponse> {
       return [{
         id: s.id, name: s.name, kind: s.kind, lat: b.lat, lng: b.lng,
         noise_level: s.noise_level, has_outlets: s.has_outlets,
-        opens_at: s.opens_at, closes_at: s.closes_at,
+        // Today's hours only, worked out here so the scorer keeps taking one
+        // pair of times. closed_today is what tells it the difference between
+        // somewhere shut today and somewhere whose hours we never knew: the
+        // second is not a reason to rule a place out, and the first is.
+        ...todaysHours(s, dayOfWeek),
       }]
     }),
     events: events.flatMap((e) => {
@@ -167,16 +205,30 @@ export async function getRecommendations(): Promise<RecommendResponse> {
     }),
   }
 
-  const res = await fetch('/api/recommend', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  let res: Response
+  try {
+    res = await fetch('/api/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    // A request that never got anywhere rejects rather than returning a
+    // status. Everything read out of Firestore already turns this into a
+    // sentence, and without the same thing here the same outage would read
+    // properly everywhere except on whatever is showing a ranking.
+    throw new Error('Could not reach the server. Check your connection and try again.')
+  }
   if (!res.ok) {
+    // 404 is the deployed case, where the Python function did not build or is
+    // not routed. 502 is the local one: the dev server proxies to uvicorn and
+    // answers with that when nothing is listening, which is what you get
+    // having started only half the app.
     throw new Error(
-      res.status === 404
-        ? 'The scorer is not running. Start it with: PYTHONPATH=api uvicorn api.recommend:app --port 8000'
-        : `The scorer returned ${res.status}`,
+      res.status === 404 || res.status === 502
+        ? 'The scoring service is not answering. Start it with: '
+          + '.venv/bin/python -m uvicorn api.recommend:app --port 8000'
+        : `The scoring service returned ${res.status}`,
     )
   }
   return assertResponse(await res.json())

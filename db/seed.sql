@@ -88,9 +88,9 @@ on conflict (name) do nothing;
 -- The weekday and weekend shapes are genuinely different, which is why there
 -- are two columns rather than one. On a weekday Eastside fills to about 88 per
 -- cent because it is closest to the academic buildings while State College sits
--- at 43. On a Sunday every structure is under 4 per cent except S8 and S10 at
+-- at 43. On a Sunday every structure is under 4 percent except S8 and S10 at
 -- 59, which are next to the stadium and the gym. State College is the highest
--- of the four at almost exactly 4 per cent.
+-- of the four at almost exactly 4 percent.
 --
 -- Only Sunday was sampled for the weekend, so Saturday is an assumption.
 --

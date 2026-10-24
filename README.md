@@ -4,6 +4,12 @@ TuffyFlow is a campus companion web application designed for students at Califor
 
 Live app: https://tuffyflow.vercel.app
 
+That link is a build from before sign in, the live data layer and the map went
+in, so it is missing most of what is described below. Setting the Firebase
+config does not change it: a deployment is a fixed set of files, and this one
+was built without any of that code in it. It needs pushing and redeploying,
+which is the last item on the "Left to do" list.
+
 Early UI prototype, from before the app was built: https://genre-fetch-60235643.figma.site/
 
 ---
@@ -46,12 +52,16 @@ Class Time: 11:30 AM
 Recommended Parking:
 Eastside North Parking Structure
 
-Estimated Walk: 2 minutes
-Expected fullness: usually about 92% full when you would arrive
+Estimated Walk: 3 minutes
+Expected fullness: usually about 99% full when you would arrive
 
 Suggested Arrival Time:
-11:09 AM
+11:07 AM
 ```
+
+That lot is nearly full at that hour and still wins, because the walk counts
+for more than the fullness does. The ranking is explaining a trade, not
+claiming the lot is empty.
 
 ---
 
@@ -102,11 +112,17 @@ Resume Workshop with Industry Mentors
 
 Time: 4:00 PM
 
-Match: 100%
+Match: 90%
 
 Reason:
 matches career and software-engineering
 ```
+
+---
+
+`docs/architecture.mmd` draws this from the student's side: what we know about
+them, the three recommenders it feeds, and what each one hands back. It is a
+Mermaid file, which GitHub renders on its own.
 
 ---
 
@@ -151,12 +167,14 @@ The factors differ per feature:
 ### Backend and Database
 
 * Python with FastAPI, for the scoring endpoint
-* PostgreSQL, hosted on Supabase (schema written, project not created yet)
-* Firebase Authentication for Google sign in (planned, the login screen is built but not wired up)
+* Cloud Firestore, for the campus and for each student's own data
+* Firebase Authentication, for Google sign in and for email and password
+
+Both are free on Firebase's Spark plan for the ways we sign people in.
 
 ### Maps
 
-* Leaflet and OpenStreetMap (planned, not built yet)
+* Leaflet and OpenStreetMap, on the parking screen
 
 ### Deployment
 
@@ -214,8 +232,11 @@ on a Saturday.
 Availability is a typical pattern by day and hour, never a live reading. CSUF
 publishes current counts for six facilities, the four structures plus S8 and S10
 as one combined row, and we read that board three times: once on a Sunday and
-twice on the Thursday. Those two readings set the per lot numbers in
-`db/seed.sql`, and the curve reproduces both to within a point.
+twice on the Thursday. The Sunday reading and the first of the Thursday ones
+set the per lot numbers, first written down in `db/seed.sql` and now carried
+in `src/lib/campusRows.ts`, and the curve reproduces both to
+within a point. The second Thursday reading came after the curve was already
+fitted, which makes it the only real check we have.
 
 Three readings, but only two independent days, and only two of them set the
 numbers, so it is worth being plain about what they do and do not support. They
@@ -225,9 +246,9 @@ the board at all and their figures are guesses.
 
 The weekday and weekend shapes turned out to be genuinely different rather than
 one curve scaled down, which is why the seed carries two columns. On a weekday
-Eastside fills to about 88 per cent because it is nearest the academic
+Eastside fills to about 88 percent because it is nearest the academic
 buildings, while State College sits around 43. On the Sunday reading every
-structure was at or under 4 per cent except S8 and S10 at 59, which are next to
+structure was at 4 percent or just under except S8 and S10 at 59, which are next to
 the stadium and the gym.
 
 We are not reading the board live in this version. It is a web page rather than
@@ -244,17 +265,24 @@ project.
 
 ## Architecture
 
-The application has four parts. Three of them exist today; the database is
-written but not yet created, so the browser reads the same rows from a
-TypeScript file shaped like the tables.
+The application has four parts.
 
-* The browser runs the interface. It holds no permanent data.
+* The browser runs the interface. The only thing it keeps is the session, so
+  that a reload does not sign you out.
 * The database holds every row and decides who can read what.
 * The scoring service is a Python function that ranks candidates.
 * Vercel serves the site and runs the scoring function.
 
-A single recommendation travels like this, with the database step standing in
-for `src/lib/campusData.ts` until Supabase exists:
+There are two places the rows can come from, and who is signed in decides
+which. A student with an account gets their own rows out of Firestore. The
+demo, and anyone running this without a project of their own, gets the same
+rows from `src/lib/campusRows.ts`, which is what the seed script loads. The
+choice is made in `src/lib/campusData.ts`, so no screen has to work out where a
+row came from. Two of them do ask who is signed in, but only to choose their wording:
+the profile screen says whether changes are saved to an account, and the top
+bar says which account you are in.
+
+A single recommendation travels like this:
 
 ```text
 Browser reads the session
@@ -268,48 +296,200 @@ Browser reads the session
 
 The scoring service gets the rows it needs in the request rather than querying the database, so it does not need any credentials of its own.
 
-Access control is designed around PostgreSQL row level security, so the database
-enforces per row who may read what. A student would only ever read their own
-profile and their own class schedule, regardless of what the browser asks for.
-The twelve policies are written in `db/schema.sql` and apply cleanly to a real
-Postgres, but nothing is enforcing them yet because there is no database and no
-sign in.
+Access control is Firestore security rules, in `db/firestore.rules`. They run
+on Google's side, which is what makes them the security model rather than a
+suggestion: the Firebase config ships inside the JavaScript bundle, so anyone
+can read it out and talk to the database directly, and nothing in the React
+code would stop them.
+
+The campus is readable by any signed in student and writable by nobody. A
+student's profile document is named after their account id, so "is this yours"
+is a comparison rather than a lookup, and the rule grants reading one document
+and never listing the collection, so asking for everybody's profiles is
+refused. A class schedule is a subcollection underneath the profile, so owning
+it is the path rather than a field somebody could set. Firestore denies
+anything the rules do not explicitly allow, so a collection nobody mentions is
+closed.
+
+Being plain about the limits: signed in means anybody who made an account,
+because nothing here checks the email is a CSUF one. That stops a passer-by
+scraping the campus data, not somebody determined. The rules also name the
+sign in provider, so that switching anonymous sign in on in the console cannot
+quietly turn "signed in" into "anybody".
+
+The rules also carry the validation that used to be check constraints: a permit
+has to be one of the four, a noise preference has to be between one and five,
+and a class has to end after it starts.
 
 ---
 
 ## Current Project Status
 
-All six screens work against real data held in the repository, behind a login screen.
+Every feature is built. What is left is account setup on two websites, which is
+configuration rather than code.
 
 Completed:
 
 * Project concept, initial presentation and UI prototype
 * Database schema, security policies and seed data
-* The ranking engine, in Python, with tests
+* The ranking engine, in Python, with 56 tests
+* The access rules, with 23 tests against Firebase's emulator
 * Dashboard, parking, spots, clubs, events and profile screens
-* Login screen, with a demo entry that needs no account
-* Profile editing: permit, noise preference, interests, goals and the weekly schedule
+* Sign up, log in, Google sign in and sign out, written and tested as far as
+  they can be without a project to point them at
+* A demo entry that needs no account, for showing the app without one
+* The reads and writes a signed in student needs, and the security rules that
+  decide what they are allowed to touch, written but not yet run against a
+  live project
+* A seed script that loads the campus, reading the same rows the demo shows
+* Profile editing: name, major, permit, noise preference, interests, goals and
+  the weekly schedule
 * Campus data read from CSUF's own pages: buildings, lots, clubs, library and dining
-* Deployed to Vercel
+* The campus map, on the parking screen
+* Access rules written for every collection, with the validation that used to
+  be database constraints
+* Deployed to Vercel, though that deployment predates everything above
 
-In progress:
+Left to do, and all of it configuration rather than code:
 
-* Supabase setup, which is the one thing blocking real queries and sign in
+1. Create the Firebase project, switch on the two ways of signing in, and
+   create a Firestore database
+2. Put the four config values into `.env` and into Vercel
+3. Publish `db/firestore.rules`
+4. Run `db/seed_firestore.mjs` once to load the campus
+5. Push and redeploy, so the live link serves this version rather than the
+   one from before any of it existed
 
-Not started:
-
-* Authentication and the map
+Until step 2 is done the app runs on the sample campus bundled in the
+repository, the demo works, and the login screen says why signing in is
+unavailable. That is deliberate: a marker who clones this repository gets a
+working app rather than a blank screen.
 
 ---
 
-## Planned Development
+## Setting it up
 
-1. Set up Supabase and load the schema
-2. Swap the data accessors over to real queries
-3. Wire the login screen up to Firebase
-4. Integrate the map
-5. Test with two accounts to prove the security policies hold
-6. Final deployment
+### Running it locally
+
+```bash
+npm install
+npm run dev
+
+# the scoring service, in a second terminal
+python3 -m venv .venv && .venv/bin/pip install -r api/requirements.txt
+.venv/bin/python -m uvicorn api.recommend:app --port 8000
+```
+
+There are two sets of tests. The ranking engine, which is the part with the
+logic worth testing:
+
+```bash
+.venv/bin/python -m pytest tests/
+```
+
+And the access rules, which are the part worth being certain about. These run
+against Firebase's emulator rather than a real project, so they need Java:
+
+```bash
+npm install -g firebase-tools     # once
+brew install openjdk              # once, for the emulator
+export PATH=/opt/homebrew/opt/openjdk/bin:$PATH
+npm run test:rules
+```
+
+The cask version of the JDK wants an administrator password; the formula above
+does not, and the emulator only needs it on the PATH.
+
+They check what the rules actually do rather than whether they are present: a
+logged out visitor sees nothing, an anonymous sign in counts as nobody, one
+student cannot read or write another's profile or schedule, the campus is read
+only from a browser, a profile can only be created empty, and a class with a
+malformed time or a field nobody asked for is refused.
+
+That is enough to use every screen on the sample campus. The rest connects it
+to a database.
+
+### Connecting Firebase
+
+1. Make a project at console.firebase.google.com. Google Analytics is not
+   needed and can be turned off.
+2. Build, Authentication, Get started. Switch on **Email/Password** and
+   **Google**. Both are free on the Spark plan.
+3. Build, Firestore Database, Create database. Pick a location near you. Start
+   in production mode: the rules you publish in step 6 replace whatever it
+   starts with, and production mode denies everything until then, which is the
+   safer thing to be wrong about.
+4. Project settings, General. Under "Your apps", add a Web app. Firebase shows
+   you a config object with four values worth having: `apiKey`, `authDomain`,
+   `projectId` and `appId`.
+5. Copy `.env.example` to `.env` and paste those four in. Restart
+   `npm run dev`: Vite only reads `.env` at startup. Add the same four in
+   Vercel, under Project Settings, Environment Variables, then redeploy.
+   Without this the deployed app stays on the sample data while your machine
+   does not, which is confusing to debug.
+6. Publish the rules:
+
+   ```bash
+   npm install -g firebase-tools
+   firebase login
+   firebase use --add        # pick the project you just made
+   firebase deploy --only firestore:rules
+   ```
+
+   `firebase.json` at the repository root is what points that command at
+   `db/firestore.rules`. You can also paste the file into the Rules tab in the
+   console and press Publish, which does the same thing.
+
+Signing in works at this point, but every screen is empty until the campus is
+loaded.
+
+### Loading the campus
+
+The seed script writes with the Admin SDK, which bypasses the rules on purpose:
+it runs on your machine, not in a browser.
+
+1. Project settings, Service accounts, Generate new private key. That downloads
+   a JSON file.
+2. Keep it out of the repository. `.gitignore` already covers
+   `serviceAccountKey*.json` and the name Firebase gives it, but the safest
+   place is somewhere else entirely.
+3. Run it:
+
+   ```bash
+   node db/seed_firestore.mjs ~/Downloads/your-key.json
+   ```
+
+Needs Node 22.18 or newer, which reads the TypeScript data file the script
+imports without a build step. On an older Node it stops with
+`ERR_UNKNOWN_FILE_EXTENSION` and nothing saying why.
+
+It writes 17 buildings, 12 parking lots with their week of occupancy, 24
+campus spots, 320 clubs and 12 events, and prints what it wrote. Running it
+again overwrites rather than duplicating.
+
+That key is the one real secret in this project. It ignores every rule in
+`db/firestore.rules`. Do not commit it and do not paste it anywhere.
+
+### Signing in for the first time
+
+There is no demo account to set up. Firebase has no free way to run code when
+somebody signs up, so the app writes a student's profile document itself the
+first time they sign in, and the profile screen opens with a short list of what
+is still missing: the permit, the noise preference and the class schedule.
+
+Events are dated when they are written, so **re-run the seed before a demo**
+or a signed in account will see none at all. The demo that needs no account
+works them out fresh on every page load, so it never looks wrong and will not
+warn you that the real one has gone stale.
+
+To erase somebody completely, including their schedule:
+
+```bash
+node db/delete_account.mjs ~/Downloads/your-key.json them@csu.fullerton.edu
+```
+
+Firebase does not cascade. Deleting an account on its own leaves the profile
+document and every class in it behind, at a path nothing can reach.
 
 ---
 

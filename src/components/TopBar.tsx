@@ -4,6 +4,9 @@ import { getProfile } from '../lib/campusData'
 import { CalendarIcon, SignOutIcon, UserIcon } from './icons'
 import { CAMPUS_TZ } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
+import { useMinuteTick } from '../lib/useMinuteTick'
+import { useSession } from '../lib/session'
+import { personName } from '../lib/labels'
 
 type TopBarProps = {
   onOpenProfile: () => void
@@ -29,6 +32,10 @@ function initials(name: string) {
 // this person, and a search field that does nothing is worse than no field.
 export default function TopBar({ onOpenProfile, onSignOut }: TopBarProps) {
   const profile = useAsync(getProfile, [useDataVersion()])
+  const session = useSession()
+  // The header is the one place the date is written down, and a tab left open
+  // overnight kept yesterday's until something else happened to rerender.
+  useMinuteTick()
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -84,6 +91,19 @@ export default function TopBar({ onOpenProfile, onSignOut }: TopBarProps) {
 
   const item = 'flex w-full items-center gap-2.5 px-3 py-3 text-left text-sm text-ink hover:bg-titan-50'
 
+  // Read on its own the trigger is just a name, or two initials on a phone, so
+  // the second line says a bit more. The major is the more useful of the two
+  // when it is set, and the email is what tells one account from another when
+  // it is not.
+  const email = session.kind === 'account' ? session.email : ''
+  const ready = profile.state === 'ready' ? profile.data : null
+  const name = personName(ready?.full_name ?? null, email)
+  const under = ready ? ready.major || email || 'Sample student' : email
+  // The panel says which account, which is a different question and the one
+  // that matters once two people share a browser. In the demo the honest
+  // answer is that there is no account at all.
+  const who = session.kind === 'account' ? email : 'Sample student, not an account'
+
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-rule
                        bg-white px-4 py-3 md:px-8">
@@ -92,64 +112,78 @@ export default function TopBar({ onOpenProfile, onSignOut }: TopBarProps) {
         {today()}
       </p>
 
-      {profile.state === 'ready' && (
-        <div ref={wrap} className="relative">
-          {/* Clicking your own name did nothing before, which left no way to
-              sign out. Read on its own the button is just a name, or two
-              initials on a phone, so the label says what it is for.
-              aria-expanded and aria-controls are what make it a disclosure;
-              aria-haspopup is deliberately not here, because ARIA treats it as
-              a promise of a menu with arrow keys. Safari and Firefox do not
-              focus a button when you click it, so closing this way would leave
-              focus on the item that is about to unmount. */}
-          <button
-            ref={trigger}
-            type="button"
-            onClick={(e) => { e.currentTarget.focus(); setOpen((shown) => !shown) }}
-            aria-label={`Account for ${profile.data.full_name}`}
-            aria-expanded={open}
-            aria-controls={open ? 'account-menu' : undefined}
-            className="flex items-center gap-2.5 rounded-lg px-2 py-1 hover:bg-titan-50"
-          >
-            <span className="hidden text-right leading-tight sm:block">
-              <span className="block text-sm font-medium text-titan">{profile.data.full_name}</span>
-              <span className="block text-xs text-ink-faint">{profile.data.major}</span>
-            </span>
-            <span aria-hidden="true"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-titan text-xs
-                             font-semibold text-white">
-              {initials(profile.data.full_name)}
-            </span>
-          </button>
+      {/* Not conditional on the profile having loaded. It used to be, which was
+          fine while the profile was a variable in a file and could not fail.
+          It is a query now, and a student whose profile row would not load was
+          left with no account menu and so no way to sign out of the account
+          that was failing. The name falls back to the email. */}
+      <div ref={wrap} className="relative">
+        {/* Clicking your own name did nothing before, which left no way to
+            sign out. Read on its own the button is just a name, or two
+            initials on a phone, so the label says what it is for.
+            aria-expanded and aria-controls are what make it a disclosure.
+            aria-haspopup is deliberately not here, because ARIA treats it as
+            a promise of a menu with arrow keys. */}
+        <button
+          ref={trigger}
+          type="button"
+          /* the focus() is for Safari and Firefox, which do not focus a button
+             when it is clicked, so closing from inside the panel would hand
+             focus to an element that is about to unmount */
+          onClick={(e) => { e.currentTarget.focus(); setOpen((shown) => !shown) }}
+          aria-label={`Account for ${name}`}
+          aria-expanded={open}
+          aria-controls={open ? 'account-menu' : undefined}
+          className="flex items-center gap-2.5 rounded-lg px-2 py-1 hover:bg-titan-50"
+        >
+          <span className="hidden text-right leading-tight sm:block">
+            <span className="block text-sm font-medium text-titan">{name}</span>
+            <span className="block text-xs text-ink-faint">{under}</span>
+          </span>
+          <span aria-hidden="true"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-titan text-xs
+                           font-semibold text-white">
+            {initials(name)}
+          </span>
+        </button>
 
-          {open && (
-            /* Two buttons in a popover, so this is a disclosure. role="menu"
-               would owe arrow keys and a roving tabindex, and the name header
-               below is not a legal child of one. The border has to carry the
-               edge, because a white panel sits on a white page: rule is too
-               faint for that at 1.3:1, so this takes the stronger one. */
-            <div
-              id="account-menu"
-              className="menu absolute right-0 z-30 mt-4 w-56 overflow-hidden rounded-xl
-                         border border-rule-strong bg-white py-1 shadow-[0_8px_24px_rgba(0,39,76,0.12)]"
-            >
-              <p className="border-b border-rule px-3 pb-2 pt-1.5 text-xs text-ink-faint sm:hidden">
-                {profile.data.full_name}
-              </p>
-              <button ref={firstItem} type="button" className={item}
-                      onClick={() => choose(onOpenProfile)}>
-                <UserIcon className="h-4 w-4 text-ink-faint" />
-                Profile and settings
-              </button>
-              <button type="button" className={item + ' border-t border-rule'}
-                      onClick={() => choose(onSignOut)}>
-                <SignOutIcon className="h-4 w-4 text-ink-faint" />
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        {open && (
+          /* Two buttons in a popover, so this is a disclosure. role="menu"
+             would owe arrow keys and a roving tabindex, and the name header
+             below is not a legal child of one. The border has to carry the
+             edge, because a white panel sits on a white page: rule is too
+             faint for that at 1.3:1, so this takes the stronger one. */
+          <div
+            id="account-menu"
+            className="menu absolute right-0 z-30 mt-4 w-56 overflow-hidden rounded-xl
+                       border border-rule-strong bg-white py-1 shadow-[0_8px_24px_rgba(0,39,76,0.12)]"
+          >
+            {/* Which account this is, on every screen size rather than just
+                the phone. Two accounts in one browser is exactly what the
+                security policies have to be tested with, and before this
+                there was nothing on screen saying which one you were in. */}
+            <p className="border-b border-rule px-3 pb-2 pt-1.5">
+              <span className="block truncate text-sm font-medium text-titan sm:hidden">{name}</span>
+              <span className="block truncate text-xs text-ink-faint">{who}</span>
+            </p>
+            <button ref={firstItem} type="button" className={item}
+                    onClick={() => choose(onOpenProfile)}>
+              <UserIcon className="h-4 w-4 text-ink-faint" />
+              Profile and settings
+            </button>
+            <button type="button" className={item + ' border-t border-rule'}
+                    onClick={() => choose(onSignOut)}>
+              <SignOutIcon className="h-4 w-4 text-ink-faint" />
+              {/* The demo is not an account, so signing out of it is not a
+                  thing it can do. Saying what it really does avoids the
+                  surprise of pressing Sign out and landing inside an account,
+                  which is what happens when this browser is signed in in
+                  another tab. */}
+              {session.kind === 'demo' ? 'Leave demo' : 'Sign out'}
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   )
 }
