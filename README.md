@@ -4,11 +4,13 @@ TuffyFlow is a campus companion web application designed for students at Califor
 
 Live app: https://tuffyflow.vercel.app
 
-That link is a build from before sign in, the live data layer and the map went
-in, so it is missing most of what is described below. Setting the Firebase
-config does not change it: a deployment is a fixed set of files, and this one
-was built without any of that code in it. It needs pushing and redeploying,
-which is the last item on the "Left to do" list.
+It serves everything described below, with one thing switched off: there is no
+Firebase project behind it yet, so the login screen says so and View demo is
+the way in. The demo is the whole app on the sample campus, which is what it
+was built to be good for.
+
+Adding the config is a build time thing rather than a setting, so whoever adds
+it to Vercel has to redeploy afterwards or the live copy will not pick it up.
 
 Early UI prototype, from before the app was built: https://genre-fetch-60235643.figma.site/
 
@@ -348,7 +350,7 @@ Completed:
 * The campus map, on the parking screen
 * Access rules written for every collection, with the validation that used to
   be database constraints
-* Deployed to Vercel, though that deployment predates everything above
+* Deployed to Vercel, which rebuilds on every push to main
 
 Left to do, and all of it configuration rather than code:
 
@@ -357,8 +359,8 @@ Left to do, and all of it configuration rather than code:
 2. Put the four config values into `.env` and into Vercel
 3. Publish `db/firestore.rules`
 4. Run `db/seed_firestore.mjs` once to load the campus
-5. Push and redeploy, so the live link serves this version rather than the
-   one from before any of it existed
+5. Redeploy on Vercel, because the config is read when the site is built and
+   not when it is loaded
 
 Until step 2 is done the app runs on the sample campus bundled in the
 repository, the demo works, and the login screen says why signing in is
