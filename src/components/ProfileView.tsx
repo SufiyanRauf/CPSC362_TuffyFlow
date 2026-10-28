@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useAsync } from '../lib/useAsync'
 import {
   addClassMeeting, getBuildings, getClassMeetings, getProfile, removeClassMeeting, saveProfile,
@@ -52,6 +52,11 @@ const input = 'min-h-11 rounded-md border border-rule-strong bg-white px-2.5 py-
 // label reads inside a sentence ("Add an interest"), field names the list it
 // belongs to, because the same tag is allowed in both and "Remove ai" on its
 // own does not say which one it would come out of
+// What db/firestore.rules allows, kept in step by hand: at most twelve
+// tags, each at most 32 characters.
+const MOST_TAGS = 12
+const LONGEST_TAG = 32
+
 function TagField({ label, field, tags, onChange }: {
   label: string; field: string; tags: string[]; onChange: (next: string[]) => void
 }) {
@@ -59,15 +64,24 @@ function TagField({ label, field, tags, onChange }: {
   const [note, setNote] = useState('')
   const box = useRef<HTMLInputElement>(null)
   const noteId = useId()
+  const saying = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Saying the same thing twice leaves the text unchanged, and an unchanged
   // live region says nothing, so pressing Add twice on the same bad input was
   // silent the second time. Emptying it first gives it something to change
   // from. The login card does the same thing for the same reason.
+  //
+  // The id is held so the second commit can be called off. Nothing reaches
+  // this without leaving the field on screen, so it is not a bug waiting to
+  // happen, but a timer that sets state after the field is gone is not
+  // something to leave lying around either.
   function say(text: string) {
     setNote('')
-    setTimeout(() => setNote(text), 0)
+    clearTimeout(saying.current)
+    saying.current = setTimeout(() => setNote(text), 0)
   }
+
+  useEffect(() => () => clearTimeout(saying.current), [])
 
   function add() {
     // club and event tags are lowercase words joined by hyphens, so anything
@@ -75,6 +89,10 @@ function TagField({ label, field, tags, onChange }: {
     const tag = draft.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
     if (!tag) { say('Letters and numbers only.'); return }
     if (tags.includes(tag)) { say(`You already have ${tag}.`); setDraft(''); return }
+    // Same ceiling as db/firestore.rules. Said here rather than left to the
+    // database, which would refuse the write and leave the student reading an
+    // error about security rules because they typed one interest too many.
+    if (tags.length >= MOST_TAGS) { say(`${MOST_TAGS} is the most you can have.`); return }
     onChange([...tags, tag])
     setDraft('')
     setNote('')
@@ -111,7 +129,7 @@ function TagField({ label, field, tags, onChange }: {
           aria-label={`New ${label.replace(/^an? /, '')}`}
           aria-describedby={noteId}
           placeholder="add one"
-          maxLength={32}
+          maxLength={LONGEST_TAG}
           className={input + ' w-36'}
         />
         <button type="button" onClick={add} aria-label={`Add ${label}`}
@@ -175,11 +193,12 @@ function Details({ saved }: { saved: Profile }) {
       <div className="overflow-hidden rounded-xl border border-rule bg-white">
         <Row label="Name">
           <input value={form.full_name ?? ''} onChange={(e) => set('full_name', orNull(e.target.value))}
+                 maxLength={200}
                  aria-label="Name" className={input + ' w-full max-w-xs'} />
         </Row>
         <Row label="Major">
           <input value={form.major ?? ''} onChange={(e) => set('major', orNull(e.target.value))}
-                 placeholder="Computer Science"
+                 placeholder="Computer Science" maxLength={200}
                  aria-label="Major" className={input + ' w-full max-w-xs'} />
         </Row>
         <Row label="Parking permit">

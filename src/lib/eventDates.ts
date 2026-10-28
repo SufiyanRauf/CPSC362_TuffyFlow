@@ -12,17 +12,18 @@
 // What Firestore holds is the day offset and the time of day. Turning those
 // into timestamps is this file's job and nowhere else's.
 import type { CampusEvent, StoredEvent } from '../types'
-import { CAMPUS_TZ } from './time'
+// The extension is spelled out so that Node can load this file directly, the
+// way db/seed_firestore.mjs already loads campusRows.ts. Vite and tsc both
+// take it either way, and tests/event_dates.test.mjs needs it.
+import { CAMPUS_TZ } from './time.ts'
 
-// Campus is on daylight time for part of the year, so the offset has to be
-// asked for per date rather than hard coded. It matters more now than it did:
-// the clocks go back on November 1 and the demos run past it, so a fixed
-// offset would read an hour out for every event after that.
-function campusOffset(isoDate: string) {
+// The campus offset at a given instant, as "-07:00" or "-08:00". Asked for
+// rather than hard coded, because campus is on daylight time for part of the
+// year and the demos run across the November change.
+function offsetAt(when: Date) {
   const name = new Intl.DateTimeFormat('en-US', {
     timeZone: CAMPUS_TZ, timeZoneName: 'longOffset',
-  }).formatToParts(new Date(`${isoDate}T12:00:00Z`))
-    .find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-08:00'
+  }).formatToParts(when).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-08:00'
   return name.replace('GMT', '') || '-08:00'
 }
 
@@ -34,17 +35,40 @@ function campusToday(now: Date) {
   }).format(now)
 }
 
+// A row we cannot work a date out of. Firestore gives back whatever is in the
+// document, and a project seeded before this change holds the old shape, with
+// a starts_at and none of these. Dating that row throws on an invalid date,
+// and one throw used to lose the whole collection, so this is checked per row
+// and the bad ones are dropped.
+function datable(event: StoredEvent) {
+  return Number.isInteger(event.day_offset)
+    && Number.isInteger(event.duration_minutes)
+    && event.duration_minutes > 0
+    && typeof event.at === 'string'
+    && /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(event.at)
+}
+
 // The two timestamps for one event. now is a parameter so a test can ask what
 // some other day looks like without moving the clock.
 export function eventWindow(event: StoredEvent, now: Date = new Date()) {
   // The date is stepped in UTC and read back as a plain date, which keeps the
-  // arithmetic off the hours daylight saving moves. The offset is applied
-  // once, below, for whichever date we land on.
+  // arithmetic off the hours daylight saving moves. setUTCDate carries across
+  // months and years on its own.
   const day = new Date(`${campusToday(now)}T00:00:00Z`)
   day.setUTCDate(day.getUTCDate() + event.day_offset)
   const date = day.toISOString().slice(0, 10)
 
-  const starts = new Date(`${date}T${event.at}:00${campusOffset(date)}`)
+  // Twice, and the second time is not redundant. The first offset is read at
+  // midday, which on the two days a year the clocks move is the wrong side of
+  // the change for anything scheduled before 3am: the hour that does not
+  // exist in March would step backwards, and midnight would land on the
+  // previous day. Reading the offset again at the instant we just built, and
+  // rebuilding if it disagrees, puts both back.
+  const guess = offsetAt(new Date(`${date}T12:00:00Z`))
+  let starts = new Date(`${date}T${event.at}:00${guess}`)
+  const actual = offsetAt(starts)
+  if (actual !== guess) starts = new Date(`${date}T${event.at}:00${actual}`)
+
   const ends = new Date(starts.getTime() + event.duration_minutes * 60_000)
   return { starts_at: starts.toISOString(), ends_at: ends.toISOString() }
 }
@@ -53,10 +77,20 @@ export function eventWindow(event: StoredEvent, now: Date = new Date()) {
 // firestoreData.ts for the real ones. One function doing it is the point, so
 // that a stored row and a sample row can never come out dated differently.
 //
-// Sorted here as well, because the screens show these in order and Firestore
-// cannot sort on a field that is no longer stored.
+// Sorted here as well, because Firestore cannot sort on a field it is no
+// longer storing, and getDocs hands rows back in document name order, which
+// puts event-10 between event-1 and event-2.
 export function datedEvents(rows: StoredEvent[], now: Date = new Date()): CampusEvent[] {
-  return rows
+  const usable = rows.filter(datable)
+  if (usable.length !== rows.length) {
+    // Worth saying out loud. The likeliest cause is a project still holding
+    // what the old seed wrote, which one run of db/seed_firestore.mjs fixes.
+    console.warn(
+      `Ignoring ${rows.length - usable.length} event(s) with no usable day offset or time. `
+      + 'If this is a project seeded before events stopped storing dates, run db/seed_firestore.mjs once.',
+    )
+  }
+  return usable
     .map((row) => ({ ...row, ...eventWindow(row, now) }))
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
 }

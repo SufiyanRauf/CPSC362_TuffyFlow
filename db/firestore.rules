@@ -105,12 +105,33 @@ service cloud.firestore {
       return value == null || (value is string && value.size() <= limit);
     }
 
-    // A list of short tags. Rules cannot walk a list, so the elements
-    // themselves are not type checked here: what is bounded is how many there
-    // are. Postgres could say text[] and mean it; this is the honest limit of
-    // what a rule can do.
+    // One tag. The profile screen lowercases and hyphenates whatever is typed
+    // and caps the box at 32 characters, so this is the same shape, enforced
+    // where a browser cannot talk its way past it.
+    function aTag(value) {
+      return value is string && value.size() > 0 && value.size() <= 32;
+    }
+
+    // A list of short tags. Rules cannot loop over a list, but they can index
+    // one, so the elements are checked by hand up to the cap. Counting them
+    // was not enough on its own: hasOnly stops a seventh field and says
+    // nothing about what is inside an allowed one, so a single interest of a
+    // million characters used to pass, which is the megabyte the comment at
+    // the top of this file claims cannot be parked here.
     function someTags(value) {
-      return value is list && value.size() <= 30;
+      return value is list && value.size() <= 12
+        && (value.size() < 1 || aTag(value[0]))
+        && (value.size() < 2 || aTag(value[1]))
+        && (value.size() < 3 || aTag(value[2]))
+        && (value.size() < 4 || aTag(value[3]))
+        && (value.size() < 5 || aTag(value[4]))
+        && (value.size() < 6 || aTag(value[5]))
+        && (value.size() < 7 || aTag(value[6]))
+        && (value.size() < 8 || aTag(value[7]))
+        && (value.size() < 9 || aTag(value[8]))
+        && (value.size() < 10 || aTag(value[9]))
+        && (value.size() < 11 || aTag(value[10]))
+        && (value.size() < 12 || aTag(value[11]));
     }
 
     function aProfile(data) {
@@ -172,7 +193,7 @@ service cloud.firestore {
         // zero padded.
         function aTime(value) {
           return value is string
-            && value.matches('^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$');
+            && value.matches('^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$');
         }
 
         function aMeeting(data) {
@@ -197,7 +218,11 @@ service cloud.firestore {
             && data.building_id.size() <= 64;
         }
 
-        allow list, delete: if isMe(uid);
+        // get as well as list. Nothing fetches a single meeting today, but
+        // leaving it out reads as an oversight rather than a decision, and
+        // the owner being refused their own document is a trap for whoever
+        // writes the next screen.
+        allow get, list, delete: if isMe(uid);
         allow create, update: if isMe(uid) && aMeeting(request.resource.data);
       }
     }

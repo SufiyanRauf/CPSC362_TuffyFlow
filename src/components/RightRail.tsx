@@ -11,11 +11,16 @@ type RightRailProps = {
 // Only wide screens get this. Below xl the same two blocks would squeeze the
 // main column down to nothing, so they are left off rather than stacked at the
 // bottom where nobody scrolls to them.
+//
+// Whether there is room is decided by App, with useWideScreen, so this does
+// not mount at all on a narrow screen. It used to hide itself with
+// `hidden xl:block`, which takes it off the screen but still runs
+// everything inside it.
 export default function RightRail({ onOpen }: RightRailProps) {
   return (
     <aside
       aria-label="Campus right now"
-      className="hidden w-80 shrink-0 self-stretch border-l border-rule bg-white px-5 py-7 xl:block"
+      className="w-80 shrink-0 self-stretch border-l border-rule bg-white px-5 py-7"
     >
       <section>
         <SectionHeader icon={<ChartIcon className="h-4 w-4" />} title="Structures" />

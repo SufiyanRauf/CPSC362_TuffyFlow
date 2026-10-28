@@ -110,7 +110,7 @@ class Lot(BaseModel):
 class Availability(BaseModel):
     lot_id: str
     day_of_week: int = Field(ge=0, le=6)
-    hour: int
+    hour: int = Field(ge=0, le=23)
     typical_pct_full: int = Field(ge=0, le=100)
 
 
@@ -148,15 +148,17 @@ class Event(BaseModel):
     lat: Latitude
     lng: Longitude
     tags: list[str]
-    starts_minutes: int
-    ends_minutes: int
-    day_offset: int
+    starts_minutes: int = Field(ge=0, le=1439)
+    ends_minutes: int = Field(ge=0, le=1439)
+    # negative is meaningful: it is an event that has already been and
+    # gone, which not_started filters out rather than rejecting here.
+    day_offset: int = Field(ge=-366, le=366)
 
 
 class ClassWindow(BaseModel):
     day_of_week: int = Field(ge=0, le=6)
-    start: int
-    end: int
+    start: int = Field(ge=0, le=1439)
+    end: int = Field(ge=0, le=1439)
     # where the class is, so a walk can be measured from the right place on
     # the right day. Optional because a clash check does not need it.
     lat: Latitude | None = None
@@ -172,7 +174,7 @@ class RecommendRequest(BaseModel):
     now_minutes: int = Field(ge=0, le=1439)
     day_of_week: int = Field(ge=0, le=6)
     arrival_hour: int = Field(ge=0, le=23)
-    class_start_minutes: int
+    class_start_minutes: int = Field(ge=0, le=1439)
     class_day_offset: int = Field(default=0, ge=0, le=7)
     lots: list[Lot] = Field(max_length=MANY)
     availability: list[Availability] = Field(max_length=MANY)

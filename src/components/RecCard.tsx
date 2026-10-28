@@ -89,17 +89,26 @@ export default function RecCard({ rec, onOpen }: RecCardProps) {
     return <div className={`rounded-xl border p-4 ${tints[rec.category]}`}>{body}</div>
   }
 
+  // The card itself used to be the button, so its name was everything inside
+  // it read out as one sentence, and the h3 sat inside a control, where heading
+  // navigation does not reliably reach it. The line at the bottom is the real
+  // button now, which is the whole of the name. The click stays on the card so
+  // that all of it still opens the list, and it is only there: a press on the
+  // button bubbles up to the same handler, from the keyboard as well, so one
+  // press is one call either way.
   return (
-    <button
-      type="button"
+    <div
       onClick={onOpen}
       className={`group rounded-xl border p-4 text-left hover:border-titan-200 ${tints[rec.category]}`}
     >
       {body}
-      <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-titan group-hover:underline">
+      <button
+        type="button"
+        className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-titan group-hover:underline"
+      >
         {opensLabel[rec.category]}
         <ChevronRightIcon className="h-3 w-3" />
-      </span>
-    </button>
+      </button>
+    </div>
   )
 }

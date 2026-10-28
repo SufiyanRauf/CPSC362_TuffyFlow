@@ -147,11 +147,67 @@ def test_match_percent_is_a_whole_number_0_to_100():
 
 
 def test_arrive_by_subtracts_walk_and_buffer():
+    # Times written out rather than recomputed from the constants, because
+    # deriving the expected value the same way the code does passes even when
+    # the constant is wrong. Class at 690 minutes, which is 11:30. With no
+    # occupancy rows the lot reads as unknown, half full, so the buffer is the
+    # base ten plus five.
+    ctx = _parking_context()
+    lot = {"id": "x", "name": "x", "lat": 33.882349, "lng": -117.882900, "permits": ["student"]}
+
+    assert scoring.arrive_by(lot, ctx, 5) == "11:10"
+    # ten minutes further away is ten minutes earlier, and nothing else moves
+    assert scoring.arrive_by(lot, ctx, 15) == "11:00"
+    # a lot that is usually full buys itself another five minutes
+    busy = _parking_context(rows=[{"lot_id": "x", "day_of_week": 1, "hour": 10,
+                                   "typical_pct_full": 100}])
+    assert scoring.arrive_by(lot, busy, 5) == "11:05"
+
+
+def test_arrive_by_gives_up_rather_than_wrapping_past_midnight():
+    # A walk longer than the time before class used to go negative, and
+    # minutes_to_time wraps, so a 09:00 class answered "leave at 16:05".
+    ctx = _parking_context(day_offset=1)
+    ctx["class_start_minutes"] = 540
+    lot = {"id": "x", "name": "x", "lat": 33.882349, "lng": -117.882900, "permits": ["student"]}
+    assert scoring.arrive_by(lot, ctx, 1000) is None
+    assert scoring.arrive_by(lot, ctx, 5) is not None
+
+
+def test_haversine_survives_two_points_on_opposite_sides_of_the_planet():
+    # a rounds just above 1 here, and sqrt of the negative that leaves used to
+    # raise, which came out of the endpoint as a 500 with an empty body.
+    metres = scoring.haversine(66.71876003663684, 89.14134013088915,
+                               -66.71876003663684, -90.85865986911085)
+    assert 19_000_000 < metres < 21_000_000, metres
+
+
+def test_weight_tables_each_add_up_to_one():
+    for name, table in [("parking", scoring.PARKING_WEIGHTS),
+                        ("spot", scoring.SPOT_WEIGHTS),
+                        ("spot without noise", scoring.SPOT_WEIGHTS_NO_NOISE),
+                        ("event", scoring.EVENT_WEIGHTS)]:
+        assert abs(sum(table.values()) - 1.0) < 1e-9, name
+
+
+def test_rank_is_stable_when_everything_ties():
+    # Firestore does not promise the order documents come back in, so two
+    # candidates alike on score, walk and name have to break on something.
     ctx = _parking_context()
     cfg = scoring.parking_config(ctx)
-    out = scoring.rank(LOTS, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
-    lot = out[0]["item"]
-    assert scoring.arrive_by(lot, ctx, out[0]["walk_minutes"]) is not None
+    same = [{"id": "b", "name": "Same", "lat": 33.882349, "lng": -117.882900, "permits": ["student"]},
+            {"id": "a", "name": "Same", "lat": 33.882349, "lng": -117.882900, "permits": ["student"]}]
+    forwards = scoring.rank(same, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+    backwards = scoring.rank(same[::-1], cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+    assert [r["item"]["id"] for r in forwards] == ["a", "b"]
+    assert [r["item"]["id"] for r in backwards] == ["a", "b"]
+
+
+def test_rank_handles_nothing_to_rank_and_honours_top_n():
+    ctx = _parking_context()
+    cfg = scoring.parking_config(ctx)
+    assert scoring.rank([], cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx) == []
+    assert len(scoring.rank(LOTS, cfg["filters"], cfg["factors"], cfg["weights"], 2, ctx)) == 2
 
 
 def test_arrive_by_is_none_when_it_has_already_passed():
@@ -212,6 +268,29 @@ def test_a_class_on_a_later_day_still_blocks_an_event():
     events = [{"id": "clash", "name": "Two days out", "tags": ["ai"], "lat": 33.8823, "lng": -117.8827,
                "starts_minutes": 900, "ends_minutes": 990, "day_offset": 2}]
     assert scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx) == []
+
+
+def test_an_event_running_past_midnight_still_clashes_with_a_class():
+    # An event that crosses midnight comes back with an end smaller than its
+    # start, and "class starts before the event ends" was then false for every
+    # class of the day, so the filter let through something the student is
+    # sitting in a lecture for.
+    ctx = {
+        "profile": {"interests": ["ai"], "career_goals": [], "permit_type": "student", "noise_pref": 2},
+        "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "CS",
+        "now_minutes": 600, "day_of_week": 1,
+        "class_meetings": [{"day_of_week": 1, "start": 1350, "end": 1430}],
+    }
+    cfg = scoring.event_config(ctx)
+    overnight = [{"id": "late", "name": "Runs to one in the morning", "tags": ["ai"],
+                  "lat": 33.8823, "lng": -117.8827,
+                  "starts_minutes": 1320, "ends_minutes": 60, "day_offset": 0}]
+    assert scoring.rank(overnight, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx) == []
+
+    # and a class that is over before it starts does not block it
+    ctx["class_meetings"] = [{"day_of_week": 1, "start": 1200, "end": 1260}]
+    cfg = scoring.event_config(ctx)
+    assert len(scoring.rank(overnight, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx)) == 1
 
 
 def test_sooner_always_scores_at_least_as_well():

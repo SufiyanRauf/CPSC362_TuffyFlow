@@ -20,11 +20,16 @@ import {
   assertFails, assertSucceeds, initializeTestEnvironment,
 } from '@firebase/rules-unit-testing'
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc,
+  addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, setDoc,
+  updateDoc,
 } from 'firebase/firestore'
 
 const ALEX = 'alex-uid'
 const JORDAN = 'jordan-uid'
+// Nobody, with no profile document. Needed so that a create can be tested as
+// a create: once Alex has one, the same write is an update, and update is
+// allowed to carry the filled in values that create refuses.
+const NEWCOMER = 'sam-uid'
 
 // What a brand new profile is, which is the only shape a create may have.
 const freshProfile = (name = 'Alex Nguyen') => ({
@@ -73,6 +78,7 @@ before(async () => {
 after(async () => { await env?.cleanup() })
 
 const alex = () => env.authenticatedContext(ALEX).firestore()
+const newcomer = () => env.authenticatedContext(NEWCOMER).firestore()
 const strangers = () => env.unauthenticatedContext().firestore()
 // request.auth is not null for an anonymous sign in either, which is one
 // console toggle away from being switched on.
@@ -149,9 +155,13 @@ describe('a student’s own profile', () => {
   it('cannot be created already filled in', async () => {
     // Firebase has no free way to run code at signup, so the browser writes
     // this document. Pinning the shape is what stops it writing anything else.
-    await env.clearFirestore?.()
+    //
+    // Somebody with no profile yet, rather than Alex, who has one by now. The
+    // same write against an existing document is an update, and update does
+    // allow these values. This used to clear the whole database to get a
+    // clean create, which left every test below it asserting against nothing.
     const filled = { ...freshProfile(), permit_type: 'employee', noise_pref: 5 }
-    await assertFails(setDoc(doc(alex(), 'profiles', ALEX), filled))
+    await assertFails(setDoc(doc(newcomer(), 'profiles', NEWCOMER), filled))
   })
 
   it('cannot carry a field nobody asked for', async () => {
@@ -171,6 +181,42 @@ describe('a student’s own profile', () => {
 
   it('refuses a permit that is not one of the four', async () => {
     await assertFails(updateDoc(doc(alex(), 'profiles', ALEX), { permit_type: 'faculty' }))
+  })
+
+  // Counting the tags was never enough. hasOnly refuses a seventh field and
+  // says nothing about what is inside an allowed one, so one interest of a
+  // million characters used to sail through and park it on the document.
+  it('refuses a tag that is not a short string', async () => {
+    const db = alex()
+    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: ['x'.repeat(5000)] }))
+    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: [{ nested: 'map' }] }))
+    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: [7] }))
+    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: [''] }))
+    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { career_goals: ['ok', 'y'.repeat(33)] }))
+  })
+
+  it('refuses tags that are not a list at all', async () => {
+    const db = alex()
+    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: 'ai' }))
+    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { career_goals: 5 }))
+  })
+
+  it('refuses more tags than the profile screen can make', async () => {
+    const thirteen = Array.from({ length: 13 }, (_, i) => `tag-${i}`)
+    await assertFails(updateDoc(doc(alex(), 'profiles', ALEX), { interests: thirteen }))
+    await assertSucceeds(updateDoc(doc(alex(), 'profiles', ALEX), { interests: thirteen.slice(0, 12) }))
+  })
+
+  it('refuses a name or a major longer than the rule allows', async () => {
+    const db = alex()
+    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { full_name: 'n'.repeat(201) }))
+    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { major: 'm'.repeat(201) }))
+  })
+
+  // hasAll is the half of the pair that stops a field going missing, and
+  // removing one is the only way to get there from a browser.
+  it('refuses an update that removes a field', async () => {
+    await assertFails(updateDoc(doc(alex(), 'profiles', ALEX), { major: deleteField() }))
   })
 
   it('refuses a noise level outside one to five', async () => {
@@ -196,6 +242,18 @@ describe('a student’s own schedule', () => {
     await assertSucceeds(getDocs(mine(db)))
     await assertSucceeds(setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'x'), aClass()))
     await assertSucceeds(deleteDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'x')))
+  })
+
+  it('lets the owner fetch one meeting on its own', async () => {
+    const ref = await addDoc(mine(alex()), aClass({ course_code: 'CPSC 349' }))
+    await assertSucceeds(getDoc(doc(alex(), 'profiles', ALEX, 'class_meetings', ref.id)))
+  })
+
+  // Two strings only compare as two times while both are the same length, so
+  // a mixed pair used to let a class of no length through.
+  it('refuses a time without seconds, so the end > start test stays honest', async () => {
+    await assertFails(addDoc(mine(alex()), aClass({ start_time: '09:30', end_time: '09:30:00' })))
+    await assertFails(addDoc(mine(alex()), aClass({ end_time: '12:45' })))
   })
 
   it('refuses a time that is not a time', async () => {

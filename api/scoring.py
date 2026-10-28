@@ -53,7 +53,12 @@ def haversine(lat1, lng1, lat2, lng2):
     dp = math.radians(lat2 - lat1)
     dl = math.radians(lng2 - lng1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * EARTH_RADIUS_M * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    # a can round just above 1 for two points on opposite sides of the planet,
+    # and sqrt of a negative raises rather than returning a number. Nothing on
+    # campus is anywhere near that, but the endpoint takes any coordinate on
+    # the globe, and a 500 out of the arithmetic is what the bounds exist to
+    # avoid.
+    return 2 * EARTH_RADIUS_M * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1 - a)))
 
 
 def walk_minutes(metres):
@@ -144,8 +149,11 @@ def rank(candidates, filters, factors, weights, top_n, context):
         })
 
     # sort on the float, not the rounded percent, or ties break differently
+    # id last, because the first three can all tie and Firestore does not
+    # promise the order rows come back in, so the same data could otherwise
+    # rank differently between two refreshes.
     results.sort(key=lambda r: (-r["score"], r["walk_minutes"] if r["walk_minutes"] is not None else 999,
-                                r["item"].get("name", "")))
+                                r["item"].get("name", ""), r["item"].get("id", "")))
     return results[:top_n]
 
 
@@ -204,6 +212,11 @@ def arrive_by(lot, context, walk):
     pct, _ = lot_fullness(lot, context)
     buffer_minutes = BASE_PARKING_BUFFER_MINUTES + round(pct / 100 * 10)
     minutes = context["class_start_minutes"] - (walk or 0) - buffer_minutes
+    # Before midnight on the day of the class. minutes_to_time wraps, so this
+    # used to answer a 09:00 class with "leave at 16:05" rather than admitting
+    # there is no sensible time to give.
+    if minutes < 0:
+        return None
     if context.get("class_day_offset", 0) == 0 and minutes <= context["now_minutes"]:
         return None
     return minutes_to_time(minutes)
@@ -286,10 +299,19 @@ def event_config(context):
         classes, so every event on a later day skipped the check entirely and
         the top card could sit on top of a class."""
         event_day = (ctx.get("day_of_week", 0) + event.get("day_offset", 0)) % 7
+        starts = event["starts_minutes"]
+        # An event that runs past midnight comes back with an end smaller than
+        # its start, and "class starts before the event ends" is then false for
+        # every class of the day, so the check quietly passed everything. Treat
+        # it as running to the end of the day instead, which is the part of it
+        # that can actually clash with a class.
+        ends = event["ends_minutes"]
+        if ends < starts:
+            ends = 24 * 60
         for cls in ctx.get("class_meetings", []):
             if (cls["day_of_week"] == event_day
-                    and cls["start"] < event["ends_minutes"]
-                    and event["starts_minutes"] < cls["end"]):
+                    and cls["start"] < ends
+                    and starts < cls["end"]):
                 return False
         return True
 

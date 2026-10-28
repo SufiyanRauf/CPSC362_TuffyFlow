@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useHashRoute } from './lib/useHashRoute'
 import { resetDemoData } from './lib/campusData'
 import { leaveDemo, signOut, useSession } from './lib/session'
+import { useWideScreen } from './lib/useWideScreen'
 import LoginView from './components/LoginView'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
@@ -27,6 +28,15 @@ export default function App() {
   // it ignores the step out of "loading", which is not a move anybody made: on
   // an ordinary reload of a signed in account that step would jump focus into
   // the middle of the page before they had touched anything.
+  // Up here with the other hooks, because the two returns below are
+  // conditional and a hook underneath them runs on some renders and not
+  // others, which React counts and refuses.
+  //
+  // The width is asked for rather than left to the rail's own classes.
+  // Hiding it in CSS still mounted it, so narrow screens were paying for two
+  // panels they could not see.
+  const wide = useWideScreen()
+
   const was = useRef(session.kind)
   useEffect(() => {
     const before = was.current
@@ -56,7 +66,7 @@ export default function App() {
   // the rail is how full each structure usually is, plus what is coming up,
   // which belongs beside the dashboard and the lots and would just be clutter
   // on the other four
-  const withRail = view === 'home' || view === 'parking'
+  const withRail = wide && (view === 'home' || view === 'parking')
 
   return (
     // Keyed on who is using the app, so that changing who means starting

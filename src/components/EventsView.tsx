@@ -1,5 +1,5 @@
 import { useAsync } from '../lib/useAsync'
-import { getRecommendations } from '../lib/recommend'
+import { getRecommendations, findNextClass } from '../lib/recommend'
 import { getBuildings, getEvents } from '../lib/campusData'
 import Panel from './Panel'
 import PageHeader from './PageHeader'
@@ -20,32 +20,43 @@ async function rankedEvents() {
   ])
   const byId = new Map(events.map((e) => [e.id, e]))
   const where = new Map(buildings.map((b) => [b.id, b.name]))
-  return recs.events.map((r) => {
+  // The ranking and the event list are two separate reads, so the ranking can
+  // name an event this copy of the list does not have. That row has no time
+  // and no host to print, which came out as a clock icon and a person icon
+  // with nothing beside them, so it is dropped instead.
+  return recs.events.flatMap((r) => {
     const e = byId.get(r.id)
-    const start = e ? new Date(e.starts_at) : null
-    const when = start
-      ? new Intl.DateTimeFormat('en-US', {
-          timeZone: CAMPUS_TZ, weekday: 'short', month: 'short', day: 'numeric',
-          hour: 'numeric', minute: '2-digit',
-        }).format(start)
-      : ''
-    return {
+    if (!e) return []
+    const start = new Date(e.starts_at)
+    return [{
       id: r.id,
       title: r.title,
       match: r.match_percent,
       reasons: r.reasons,
-      host: e?.club_name ?? '',
-      tags: e?.tags ?? [],
-      where: e ? where.get(e.building_id) ?? '' : '',
-      when,
+      host: e.club_name,
+      tags: e.tags,
+      where: where.get(e.building_id) ?? '',
+      // 24-hour, like the class and arrive-by times everywhere else. The
+      // dashboard shows both at once at wide widths.
+      when: new Intl.DateTimeFormat('en-US', {
+        timeZone: CAMPUS_TZ, weekday: 'short', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+      }).format(start),
       walk: r.walk_minutes,
       measuredFrom: r.reasons.find((x) => WALK_REASON.test(x)) ?? '',
-    }
+    }]
   })
 }
 
 export default function EventsView() {
-  const events = useAsync(rankedEvents, [useDataVersion()])
+  const version = useDataVersion()
+  const events = useAsync(rankedEvents, [version])
+  const next = useAsync(findNextClass, [version])
+
+  // The ranking is empty with no class at all, not only when the filter took
+  // everything out, so an account with nothing on its schedule was being told
+  // its events had been fitted around classes it has not entered yet.
+  const haveClass = next.state === 'ready' && next.data !== null
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,7 +66,14 @@ export default function EventsView() {
         starts. Anything clashing with one of your classes is left out.
       </PageHeader>
 
-      <Panel source={events} empty="Nothing upcoming that fits around your classes.">
+      <Panel
+        source={events}
+        empty={
+          haveClass
+            ? 'Nothing upcoming that fits around your classes.'
+            : 'Nothing to rank. Add a class on your profile and these fill in.'
+        }
+      >
         {(rows) => (
           <ul className="flex flex-col gap-3">
             {rows.map((e, i) => (

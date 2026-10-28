@@ -9,12 +9,13 @@
 // outside the repository, or inside it under a name .gitignore already covers.
 // Never commit it, and never paste it anywhere.
 //
-// Safe to run again, and you should not need to. Nothing it writes expires.
-// Events used to: they were stored as timestamps, so a set seeded two weeks
-// before a demo was entirely in the past and a signed in account saw an empty
-// Events screen. They now hold a day offset and a time of day instead, and the
-// app works the dates out when it reads them, so one run covers every demo
-// from here on. src/lib/eventDates.ts has the reasoning.
+// Safe to run again, and you should not need to: nothing it writes expires.
+// Events used to, which is the story in src/lib/eventDates.ts. One run covers
+// every demo from here on.
+//
+// Run it once against a project that was seeded before that change, though.
+// Those documents hold a starts_at and no day offset, and the app has to skip
+// what it cannot date.
 //
 // Every document is written at an id we choose, so a second run overwrites
 // rather than duplicating. It does not delete: a club removed from
@@ -97,12 +98,12 @@ async function main() {
   await write('clubs', clubs)
   await write('events', events)
 
-  // Reported as offsets because that is what went in. Saying "today to day 8"
-  // rather than two dates is also the honest version: these do not belong to
-  // the day they were seeded any more.
-  const last = Math.max(...events.map((e) => e.day_offset))
-  console.log(`\nEvents run today to day ${last}, worked out whenever they are read,`)
-  console.log('so this does not need running again before a demo.')
+  // Printed as offsets rather than dates, because an offset is what went in
+  // and a date would imply these belong to the day they were seeded.
+  const offsets = events.map((e) => e.day_offset)
+  const first = Math.min(...offsets) === 0 ? 'today' : `day ${Math.min(...offsets)}`
+  console.log(`\nEvents run ${first} to day ${Math.max(...offsets)}, worked out whenever`)
+  console.log('they are read, so this does not need running again before a demo.')
   console.log('\nProfiles and schedules are not seeded: they belong to a person,')
   console.log('and the app writes one the first time somebody signs in.')
 }

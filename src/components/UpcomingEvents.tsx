@@ -24,16 +24,24 @@ async function upcoming() {
     .slice(0, 5)
     .map((e) => {
       const start = new Date(e.starts_at)
+      const isToday = campusDate(start) === today
+      // 24-hour, like the class and arrive-by times on the rest of the
+      // dashboard, which sits next to this rail at wide widths.
+      const time = new Intl.DateTimeFormat('en-US', {
+        timeZone: CAMPUS_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+      }).format(start)
+      const day = new Intl.DateTimeFormat('en-US', {
+        timeZone: CAMPUS_TZ, weekday: 'short',
+      }).format(start)
       return {
         id: e.id,
         title: e.title,
         host: e.club_name,
         where: where.get(e.building_id) ?? 'Campus',
-        // same wording as the events screen, so the two never disagree
-        when: new Intl.DateTimeFormat('en-US', {
-          timeZone: CAMPUS_TZ, weekday: 'short', hour: 'numeric', minute: '2-digit',
-        }).format(start),
-        isToday: campusDate(start) === today,
+        // The stripe going orange is the only other cue, and "Tue" alone does
+        // not say whether that is today or next week. "Today" costs no width.
+        when: `${isToday ? 'Today' : day}, ${time}`,
+        isToday,
       }
     })
 }

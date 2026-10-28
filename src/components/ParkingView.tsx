@@ -91,14 +91,22 @@ export default function ParkingView() {
       <Panel source={recs}>
         {(data) => {
           if (data.parking.length === 0) {
-            // Two different reasons, and they want different sentences. If
-            // there is a next class then the schedule is fine and the permit
-            // is the only thing that can have emptied this, so say that rather
-            // than listing both and making the student work out which.
-            const haveClass = next.state === 'ready' && next.data !== null
+            // Three reasons, not two. A class still on its way, or a request
+            // that failed, is not the same thing as a schedule with nothing on
+            // it, and reading it as one told a student to add a class when the
+            // permit was the problem. Panel already has a line for each of
+            // those two states and this is the same request, so it says them
+            // rather than this guessing at a reason it does not have yet.
+            if (next.state !== 'ready') {
+              return <Panel source={next}>{() => null}</Panel>
+            }
+            // Past that, the schedule is known. If there is a next class then
+            // the permit is the only thing that can have emptied this, so say
+            // that rather than listing both and making the student work out
+            // which.
             return (
               <p className="rounded-xl border border-rule bg-paper px-5 py-6 text-sm text-ink-soft">
-                {haveClass
+                {next.data !== null
                   ? 'No lots to rank, because your profile does not say which permit you hold. Every lot takes some permits and not others, so there is no lot we can stand behind until it does.'
                   : 'No lots to rank. Add a class on your profile and these fill in.'}
               </p>

@@ -22,7 +22,7 @@ import {
 } from './campusRows'
 import { datedEvents } from './eventDates'
 import { accountId, accountName } from './session'
-import { dataChanged } from './dataVersion'
+import { dataChanged, dataVersion } from './dataVersion'
 import * as live from './firestoreData'
 
 // What the demo shows right now, which its own screens are allowed to change.
@@ -41,23 +41,66 @@ let classMeetings: ClassMeeting[] = structuredClone(demoClassMeetings)
 // never had.
 // ---------------------------------------------------------------------------
 
+// The campus collections are the same four lists for everybody, and one screen
+// load asks for them over and over: each panel runs its own loader and
+// getRecommendations reads them again underneath, which was four reads of the
+// seventeen buildings and three of the twelve lots to draw one dashboard.
+// Firestore charges by the document read and the free tier is about 50,000 a
+// day, so the page holds on to what came back.
+//
+// Keyed on who is asking and on dataVersion() together. The demo and an
+// account answer differently, and dataVersion() is already the app's signal
+// that the rows behind a screen have moved on, so a write or a sign in cannot
+// be served a list from before it. One key for the whole set rather than one
+// per list, which also keeps the map from being something that only grows.
+let readsFor = ''
+const reads = new Map<string, Promise<unknown>>()
+
+function once<T>(what: string, load: () => Promise<T>): Promise<T> {
+  // Null covers the demo and signed out, which read the same sample rows.
+  const whose = `${accountId() ?? 'sample'}:${dataVersion()}`
+  if (whose !== readsFor) {
+    reads.clear()
+    readsFor = whose
+  }
+
+  let pending = reads.get(what) as Promise<T> | undefined
+  if (!pending) {
+    // The promise, not the rows, so that the panels asking at the same moment
+    // share one query instead of starting several.
+    //
+    // Dropping it on failure matters for the same reason firestoreData.ts
+    // drops its SDK import: keeping a rejected promise means one bad read, off
+    // campus wifi or a refused rule, keeps failing for the life of the page
+    // even after the network comes back.
+    pending = load().catch((e: unknown) => {
+      reads.delete(what)
+      throw e
+    })
+    reads.set(what, pending)
+  }
+  return pending
+}
+
 // Async because the database ones are. The sample rows never needed it.
 export async function getBuildings(): Promise<Building[]> {
-  return accountId() ? live.getBuildings() : buildings
+  return once('buildings', async () => (accountId() ? live.getBuildings() : buildings))
 }
 export async function getParkingLots(): Promise<ParkingLot[]> {
-  return accountId() ? live.getParkingLots() : parkingLots
+  return once('lots', async () => (accountId() ? live.getParkingLots() : parkingLots))
 }
 export async function getSpots(): Promise<Spot[]> {
-  return accountId() ? live.getSpots() : spots
+  return once('spots', async () => (accountId() ? live.getSpots() : spots))
 }
 export async function getClubs(): Promise<Club[]> {
-  return accountId() ? live.getClubs() : clubs
+  return once('clubs', async () => (accountId() ? live.getClubs() : clubs))
 }
 export async function getEvents(): Promise<CampusEvent[]> {
   // The sample rows hold a day offset, not a date, so they get dated here the
   // same way the Firestore ones do. Worked out per call rather than once at
-  // import, so a tab left open overnight rolls over with the campus day.
+  // import, so a tab left open overnight rolls over with the campus day. That
+  // is also why this one is not held above: the dates have to be worked out
+  // again, and a kept answer would still be on yesterday in the morning.
   return accountId() ? live.getEvents() : datedEvents(events)
 }
 

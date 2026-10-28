@@ -336,6 +336,7 @@ Completed:
 * Database schema, security policies and seed data
 * The ranking engine, in Python, with 56 tests
 * The access rules, with 23 tests against Firebase's emulator
+* The event dates, with 7 tests that need neither Java nor a project
 * Dashboard, parking, spots, clubs, events and profile screens
 * Sign up, log in, Google sign in and sign out, written and tested as far as
   they can be without a project to point them at
@@ -382,7 +383,7 @@ python3 -m venv .venv && .venv/bin/pip install -r api/requirements.txt
 .venv/bin/python -m uvicorn api.recommend:app --port 8000
 ```
 
-There are two sets of tests. The ranking engine, which is the part with the
+There are three sets of tests. The ranking engine, which is the part with the
 logic worth testing:
 
 ```bash
@@ -407,6 +408,19 @@ logged out visitor sees nothing, an anonymous sign in counts as nobody, one
 student cannot read or write another's profile or schedule, the campus is read
 only from a browser, a profile can only be created empty, and a class with a
 malformed time or a field nobody asked for is refused.
+
+The event dates have a suite of their own, and it needs no Java and no
+project, just Node 22.18 or newer:
+
+```bash
+npm run test:dates
+```
+
+They read the dates at five points in the future, including either side of the
+November clock change, and check that every event is still upcoming, still
+lands at the campus time its row asks for, and still runs for as long as it
+says. `src/lib/eventDates.ts` explains what went wrong to make them worth
+writing.
 
 That is enough to use every screen on the sample campus. The rest connects it
 to a database.
@@ -469,6 +483,10 @@ It writes 17 buildings, 12 parking lots with their week of occupancy, 24
 campus spots, 320 clubs and 12 events, and prints what it wrote. Running it
 again overwrites rather than duplicating.
 
+One run is enough. Events store a day offset and a time of day rather than a
+date, and `src/lib/eventDates.ts` works the real dates out when they are read,
+so a set loaded today still reads as this week months from now.
+
 That key is the one real secret in this project. It ignores every rule in
 `db/firestore.rules`. Do not commit it and do not paste it anywhere.
 
@@ -478,14 +496,6 @@ There is no demo account to set up. Firebase has no free way to run code when
 somebody signs up, so the app writes a student's profile document itself the
 first time they sign in, and the profile screen opens with a short list of what
 is still missing: the permit, the noise preference and the class schedule.
-
-Events hold a day offset and a time of day rather than a date, and the app
-works the real dates out when it reads them, so a set seeded once still reads
-as this week months later. It used to store timestamps, which meant re-running
-the seed before every demo or a signed in account saw an empty Events screen,
-while the demo that needs no account looked fine and gave no warning. Both
-halves now go through the same function in `src/lib/eventDates.ts`, so they
-cannot disagree about when an event is.
 
 To erase somebody completely, including their schedule:
 

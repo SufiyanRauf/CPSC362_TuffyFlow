@@ -825,6 +825,38 @@ it green. A suite that cannot fail is worth nothing.
 They need Firebase's emulator, which is a Java program, so running them means
 having a JDK on the path. The README says how.
 
+**2026-10-27 — Events stopped having dates**
+
+An event was a row with a starts_at on it, which is the obvious shape and the
+wrong one for a set of made up rows. The timestamp was right on the day the
+seed ran and wrong two weeks later, so the Events screen came up empty unless
+somebody had remembered to re-run the seed, with the admin key on the laptop,
+before the demo started.
+
+Nothing caught it, and that is the part worth remembering. The demo that needs
+no account builds its own dates at page load, so it always looked right. The
+half that was broken was the half you only see after signing in, which is not
+the half you check when you are in a hurry.
+
+Three options. Re-seed before each demo, which is what we had been doing and
+depends on remembering. Spread the events out far enough to cover every demo
+date, which buys weeks and breaks again afterwards. Or stop storing the date.
+We took the third: Firestore holds a day offset, a time of day and a length,
+and src/lib/eventDates.ts turns those into a start and an end when the row is
+read. The sample rows and the Firestore rows go through the same function, so
+the two halves can no longer disagree about when an event is, which is the
+thing that hid the bug in the first place.
+
+It cost a type. StoredEvent is what the database holds and CampusEvent is that
+plus the two timestamps, so a screen still reads e.starts_at and does not have
+to know it was worked out a moment ago. No component changed.
+
+There is a suite for it now, in tests/event_dates.test.mjs, which reads the
+dates at five points in the future and either side of the November clock
+change. We put both bugs back to check it could fail: a hard coded timezone
+offset broke three of the seven, and treating the day offset as hours broke
+four. It needs no emulator and no project, so it runs anywhere.
+
 ---
 
 ## What each file does
@@ -833,10 +865,11 @@ Short notes so any of us can answer if we get asked about a file we did not
 write. Read before a presentation.
 
 **src/types.ts** — the shape of everything the dashboard renders. Eight table
-types, plus the view name, the permit kinds, the kinds of spot, the three
-categories a recommendation can belong to, the next class, a recommendation,
-the three lists one request comes back with, a week of opening hours and the
-loading wrapper: seventeen in all. Field names are the same as the database
+types, one of which, the event, comes in a stored shape and a dated one, plus
+the view name, the permit kinds, the kinds of spot, the three categories a
+recommendation can belong to, the next class, a recommendation, the three lists
+one request comes back with, a week of opening hours and the loading wrapper:
+eighteen in all. Field names are the same as the database
 columns, underscores and all, so nothing has to be renamed between the sample
 rows and the real ones. Four of the profile fields are
 nullable because the column is, which is what a new account looks like.
@@ -990,6 +1023,14 @@ generates nothing instead of quietly surviving a find and replace.
 **tests/test_scoring.py** — the ranking engine's tests, which are the ones
 with real logic to check. **tests/firestore_rules.test.mjs** — what the access
 rules actually allow, run against Firebase's emulator.
+**tests/event_dates.test.mjs** — the same event read at five points in the
+future, including either side of the November clock change. Needs no emulator
+and no project.
+
+**src/lib/eventDates.ts** — the one place an event gets a date. Firestore
+stores a day offset and a time of day rather than a timestamp, and this turns
+them into a start and an end when the row is read. The demo rows and the real
+ones both go through it, so the two cannot disagree.
 
 **data/parking_samples.csv** — the three readings off CSUF's live counts
 board, which the occupancy curve was fitted to. **docs/architecture.mmd** — the
@@ -1029,10 +1070,11 @@ for the campus and two for a student, with twelve row level security policies
 and a check at the end that refuses to pass if any of it did not run: without them anyone could read every row
 from the browser console, because the key our app ships with is public.
 
-**db/seed.sql and db/seed_events.sql** — buildings, lots and the occupancy
-curve, then the events. Events are separate because they are dated and have to
-be re-run before each demo, otherwise they have all expired and the events card
-is empty.
+**db/seed.sql and db/seed_events.sql** — the previous design, kept for
+reference: buildings, lots and the occupancy curve, then the events. Events
+were a file of their own because they were stored as dates and had to be put
+back before each demo. They hold a day offset now, worked out on read, so
+nothing expires and nothing has to be re-run.
 
 **api/recommend.py** — the request and response shapes, and the three calls into
 the ranking engine. The GET is still the health check we used to prove the

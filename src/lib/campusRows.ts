@@ -533,17 +533,16 @@ const clubs: Club[] = [
 // worked out on read, by src/lib/eventDates.ts, which both the demo and a
 // signed in account go through. These rows are also exactly what the seed
 // writes, field for field.
-
+//
 // Every one of these runs an hour and a half. A constant rather than a column
 // on each line, because nothing needs them to differ and a seventh value per
 // line below would only be noise.
 const EVENT_MINUTES = 90
 
 function buildEvents(): StoredEvent[] {
-  // Host club, title, day offset, time of day, building, tags. The tags have
-  // to match whatever the seed put in Firestore, because the scorer divides
-  // shared tags by the event's own tag count, so a shorter list on one side
-  // would quietly score higher than the same event read from the other.
+  // Host club, title, day offset, time of day, building, tags. Tags matter
+  // more than they look: the scorer divides shared tags by the event's own tag
+  // count, so adding one to a row quietly lowers every match it already had.
   const defs: [string, string, number, string, string, string[]][] = [
     ["Association for Computing Machinery", "Resume Workshop with Industry Mentors", 0, "16:00", 'b-cs', ["career", "software-engineering"]],
     ["Data Science and Machine Learning", "Intro to Neural Networks", 0, "18:00", 'b-e', ["ai", "data-science", "python"]],
@@ -560,8 +559,9 @@ function buildEvents(): StoredEvent[] {
   ]
 
   return defs.map(([hostName, title, dayOffset, at, buildingId, tags], i) => {
-    // the seed joins the host by name, so look it up the same way rather than
-    // taking whichever club happens to sit at this position in the array
+    // By name rather than by position, so reordering the club list above
+    // cannot silently re-attribute an event. Dropping the made up clubs once
+    // moved eleven of the twelve, back when a SQL file did this join.
     const host = clubs.find((c) => c.name === hostName)
     return {
       id: `event-${i}`,

@@ -125,8 +125,36 @@ export async function getBuildings(): Promise<Building[]> {
 // below pull apart in the two shapes the app asks for.
 type LotDoc = ParkingLot & { availability?: Record<string, Record<string, number>> }
 
-async function lotDocs(): Promise<LotDoc[]> {
-  return demandRows('parking lots', byName(await readAll<LotDoc>('parking_lots')))
+// The collection itself, held for the life of the page, because the two
+// functions below both need it and one screen asks for both: StructureFill
+// fetches the lots and the occupancy together, and getRecommendations reads
+// the lots in its first round and the occupancy in a second one that has to
+// wait for the class time. Each of those was twelve documents charged twice
+// for the same twelve documents.
+//
+// campusData's once() cannot cover this. It holds getParkingLots per account
+// and per dataVersion, and it deliberately does not hold the availability
+// call, since which rows that returns depends on the hour asked for. This sits
+// underneath both and is what the two have in common.
+//
+// Not keyed on anything, unlike once(), because these twelve are the same
+// twelve for every account and nothing in the app ever writes to them: the
+// seed is the only thing that puts them there. A profile write bumping
+// dataVersion is no reason to pay for them again.
+//
+// The promise rather than the rows, so two panels asking at the same moment
+// share one query, and dropped on failure for the reason sdk() drops its
+// import: a kept rejection would keep failing after the network came back.
+let heldLots: Promise<LotDoc[]> | null = null
+
+function lotDocs(): Promise<LotDoc[]> {
+  heldLots ??= readAll<LotDoc>('parking_lots')
+    .then((rows) => demandRows('parking lots', byName(rows)))
+    .catch((e: unknown) => {
+      heldLots = null
+      throw e
+    })
+  return heldLots
 }
 
 export async function getParkingLots(): Promise<ParkingLot[]> {
@@ -287,7 +315,15 @@ export async function saveProfile(userId: string, next: Profile) {
     const { fs, db } = await connect()
     // id is left out on purpose: it is the name of the document, and a copy
     // inside it is one more thing that can disagree with itself.
-    await fs.updateDoc(fs.doc(db, 'profiles', userId), {
+    //
+    // setDoc rather than updateDoc, and deliberately not merging. The rules
+    // check the whole document after the write, and an update is merged with
+    // whatever is already there, so a single stray field, added by hand in
+    // the console or left behind by an older shape, fails hasOnly and refuses
+    // every save that account ever makes again. Writing all six outright puts
+    // a drifted document back instead of being blocked by it, and it cannot
+    // fail with "not found" on a document the app is about to replace.
+    await fs.setDoc(fs.doc(db, 'profiles', userId), {
       full_name: next.full_name,
       major: next.major,
       interests: next.interests,

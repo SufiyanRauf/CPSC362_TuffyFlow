@@ -49,10 +49,15 @@ export default function SpotsView() {
 
         <label className="flex min-h-11 items-center gap-2">
           quiet to
+          {/* the label around this reads out as "quiet to 3", which says
+              neither what the 3 is nor what it is out of, so the slider names
+              itself the same way the one on the profile screen does */}
           <input
             className="h-6"
             type="range" min={1} max={5} value={maxNoise}
             onChange={(e) => setMaxNoise(Number(e.target.value))}
+            aria-label="Loudest noise level to show, 1 is quietest"
+            aria-valuetext={`${maxNoise} of 5`}
           />
           <span className="w-4 tabular-nums text-ink-soft">{maxNoise}</span>
         </label>
@@ -76,7 +81,11 @@ export default function SpotsView() {
               (!outletsOnly || s.has_outlets),
           )
           if (visible.length === 0) {
-            return <p className="text-sm text-ink-faint">No spots match these filters.</p>
+            return (
+              // role="status" like the count line it replaces, so filtering
+              // down to nothing is still announced
+              <p role="status" className="text-sm text-ink-faint">No spots match these filters.</p>
+            )
           }
           return (
             <div>

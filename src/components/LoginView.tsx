@@ -49,11 +49,21 @@ export default function LoginView() {
   // and an unchanged live region says nothing at all, so pressing Log in twice
   // on an empty form was silent the second time. Emptying it first, in a
   // commit of its own, gives it something to change from.
+  //
+  // The id is held so the second commit can be called off. Only a form that
+  // failed its own checks gets here, and that leaves this card on screen, so
+  // the timer has nothing to land on today. Holding it is what keeps that true
+  // if something later signs in or switches cards from the same place.
+  const complaining = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
   function complain(field: 'email' | 'password' | 'name', text: string) {
     setWrong(field)
     setNote(null)
-    setTimeout(() => setNote({ bad: true, text }), 0)
+    clearTimeout(complaining.current)
+    complaining.current = setTimeout(() => setNote({ bad: true, text }), 0)
   }
+
+  useEffect(() => () => clearTimeout(complaining.current), [])
 
   // There used to be a block here that read a refused Google sign in back out
   // of the query string, because the redirect version of it comes home that
