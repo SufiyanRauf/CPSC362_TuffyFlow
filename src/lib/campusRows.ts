@@ -14,7 +14,7 @@
 // The parking lots come from a different sheet: see the note above parkingLots.
 import type {
   Building, Profile, ClassMeeting, ParkingLot, LotAvailability,
-  Spot, Club, CampusEvent,
+  Spot, Club, StoredEvent,
 } from '../types'
 
 const buildings: Building[] = [
@@ -528,25 +528,22 @@ const clubs: Club[] = [
   { id: 'club-331046', titanlink_id: "331046", name: "Ánimo: Latinx Student Counseling Association", summary: "This is a space for Animo emphasis students within the counseling department to provide academic support, professional development, emotional connections, networking with faculty and other professionals in the field.", website_key: "animo_csuf", categories: ["Cultural", "Career Planning", "College of Health and Human Development", "Health & Wellness", "Social"], tags: ["career", "cultural", "health-wellness", "social"] },
 ]
 
-// Events are dated relative to today, the same as db/seed_events.sql, so they
-// never go stale. Times are campus local.
-const CAMPUS_TZ = 'America/Los_Angeles'
+// Events carry a day offset and a time of day rather than a timestamp, so a
+// set loaded into Firestore weeks ago still reads as this week. The dates are
+// worked out on read, by src/lib/eventDates.ts, which both the demo and a
+// signed in account go through. These rows are also exactly what the seed
+// writes, field for field.
 
-// Campus is on daylight time for part of the year, so the offset has to be
-// asked for per date rather than hard coded.
-function campusOffset(isoDate: string) {
-  const name = new Intl.DateTimeFormat('en-US', {
-    timeZone: CAMPUS_TZ, timeZoneName: 'longOffset',
-  }).formatToParts(new Date(`${isoDate}T12:00:00Z`))
-    .find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-08:00'
-  return name.replace('GMT', '') || '-08:00'
-}
+// Every one of these runs an hour and a half. A constant rather than a column
+// on each line, because nothing needs them to differ and a seventh value per
+// line below would only be noise.
+const EVENT_MINUTES = 90
 
-function buildEvents(): CampusEvent[] {
-  // Host club, title, day offset, time, building, tags. These have to stay in
-  // step with db/seed_events.sql, including the tags, because the scorer
-  // divides shared tags by the event's own tag count and a short list here
-  // would score higher than the same event out of the database.
+function buildEvents(): StoredEvent[] {
+  // Host club, title, day offset, time of day, building, tags. The tags have
+  // to match whatever the seed put in Firestore, because the scorer divides
+  // shared tags by the event's own tag count, so a shorter list on one side
+  // would quietly score higher than the same event read from the other.
   const defs: [string, string, number, string, string, string[]][] = [
     ["Association for Computing Machinery", "Resume Workshop with Industry Mentors", 0, "16:00", 'b-cs', ["career", "software-engineering"]],
     ["Data Science and Machine Learning", "Intro to Neural Networks", 0, "18:00", 'b-e', ["ai", "data-science", "python"]],
@@ -561,20 +558,8 @@ function buildEvents(): CampusEvent[] {
     ["Behind The Scenes", "Open Mic Night", 6, "19:00", 'b-tsu', ["arts", "music", "social"]],
     ["Offensive Security Society", "Password Cracking Demo", 8, "16:30", 'b-e', ["cybersecurity", "networking"]],
   ]
-  // Build each event at campus local time, not at the laptop's. Using setHours
-  // meant a 16:00 event was 16:00 wherever the demo was being run from, which
-  // is 23:00 on campus from Sydney, and the scorer compares it against campus
-  // time. en-CA gives YYYY-MM-DD.
-  const campusToday = new Intl.DateTimeFormat('en-CA', {
-    timeZone: CAMPUS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date())
 
   return defs.map(([hostName, title, dayOffset, at, buildingId, tags], i) => {
-    const day = new Date(`${campusToday}T00:00:00Z`)
-    day.setUTCDate(day.getUTCDate() + dayOffset)
-    const date = day.toISOString().slice(0, 10)
-    const start = new Date(`${date}T${at}:00${campusOffset(date)}`)
-    const end = new Date(start.getTime() + 90 * 60 * 1000)
     // the seed joins the host by name, so look it up the same way rather than
     // taking whichever club happens to sit at this position in the array
     const host = clubs.find((c) => c.name === hostName)
@@ -582,8 +567,12 @@ function buildEvents(): CampusEvent[] {
       id: `event-${i}`,
       club_id: host?.id ?? '',
       club_name: host?.name ?? hostName,
-      title, starts_at: start.toISOString(), ends_at: end.toISOString(),
-      building_id: buildingId, tags,
+      title,
+      day_offset: dayOffset,
+      at,
+      duration_minutes: EVENT_MINUTES,
+      building_id: buildingId,
+      tags,
     }
   })
 }

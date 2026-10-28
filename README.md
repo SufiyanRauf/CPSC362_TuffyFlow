@@ -479,10 +479,13 @@ somebody signs up, so the app writes a student's profile document itself the
 first time they sign in, and the profile screen opens with a short list of what
 is still missing: the permit, the noise preference and the class schedule.
 
-Events are dated when they are written, so **re-run the seed before a demo**
-or a signed in account will see none at all. The demo that needs no account
-works them out fresh on every page load, so it never looks wrong and will not
-warn you that the real one has gone stale.
+Events hold a day offset and a time of day rather than a date, and the app
+works the real dates out when it reads them, so a set seeded once still reads
+as this week months later. It used to store timestamps, which meant re-running
+the seed before every demo or a signed in account saw an empty Events screen,
+while the demo that needs no account looked fine and gave no warning. Both
+halves now go through the same function in `src/lib/eventDates.ts`, so they
+cannot disagree about when an event is.
 
 To erase somebody completely, including their schedule:
 

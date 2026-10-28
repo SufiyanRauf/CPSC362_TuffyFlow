@@ -5,7 +5,7 @@ The app runs on Firestore. Three files are live:
 | File | What it is |
 |---|---|
 | `firestore.rules` | The access rules. Publish them with `firebase deploy --only firestore:rules`. This is the whole security model. Tested by `tests/firestore_rules.test.mjs`, which needs the Firebase CLI and a JDK for the emulator. |
-| `seed_firestore.mjs` | Loads the campus into a project, with your own service account key. Run it again before a demo: the events are dated when they are written. |
+| `seed_firestore.mjs` | Loads the campus into a project, with your own service account key. Nothing it writes expires, so one run is enough: events store a day offset, not a date. |
 | `delete_account.mjs` | Erases one student, schedule included. Firebase cascades nothing, so without this a deleted account leaves its documents behind forever. |
 
 `seed_firestore.mjs` needs Node 22.18 or newer, which reads the TypeScript

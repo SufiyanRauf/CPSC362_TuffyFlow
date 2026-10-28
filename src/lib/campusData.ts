@@ -20,6 +20,7 @@ import {
   buildings, clubs, demoClassMeetings, demoProfile, events, lotAvailability,
   parkingLots, spots,
 } from './campusRows'
+import { datedEvents } from './eventDates'
 import { accountId, accountName } from './session'
 import { dataChanged } from './dataVersion'
 import * as live from './firestoreData'
@@ -54,7 +55,10 @@ export async function getClubs(): Promise<Club[]> {
   return accountId() ? live.getClubs() : clubs
 }
 export async function getEvents(): Promise<CampusEvent[]> {
-  return accountId() ? live.getEvents() : events
+  // The sample rows hold a day offset, not a date, so they get dated here the
+  // same way the Firestore ones do. Worked out per call rather than once at
+  // import, so a tab left open overnight rolls over with the campus day.
+  return accountId() ? live.getEvents() : datedEvents(events)
 }
 
 export async function getProfile(): Promise<Profile> {

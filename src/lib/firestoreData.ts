@@ -19,8 +19,9 @@
 
 import type {
   Building, CampusEvent, ClassMeeting, Club, LotAvailability,
-  ParkingLot, Permit, Profile, Spot, SpotHours,
+  ParkingLot, Permit, Profile, Spot, SpotHours, StoredEvent,
 } from '../types'
+import { datedEvents } from './eventDates'
 import { firebaseApp } from './firebase'
 
 // The Firestore half of the SDK is fetched the first time somebody asks for a
@@ -167,8 +168,10 @@ export async function getClubs(): Promise<Club[]> {
 }
 
 export async function getEvents(): Promise<CampusEvent[]> {
-  const events = await readAll<CampusEvent>('events')
-  return [...events].sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+  // What comes back has no date on it, only a day offset and a time, so a set
+  // seeded weeks ago still reads as this week. datedEvents does the sorting
+  // too, which Firestore cannot do for a field it is no longer storing.
+  return datedEvents(await readAll<StoredEvent>('events'))
 }
 
 // ---------------------------------------------------------------------------

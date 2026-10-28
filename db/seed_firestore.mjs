@@ -9,11 +9,12 @@
 // outside the repository, or inside it under a name .gitignore already covers.
 // Never commit it, and never paste it anywhere.
 //
-// Safe to run again, and you will need to: the twelve events are dated
-// relative to the day they are written, so a set seeded two weeks ago is all
-// in the past and a signed in account sees no events at all. Run this again
-// before a demo. The demo that needs no account works these out fresh on every
-// page load, so it never goes stale and will not warn you.
+// Safe to run again, and you should not need to. Nothing it writes expires.
+// Events used to: they were stored as timestamps, so a set seeded two weeks
+// before a demo was entirely in the past and a signed in account saw an empty
+// Events screen. They now hold a day offset and a time of day instead, and the
+// app works the dates out when it reads them, so one run covers every demo
+// from here on. src/lib/eventDates.ts has the reasoning.
 //
 // Every document is written at an id we choose, so a second run overwrites
 // rather than duplicating. It does not delete: a club removed from
@@ -96,10 +97,12 @@ async function main() {
   await write('clubs', clubs)
   await write('events', events)
 
-  const first = events[0]?.starts_at?.slice(0, 10)
-  const last = events[events.length - 1]?.starts_at?.slice(0, 10)
-  console.log(`\nEvents run ${first} to ${last}. Run this again before a demo,`)
-  console.log('or by then they will all be in the past.')
+  // Reported as offsets because that is what went in. Saying "today to day 8"
+  // rather than two dates is also the honest version: these do not belong to
+  // the day they were seeded any more.
+  const last = Math.max(...events.map((e) => e.day_offset))
+  console.log(`\nEvents run today to day ${last}, worked out whenever they are read,`)
+  console.log('so this does not need running again before a demo.')
   console.log('\nProfiles and schedules are not seeded: they belong to a person,')
   console.log('and the app writes one the first time somebody signs in.')
 }

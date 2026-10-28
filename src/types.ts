@@ -115,15 +115,28 @@ export type Club = {
   tags: string[]
 }
 
-export type CampusEvent = {
+// What Firestore actually holds for an event. There is no date on it: the day
+// offset and the time of day are stored instead, and src/lib/eventDates.ts
+// says why. The seed writes exactly these fields.
+export type StoredEvent = {
   id: string
   club_id: string
   club_name: string
   title: string
-  starts_at: string
-  ends_at: string
+  day_offset: number
+  at: string
+  duration_minutes: number
   building_id: string
   tags: string[]
+}
+
+// What the screens are handed: the stored fields, plus the two timestamps
+// worked out from them at the moment the row is read. Everything that renders
+// or scores an event reads starts_at and ends_at and does not need to know
+// they were derived.
+export type CampusEvent = StoredEvent & {
+  starts_at: string
+  ends_at: string
 }
 
 export type SpotKind = 'study' | 'eat' | 'charge' | 'meet'
