@@ -327,8 +327,9 @@ and a class has to end after it starts.
 
 ## Current Project Status
 
-Every feature is built. What is left is account setup on two websites, which is
-configuration rather than code.
+Every feature is built and the app is live at tuffyflow.vercel.app, running on
+a real Firebase project with real accounts. What is left is one setting, noted
+at the bottom of this section.
 
 Completed:
 
@@ -339,12 +340,12 @@ Completed:
 * The access rules, with 30 tests against Firebase's emulator
 * The event dates, with 9 tests that need neither Java nor a project
 * Dashboard, parking, spots, clubs, events and profile screens
-* Sign up, log in, Google sign in and sign out, written and tested as far as
-  they can be without a project to point them at
+* Sign up, log in, Google sign in and sign out, all working against the live
+  project
 * A demo entry that needs no account, for showing the app without one
 * The reads and writes a signed in student needs, and the security rules that
-  decide what they are allowed to touch, written but not yet run against a
-  live project
+  decide what they are allowed to touch, published and running on the live
+  project
 * A seed script that loads the campus, reading the same rows the demo shows
 * Profile editing: name, major, permit, noise preference, interests, goals and
   the weekly schedule
@@ -354,20 +355,23 @@ Completed:
   be database constraints
 * Deployed to Vercel, which rebuilds on every push to main
 
-Left to do, and all of it configuration rather than code:
+* App Check, so the database only answers requests that came from this app
 
-1. Create the Firebase project, switch on the two ways of signing in, and
-   create a Firestore database
-2. Put the four config values into `.env` and into Vercel
-3. Publish `db/firestore.rules`
-4. Run `db/seed_firestore.mjs` once to load the campus
-5. Redeploy on Vercel, because the config is read when the site is built and
-   not when it is loaded
+Left to do:
 
-Until step 2 is done the app runs on the sample campus bundled in the
-repository, the demo works, and the login screen says why signing in is
-unavailable. That is deliberate: a marker who clones this repository gets a
-working app rather than a blank screen.
+App Check is switched on and reporting, but not yet enforcing. It runs in
+monitoring mode first so we can see verified requests arriving before we start
+refusing the ones without a token. Turning it on too early would have taken the
+live site down instead of protecting it. Once the App Check page shows verified
+traffic for Cloud Firestore, enforcement goes on and that is the last step.
+
+Nothing else is outstanding in the code.
+
+Anyone cloning this repository needs their own Firebase project, and "Setting
+it up" below is the whole procedure. Until the config is in place the app runs
+on the sample campus bundled in the repository, the demo works, and the login
+screen says why signing in is unavailable. That is deliberate: a marker who
+clones this gets a working app rather than a blank screen.
 
 ---
 
