@@ -8,6 +8,9 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_AUTH_DOMAIN?: string
   readonly VITE_FIREBASE_PROJECT_ID?: string
   readonly VITE_FIREBASE_APP_ID?: string
+  // App Check. Optional separately from the four above: the app signs in and
+  // reads rows without it, it just does so unprotected.
+  readonly VITE_FIREBASE_RECAPTCHA_SITE_KEY?: string
 }
 
 interface ImportMeta {

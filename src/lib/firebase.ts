@@ -16,6 +16,7 @@
 // where nobody can edit them.
 
 import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 import { getAuth, type Auth } from 'firebase/auth'
 
 const config = {
@@ -23,6 +24,44 @@ const config = {
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
+}
+
+// Proof that a request came from this app rather than from a script holding a
+// copy of the config above. The rules decide what a signed in student may
+// touch; they cannot decide how often, because a rule cannot count. Without
+// this, anybody can make an account and read until the day's free allowance is
+// gone, and the app stops working for everybody until midnight.
+//
+// Optional on purpose, and separately from the four values above. Somebody
+// cloning this repository has no reCAPTCHA key, and the app should still run
+// for them rather than refuse to start.
+function protect(app: FirebaseApp) {
+  const siteKey = import.meta.env.VITE_FIREBASE_RECAPTCHA_SITE_KEY
+  if (!siteKey) return
+
+  // Running locally there is no reCAPTCHA to pass, so the SDK prints a debug
+  // token to the console instead and that token has to be registered under
+  // App Check, Apps, Manage debug tokens. Without this, turning enforcement on
+  // stops localhost reading anything, which looks exactly like a broken build.
+  // Set before initializeAppCheck, which reads it on the way past.
+  if (import.meta.env.DEV) {
+    (self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean })
+      .FIREBASE_APPCHECK_DEBUG_TOKEN = true
+  }
+
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(siteKey),
+      // Tokens last about an hour. Refreshing them in the background is what
+      // stops a student who leaves a tab open over a lecture coming back to a
+      // dashboard that cannot read anything.
+      isTokenAutoRefreshEnabled: true,
+    })
+  } catch (e) {
+    // Never fatal. A bad key should leave sign in and the campus working
+    // exactly as they did before App Check existed, not take the app down.
+    console.warn('Tuffy Flow: App Check could not start, so requests go unverified.', e)
+  }
 }
 
 type Connection = { app: FirebaseApp; auth: Auth }
@@ -40,6 +79,9 @@ function connect(): Connection | null {
       projectId: config.projectId,
       appId: config.appId,
     })
+    // Before anything asks for a row, so the first request already carries a
+    // token rather than being the one that gets refused.
+    protect(app)
     return { app, auth: getAuth(app) }
   } catch (e) {
     // Belt and braces, and worth being honest that it is: initializeApp does
