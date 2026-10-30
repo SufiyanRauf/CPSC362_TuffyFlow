@@ -31,7 +31,12 @@ export default function RightRail({ onOpen }: RightRailProps) {
         <SectionHeader
           icon={<CalendarIcon className="h-4 w-4" />}
           title="Coming up"
-          action={{ label: 'All', onClick: () => onOpen('events') }}
+          // "All" on its own was the entire name of this button. The header
+          // renders its action beside the heading rather than inside it, so
+          // nothing ties the two together and a reader moving through the
+          // controls hears one word. Naming the thing it opens is the fix, and
+          // it matches the wording on the cards.
+          action={{ label: 'All events', onClick: () => onOpen('events') }}
         />
         <UpcomingEvents />
       </section>

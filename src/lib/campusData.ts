@@ -41,30 +41,52 @@ let classMeetings: ClassMeeting[] = structuredClone(demoClassMeetings)
 // never had.
 // ---------------------------------------------------------------------------
 
-// The campus collections are the same four lists for everybody, and one screen
+// The campus collections are the same five lists for everybody, and one screen
 // load asks for them over and over: each panel runs its own loader and
 // getRecommendations reads them again underneath, which was four reads of the
 // seventeen buildings and three of the twelve lots to draw one dashboard.
 // Firestore charges by the document read and the free tier is about 50,000 a
 // day, so the page holds on to what came back.
 //
-// Keyed on who is asking and on dataVersion() together. The demo and an
-// account answer differently, and dataVersion() is already the app's signal
-// that the rows behind a screen have moved on, so a write or a sign in cannot
-// be served a list from before it. One key for the whole set rather than one
-// per list, which also keeps the map from being something that only grows.
-let readsFor = ''
-const reads = new Map<string, Promise<unknown>>()
+// Two holds rather than one, because these collections do not all go stale at
+// the same time, and treating them as if they did is what made a dashboard
+// cost a hundred and forty reads where eighty six would do.
+//
+// seeded() is for the five collections db/firestore.rules refuses every write
+// to: buildings, parking_lots, spots, clubs and events. The seed script is the
+// only thing that can ever change them, so they are keyed on who is asking and
+// on nothing else, and they last the life of the page. That is the argument
+// lotDocs() in firestoreData.ts already makes for the lots, applied to the
+// other four, and it is what the second map below is worth paying for: keyed
+// on dataVersion as well, setting a permit threw away three hundred and twenty
+// clubs, so a student who set theirs and then added five classes, looking at
+// Clubs in between, paid for those clubs six times over.
+//
+// once() is for the two that genuinely move, the profile and the schedule, and
+// keeps dataVersion() in its key. That counter is already the app's signal
+// that the rows behind a screen have moved on, so a save cannot be served the
+// state that preceded it.
+//
+// Both are keyed on who is asking, because the demo and an account answer
+// differently, and both key the whole set together rather than one key per
+// list, which keeps either map from being something that only grows.
+type Held = { key: string; reads: Map<string, Promise<unknown>> }
 
-function once<T>(what: string, load: () => Promise<T>): Promise<T> {
-  // Null covers the demo and signed out, which read the same sample rows.
-  const whose = `${accountId() ?? 'sample'}:${dataVersion()}`
-  if (whose !== readsFor) {
-    reads.clear()
-    readsFor = whose
+const seedOnly: Held = { key: '', reads: new Map() }
+const perVersion: Held = { key: '', reads: new Map() }
+
+// Null covers the demo and signed out, which read the same sample rows.
+function asking() {
+  return accountId() ?? 'sample'
+}
+
+function held<T>(into: Held, key: string, what: string, load: () => Promise<T>): Promise<T> {
+  if (key !== into.key) {
+    into.reads.clear()
+    into.key = key
   }
 
-  let pending = reads.get(what) as Promise<T> | undefined
+  let pending = into.reads.get(what) as Promise<T> | undefined
   if (!pending) {
     // The promise, not the rows, so that the panels asking at the same moment
     // share one query instead of starting several.
@@ -74,47 +96,75 @@ function once<T>(what: string, load: () => Promise<T>): Promise<T> {
     // campus wifi or a refused rule, keeps failing for the life of the page
     // even after the network comes back.
     pending = load().catch((e: unknown) => {
-      reads.delete(what)
+      into.reads.delete(what)
       throw e
     })
-    reads.set(what, pending)
+    into.reads.set(what, pending)
   }
   return pending
 }
 
+function seeded<T>(what: string, load: () => Promise<T>): Promise<T> {
+  return held(seedOnly, asking(), what, load)
+}
+
+function once<T>(what: string, load: () => Promise<T>): Promise<T> {
+  return held(perVersion, `${asking()}:${dataVersion()}`, what, load)
+}
+
 // Async because the database ones are. The sample rows never needed it.
 export async function getBuildings(): Promise<Building[]> {
-  return once('buildings', async () => (accountId() ? live.getBuildings() : buildings))
+  return seeded('buildings', async () => (accountId() ? live.getBuildings() : buildings))
 }
+// Held here as well as by lotDocs() underneath, and the two cannot disagree:
+// the twelve lots are the same twelve for every account, so the only thing
+// this layer adds is skipping the strip of the availability map on every call.
 export async function getParkingLots(): Promise<ParkingLot[]> {
-  return once('lots', async () => (accountId() ? live.getParkingLots() : parkingLots))
+  return seeded('lots', async () => (accountId() ? live.getParkingLots() : parkingLots))
 }
 export async function getSpots(): Promise<Spot[]> {
-  return once('spots', async () => (accountId() ? live.getSpots() : spots))
+  return seeded('spots', async () => (accountId() ? live.getSpots() : spots))
 }
 export async function getClubs(): Promise<Club[]> {
-  return once('clubs', async () => (accountId() ? live.getClubs() : clubs))
+  return seeded('clubs', async () => (accountId() ? live.getClubs() : clubs))
 }
 export async function getEvents(): Promise<CampusEvent[]> {
   // The sample rows hold a day offset, not a date, so they get dated here the
   // same way the Firestore ones do. Worked out per call rather than once at
   // import, so a tab left open overnight rolls over with the campus day. That
-  // is also why this one is not held above: the dates have to be worked out
+  // is also why the answer is not held above: the dates have to be worked out
   // again, and a kept answer would still be on yesterday in the morning.
+  //
+  // What can be held is the twelve documents the dates are worked out from,
+  // and firestoreData's eventDocs() holds those for the life of the page, the
+  // way lotDocs() beside it holds the lots. So the reads happen once and the
+  // arithmetic happens every call, which is the half of this that has to. The
+  // demo has nothing to hold: its rows are an array in campusRows.ts.
   return accountId() ? live.getEvents() : datedEvents(events)
 }
 
+// The two below are kept per data version rather than for the life of the
+// page, because these are the rows a student can actually change. The write
+// bumps the counter, the key moves with it, and the next read is the saved one.
 export async function getProfile(): Promise<Profile> {
-  const id = accountId()
-  // The name comes from the session rather than the database, because on a
-  // brand new account there is no document yet and this is the call that
-  // creates it. Firebase is the only thing that knows what to put on it.
-  return id ? live.getProfile(id, accountName()) : profile
+  // Three callers on one dashboard: the top bar, the greeting and the ranking
+  // underneath it, which was three reads of one document.
+  return once('profile', async () => {
+    const id = accountId()
+    // The name comes from the session rather than the database, because on a
+    // brand new account there is no document yet and this is the call that
+    // creates it. Firebase is the only thing that knows what to put on it.
+    return id ? live.getProfile(id, accountName()) : profile
+  })
 }
 
 export async function getClassMeetings(): Promise<ClassMeeting[]> {
-  const id = accountId()
-  return id ? live.getClassMeetings(id) : classMeetings
+  // The dearest of the three, at twenty documents a read and three readers on
+  // a dashboard: findNextClass, the ranking, and the schedule panel.
+  return once('classes', async () => {
+    const id = accountId()
+    return id ? live.getClassMeetings(id) : classMeetings
+  })
 }
 
 // Only the rows for the arrival hour and the hours either side of it, which is

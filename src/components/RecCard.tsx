@@ -43,10 +43,19 @@ function saysWalk(reason: string) {
   return reason.includes('min walk')
 }
 
+// The walk is rounded up to whole minutes, so anywhere in the same building as
+// the class you are measured from comes back as 0, and the card was reading
+// "0 min walk" directly above the reason "right by Computer Science". A number
+// is the wrong answer at that distance rather than a wrong number, so at zero
+// the row says what it means instead.
+function walkText(minutes: number) {
+  return minutes === 0 ? 'Less than a minute away' : `${minutes} min walk`
+}
+
 function rowsFor(rec: Recommendation) {
   const rows: { Icon: (props: IconProps) => React.ReactElement; text: string }[] = []
   if (rec.walk_minutes !== null) {
-    rows.push({ Icon: WalkIcon, text: `${rec.walk_minutes} min walk` })
+    rows.push({ Icon: WalkIcon, text: walkText(rec.walk_minutes) })
   }
   if (rec.arrive_by) {
     rows.push({ Icon: ClockIcon, text: `Arrive by ${rec.arrive_by}` })
@@ -99,7 +108,10 @@ export default function RecCard({ rec, onOpen }: RecCardProps) {
   return (
     <div
       onClick={onOpen}
-      className={`group rounded-xl border p-4 text-left hover:border-titan-200 ${tints[rec.category]}`}
+      // cursor-pointer because the click is on the whole card. Without it a
+      // mouse gets a text caret over a region that navigates, so the only clue
+      // that any of this is clickable is the line at the bottom.
+      className={`group cursor-pointer rounded-xl border p-4 text-left hover:border-titan-200 ${tints[rec.category]}`}
     >
       {body}
       <button

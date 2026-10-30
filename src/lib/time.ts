@@ -16,8 +16,14 @@ export function toMinutes(hhmm: string) {
   return Number(h) * 60 + Number(m)
 }
 
+// Outside the function, because constructing one of these costs far more than
+// formatting with it and the options never change. UpcomingEvents calls
+// campusDate once per event to work out which ones are today, so it was paying
+// for a new formatter every row.
+const DAY_FORMAT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: CAMPUS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+})
+
 export function campusDate(when: Date) {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: CAMPUS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(when)
+  return DAY_FORMAT.format(when)
 }

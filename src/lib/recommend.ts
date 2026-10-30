@@ -9,10 +9,22 @@ const CAMPUS_TZ = 'America/Los_Angeles'
 
 // The browser's own clock is wherever the laptop is. Everything here has to be
 // campus local or the arrival hour lookup shifts and the numbers quietly change.
+// Built once. The formatter is the expensive half, and campusParts below runs
+// three times for every event in a ranking, so rebuilding it there was most of
+// the time this file spent. Safe to share: both of these read only the literal
+// options and the module's timezone, and the only thing that changes per call
+// is the date handed to formatToParts.
+const NOW_FORMAT = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAMPUS_TZ, weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false,
+})
+
+const PARTS_FORMAT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: CAMPUS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hour12: false,
+})
+
 export function campusNow() {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: CAMPUS_TZ, weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false,
-  }).formatToParts(new Date())
+  const parts = NOW_FORMAT.formatToParts(new Date())
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '0'
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   return {
@@ -25,10 +37,7 @@ export function campusNow() {
 // does that for the clock; this does it for an event's own date, which used to
 // be read with getHours() in whatever timezone the laptop happened to be in.
 function campusParts(when: Date) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: CAMPUS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false,
-  }).formatToParts(when)
+  const parts = PARTS_FORMAT.formatToParts(when)
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '0'
   return {
     date: `${get('year')}-${get('month')}-${get('day')}`,
@@ -273,11 +282,19 @@ async function loadRecommendations(): Promise<RecommendResponse> {
 // ranking is worked out against: which occupancy row to read, which events
 // have not started yet, how long until the class. The hour rather than the
 // minute because that is what the screens already depend on.
+//
+// The campus date is in the key as well, because the hour on its own is 0 to
+// 23 and repeats. A tab left open overnight asked at the same clock hour the
+// next day and got a byte-identical key, so yesterday's ranking was handed
+// back: dataVersion() only moves on a write or a sign in, and an idle tab does
+// neither. Both halves come from one campusParts call so the date and the hour
+// cannot disagree across a rollover.
 let rankedFor = ''
 let ranked: Promise<RecommendResponse> | null = null
 
 export function getRecommendations(): Promise<RecommendResponse> {
-  const asked = `${dataVersion()}:${Math.floor(campusNow().minutes / 60)}`
+  const today = campusParts(new Date())
+  const asked = `${dataVersion()}:${today.date}:${Math.floor(today.minutes / 60)}`
   if (asked !== rankedFor) {
     rankedFor = asked
     ranked = null

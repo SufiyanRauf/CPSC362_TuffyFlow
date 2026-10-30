@@ -132,15 +132,16 @@ type LotDoc = ParkingLot & { availability?: Record<string, Record<string, number
 // wait for the class time. Each of those was twelve documents charged twice
 // for the same twelve documents.
 //
-// campusData's once() cannot cover this. It holds getParkingLots per account
-// and per dataVersion, and it deliberately does not hold the availability
-// call, since which rows that returns depends on the hour asked for. This sits
-// underneath both and is what the two have in common.
+// campusData's hold cannot cover this. It holds getParkingLots, but it
+// deliberately does not hold the availability call, since which rows that
+// returns depends on the hour asked for. This sits underneath both and is what
+// the two have in common.
 //
-// Not keyed on anything, unlike once(), because these twelve are the same
-// twelve for every account and nothing in the app ever writes to them: the
-// seed is the only thing that puts them there. A profile write bumping
-// dataVersion is no reason to pay for them again.
+// Not keyed on anything, not even on who is asking, because these twelve are
+// the same twelve for every account and nothing in the app ever writes to
+// them: the seed is the only thing that puts them there. A profile write
+// bumping dataVersion is no reason to pay for them again, which is the
+// argument campusData's seeded() now makes for the other four collections.
 //
 // The promise rather than the rows, so two panels asking at the same moment
 // share one query, and dropped on failure for the reason sdk() drops its
@@ -195,11 +196,35 @@ export async function getClubs(): Promise<Club[]> {
   return byName(await readAll<Club>('clubs'))
 }
 
+// The stored rows, held for the life of the page for the same two reasons
+// lotDocs() above holds the lots. One dashboard asks for the events twice, in
+// the ranking and in the Upcoming panel, which was twenty four reads of the
+// same twelve documents, and nothing in the app can write to this collection:
+// db/firestore.rules refuses it, so a profile save bumping dataVersion is no
+// reason to pay for them again.
+//
+// The rows and not the dated result, which is the part that matters. The dates
+// are not stored, they are worked out per read, and a tab left open overnight
+// has to roll over with the campus day. Holding what getEvents returns would
+// leave the morning still showing yesterday.
+//
+// The promise rather than the rows, and dropped on failure, for the reasons
+// lotDocs() gives.
+let heldEvents: Promise<StoredEvent[]> | null = null
+
+function eventDocs(): Promise<StoredEvent[]> {
+  heldEvents ??= readAll<StoredEvent>('events').catch((e: unknown) => {
+    heldEvents = null
+    throw e
+  })
+  return heldEvents
+}
+
 export async function getEvents(): Promise<CampusEvent[]> {
   // What comes back has no date on it, only a day offset and a time, so a set
   // seeded weeks ago still reads as this week. datedEvents does the sorting
   // too, which Firestore cannot do for a field it is no longer storing.
-  return datedEvents(await readAll<StoredEvent>('events'))
+  return datedEvents(await eventDocs())
 }
 
 // ---------------------------------------------------------------------------

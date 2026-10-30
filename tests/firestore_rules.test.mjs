@@ -31,6 +31,20 @@ const JORDAN = 'jordan-uid'
 // allowed to carry the filled in values that create refuses.
 const NEWCOMER = 'sam-uid'
 
+// The create rule pins five fields to empty, and each pin is tested from a
+// newcomer of its own. Sharing one uid would hide the hole being looked for:
+// if a missing pin lets the first create through, the document it leaves
+// behind turns every later write to that uid into an update, and update is
+// allowed to carry these values, so the rest of the assertions would pass
+// while proving nothing.
+const PINNED_AT_CREATE = {
+  major: NEWCOMER,
+  permit_type: 'casey-uid',
+  noise_pref: 'devon-uid',
+  interests: 'harper-uid',
+  career_goals: 'quinn-uid',
+}
+
 // What a brand new profile is, which is the only shape a create may have.
 const freshProfile = (name = 'Alex Nguyen') => ({
   full_name: name,
@@ -78,7 +92,7 @@ before(async () => {
 after(async () => { await env?.cleanup() })
 
 const alex = () => env.authenticatedContext(ALEX).firestore()
-const newcomer = () => env.authenticatedContext(NEWCOMER).firestore()
+const newcomer = (uid) => env.authenticatedContext(uid).firestore()
 const strangers = () => env.unauthenticatedContext().firestore()
 // request.auth is not null for an anonymous sign in either, which is one
 // console toggle away from being switched on.
@@ -152,7 +166,7 @@ describe('a student’s own profile', () => {
     await assertSucceeds(setDoc(doc(alex(), 'profiles', ALEX), freshProfile()))
   })
 
-  it('cannot be created already filled in', async () => {
+  it('cannot be created with any one of the five fields already filled in', async () => {
     // Firebase has no free way to run code at signup, so the browser writes
     // this document. Pinning the shape is what stops it writing anything else.
     //
@@ -160,8 +174,23 @@ describe('a student’s own profile', () => {
     // same write against an existing document is an update, and update does
     // allow these values. This used to clear the whole database to get a
     // clean create, which left every test below it asserting against nothing.
-    const filled = { ...freshProfile(), permit_type: 'employee', noise_pref: 5 }
-    await assertFails(setDoc(doc(newcomer(), 'profiles', NEWCOMER), filled))
+    //
+    // One field per write, and five writes, because a create carrying two
+    // filled fields is refused as long as either pin survives: the version of
+    // this test that set permit_type and noise_pref together let the major,
+    // interests and career_goals pins be deleted without failing.
+    const filled = {
+      major: 'Computer Science',
+      permit_type: 'employee',
+      noise_pref: 5,
+      interests: ['ai'],
+      career_goals: ['research'],
+    }
+    for (const [field, uid] of Object.entries(PINNED_AT_CREATE)) {
+      await assertFails(setDoc(doc(newcomer(uid), 'profiles', uid), {
+        ...freshProfile('New Student'), [field]: filled[field],
+      }))
+    }
   })
 
   it('cannot carry a field nobody asked for', async () => {
@@ -186,13 +215,28 @@ describe('a student’s own profile', () => {
   // Counting the tags was never enough. hasOnly refuses a seventh field and
   // says nothing about what is inside an allowed one, so one interest of a
   // million characters used to sail through and park it on the document.
-  it('refuses a tag that is not a short string', async () => {
+  //
+  // Every position, not only the first two. Rules cannot loop, so someTags
+  // writes the same check out twelve times by hand, and this suite used to put
+  // a bad tag at index 0 and index 1 only. That left ten of those twelve lines
+  // unexecuted: any one of them could be deleted, or carry a typo in the index
+  // it reads, and nothing here would fail. The hole that opens is exactly the
+  // megabyte on a profile those lines exist to refuse.
+  it('refuses a bad tag at any of the twelve positions', async () => {
     const db = alex()
-    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: ['x'.repeat(5000)] }))
-    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: [{ nested: 'map' }] }))
-    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: [7] }))
-    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: [''] }))
-    await assertFails(updateDoc(doc(db, 'profiles', ALEX), { career_goals: ['ok', 'y'.repeat(33)] }))
+    const clean = Array.from({ length: 12 }, (_, i) => `tag-${i}`)
+    // Twelve clean tags are allowed, so the only thing that can refuse these
+    // writes is the per position check on the one element that was spoiled.
+    const spoiled = ['x'.repeat(5000), 'y'.repeat(33), 7, '', null, { nested: 'map' }]
+
+    for (let i = 0; i < clean.length; i += 1) {
+      for (const bad of spoiled) {
+        const tags = [...clean]
+        tags[i] = bad
+        await assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: tags }))
+        await assertFails(updateDoc(doc(db, 'profiles', ALEX), { career_goals: tags }))
+      }
+    }
   })
 
   it('refuses tags that are not a list at all', async () => {
@@ -215,8 +259,21 @@ describe('a student’s own profile', () => {
 
   // hasAll is the half of the pair that stops a field going missing, and
   // removing one is the only way to get there from a browser.
-  it('refuses an update that removes a field', async () => {
-    await assertFails(updateDoc(doc(alex(), 'profiles', ALEX), { major: deleteField() }))
+  //
+  // All six, because deleting major on its own said nothing about the other
+  // five. Worth knowing while reading this: each validator call in aProfile
+  // reads its own key, and reading a key that is not there is an error, which
+  // Firestore turns into a deny, so these six writes are refused twice over.
+  // That makes hasAll belt and braces rather than the only thing standing in
+  // the way, and it is why no client side test can prove hasAll by itself.
+  it('refuses an update that removes any of the six fields', async () => {
+    const db = alex()
+    const fields = [
+      'full_name', 'major', 'interests', 'career_goals', 'permit_type', 'noise_pref',
+    ]
+    for (const field of fields) {
+      await assertFails(updateDoc(doc(db, 'profiles', ALEX), { [field]: deleteField() }))
+    }
   })
 
   it('refuses a noise level outside one to five', async () => {
@@ -274,6 +331,17 @@ describe('a student’s own schedule', () => {
   it('refuses a class with no course code or no building', async () => {
     await assertFails(addDoc(mine(alex()), aClass({ course_code: '' })))
     await assertFails(addDoc(mine(alex()), aClass({ building_id: '' })))
+  })
+
+  // The other end of those two length checks. Only the empty string was ever
+  // tried, so the caps themselves were never executed: 32 could be raised to
+  // 3200 and 64 to 6400 and the suite stayed green, which is the long field
+  // the cap is there to keep off a document. One character over each, because
+  // a cap tested a mile past its limit does not say where the limit is.
+  it('refuses a course code or a building id one character over the cap', async () => {
+    const db = alex()
+    await assertFails(addDoc(mine(db), aClass({ course_code: 'C'.repeat(33) })))
+    await assertFails(addDoc(mine(db), aClass({ building_id: 'b'.repeat(65) })))
   })
 
   it('refuses a field nobody asked for', async () => {

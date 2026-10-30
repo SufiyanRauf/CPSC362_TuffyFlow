@@ -1,6 +1,6 @@
-import type { RecCategory, View } from '../types'
+import type { NextClass, RecCategory, View } from '../types'
 import { useAsync } from '../lib/useAsync'
-import { findNextClass, getRecommendations } from '../lib/recommend'
+import { campusNow, findNextClass, getRecommendations } from '../lib/recommend'
 import { getProfile } from '../lib/campusData'
 import NextClassCard from './NextClassCard'
 import RecCard from './RecCard'
@@ -9,6 +9,7 @@ import SectionHeader from './SectionHeader'
 import TodaySchedule from './TodaySchedule'
 import { ClockIcon, PinIcon } from './icons'
 import { useDataVersion } from '../lib/useDataVersion'
+import { useCampusHour } from '../lib/useMinuteTick'
 
 type DashboardProps = {
   onOpen: (view: View) => void
@@ -21,11 +22,28 @@ const cardView: Record<RecCategory, View> = {
   event: 'events',
 }
 
+// minutes_until is whatever the gap was when findNextClass ran, and that only
+// runs once an hour, so a card drawn at 08:20 still read "Starts in 40 min" at
+// 11:00. The gap is worked out again here against the campus clock, off the
+// class start, which does not go stale. Floored at zero because a class can
+// start between two of those hourly fetches and counting past the start would
+// print a negative minute count.
+function untilStart(next: NextClass): NextClass {
+  const gap = next.day_offset * 1440 + next.start_minutes - campusNow().minutes
+  return { ...next, minutes_until: Math.max(0, gap) }
+}
+
 export default function Dashboard({ onOpen }: DashboardProps) {
   const version = useDataVersion()
+  // The class and the ranking are both worked out against the clock, and the
+  // data version only moves on a write or a sign in, so a tab left open
+  // counted down to a class that had already started. useCampusHour also
+  // re-renders this on the minute without changing value, which is what keeps
+  // the countdown on the class card current while the fetches stay hourly.
+  const hour = useCampusHour()
   const profile = useAsync(getProfile, [version])
-  const nextClass = useAsync(findNextClass, [version])
-  const recs = useAsync(getRecommendations, [version])
+  const nextClass = useAsync(findNextClass, [version, hour])
+  const recs = useAsync(getRecommendations, [version, hour])
 
   // No name on a brand new account, and no greeting is better than greeting
   // somebody by the front half of their email address.
@@ -42,6 +60,16 @@ export default function Dashboard({ onOpen }: DashboardProps) {
   // Settled rather than ready: a scorer that failed has still finished, and
   // the card is worth showing with no lot on it.
   const hero = recs.state === 'loading' ? { state: 'loading' as const } : nextClass
+  // The course whose building has gone from the campus data, or null. The
+  // ranking is skipped rather than measured to a made up point in that case,
+  // so the parking slot below is empty for a reason that has nothing to do
+  // with the permit, and the parking screen reads the same sentinel. The
+  // course is carried rather than the building because the building is exactly
+  // what is missing: its name has already fallen back to the word Campus.
+  const strandedCourse = nextClass.state === 'ready' && nextClass.data
+    && nextClass.data.building_lat === 0
+    ? nextClass.data.course_code
+    : null
 
   return (
     <div className="flex flex-col gap-8">
@@ -57,7 +85,7 @@ export default function Dashboard({ onOpen }: DashboardProps) {
       <Panel source={hero}>
         {(next) =>
           next ? (
-            <NextClassCard nextClass={next} lot={topLot} />
+            <NextClassCard nextClass={untilStart(next)} lot={topLot} />
           ) : (
             <div className="rounded-xl border border-rule bg-paper px-6 py-6 text-ink-soft">
               No classes on your schedule yet.
@@ -136,17 +164,22 @@ export default function Dashboard({ onOpen }: DashboardProps) {
                       Parking
                     </p>
                     <p className="mt-2 text-sm text-ink-soft">
-                      Nothing here until your profile says which permit you hold.
-                      Lots take some permits and not others.
+                      {strandedCourse
+                        ? `Nothing here because we do not have a location for the building ${strandedCourse} is in, so there is nowhere to measure the walk to.`
+                        : 'Nothing here until your profile says which permit you hold. Lots take some permits and not others.'}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => onOpen('profile')}
-                      className="mt-3 min-h-11 rounded-lg border border-titan px-4 text-sm font-medium
-                                 text-titan hover:bg-titan hover:text-white"
-                    >
-                      Set your permit
-                    </button>
+                    {/* No button on the missing building, because the profile
+                        is not where that gets fixed. */}
+                    {!strandedCourse && (
+                      <button
+                        type="button"
+                        onClick={() => onOpen('profile')}
+                        className="mt-3 min-h-11 rounded-lg border border-titan px-4 text-sm font-medium
+                                   text-titan hover:bg-titan hover:text-white"
+                      >
+                        Set your permit
+                      </button>
+                    )}
                   </div>
                 ) : null,
               )}

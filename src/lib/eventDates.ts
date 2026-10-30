@@ -17,22 +17,33 @@ import type { CampusEvent, StoredEvent } from '../types'
 // take it either way, and tests/event_dates.test.mjs needs it.
 import { CAMPUS_TZ } from './time.ts'
 
+// Built once at module load, not inside the two functions below. Building an
+// Intl.DateTimeFormat is the expensive part, reading a date with one is cheap,
+// and these were being rebuilt three times per event: dating twelve events
+// took 1.5 ms of that and nothing else. Neither one closes over anything, so
+// there is nothing per call to keep them out of module scope, and an instance
+// is safe to hand a different date every time.
+const OFFSET_FORMAT = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAMPUS_TZ, timeZoneName: 'longOffset',
+})
+
+const DAY_FORMAT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: CAMPUS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+})
+
 // The campus offset at a given instant, as "-07:00" or "-08:00". Asked for
 // rather than hard coded, because campus is on daylight time for part of the
 // year and the demos run across the November change.
 function offsetAt(when: Date) {
-  const name = new Intl.DateTimeFormat('en-US', {
-    timeZone: CAMPUS_TZ, timeZoneName: 'longOffset',
-  }).formatToParts(when).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-08:00'
+  const name = OFFSET_FORMAT.formatToParts(when)
+    .find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-08:00'
   return name.replace('GMT', '') || '-08:00'
 }
 
 // Today on campus, not on whichever laptop is running the demo. en-CA is the
 // locale that gives YYYY-MM-DD.
 function campusToday(now: Date) {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: CAMPUS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(now)
+  return DAY_FORMAT.format(now)
 }
 
 // A row we cannot work a date out of. Firestore gives back whatever is in the

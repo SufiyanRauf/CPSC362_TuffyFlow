@@ -9,6 +9,18 @@ import { CAMPUS_TZ, campusDate } from '../lib/time'
 // Reads the scored events, not the raw list. The raw list still contains the
 // ones that clash with a class, so the rail was offering something the events
 // screen then refused to show.
+// 24-hour, like the class and arrive-by times on the rest of the dashboard,
+// which sits next to this rail at wide widths. Both are built once instead of
+// per event, because the formatter is the expensive part and neither depends
+// on anything but the date it is handed.
+const EVENT_TIME = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAMPUS_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+})
+
+const EVENT_DAY = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAMPUS_TZ, weekday: 'short',
+})
+
 async function upcoming() {
   const [recs, events, buildings] = await Promise.all([
     getRecommendations(), getEvents(), getBuildings(),
@@ -25,14 +37,8 @@ async function upcoming() {
     .map((e) => {
       const start = new Date(e.starts_at)
       const isToday = campusDate(start) === today
-      // 24-hour, like the class and arrive-by times on the rest of the
-      // dashboard, which sits next to this rail at wide widths.
-      const time = new Intl.DateTimeFormat('en-US', {
-        timeZone: CAMPUS_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-      }).format(start)
-      const day = new Intl.DateTimeFormat('en-US', {
-        timeZone: CAMPUS_TZ, weekday: 'short',
-      }).format(start)
+      const time = EVENT_TIME.format(start)
+      const day = EVENT_DAY.format(start)
       return {
         id: e.id,
         title: e.title,

@@ -39,6 +39,15 @@ def test_normalize_handles_equal_anchors():
     assert scoring.normalize(5, 5, 5) == 0.5
 
 
+def test_normalize_scores_not_a_number_as_zero_rather_than_a_full_mark():
+    # Arithmetic on a value that went wrong leaves not-a-number, and the clamp
+    # on its own does not catch it: min(1.0, nan) hands the nan straight back,
+    # so max(0.0, min(1.0, nan)) is 1.0 and a factor that failed reads as a
+    # perfect match. rank has the same guard and a test for it; this one was
+    # only covered through rank, which has its own.
+    assert scoring.normalize(float("nan"), 2, 20) == 0.0
+
+
 def _parking_context(hour=10, rows=None, day=1, day_offset=0):
     return {
         "profile": {"permit_type": "student", "noise_pref": 2,
@@ -80,6 +89,34 @@ def test_a_lot_that_takes_several_permits_shows_up_for_each_of_them():
         cfg = scoring.parking_config(ctx)
         out = scoring.rank(LOTS, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
         assert "shared" in [r["item"]["id"] for r in out], permit
+
+
+def test_a_lot_with_a_wrong_coordinate_is_not_offered_at_all():
+    # 0, 0 is a real point in the Gulf of Guinea, so nothing raises: the walk
+    # comes out at 203903 minutes, the lot ranked second, and the card read
+    # "203903 min walk" with an arrive-by time printed next to it. A walk
+    # nobody will take is not a worse recommendation, it is not one at all, so
+    # it is filtered the same way a lot whose permit does not match is.
+    ctx = _parking_context()
+    cfg = scoring.parking_config(ctx)
+    lots = LOTS[:1] + [{"id": "wrong-coords", "name": "Mistyped", "lat": 0.0, "lng": 0.0,
+                        "permits": ["student"]}]
+    out = scoring.rank(lots, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+    assert [r["item"]["id"] for r in out] == ["near-empty"]
+
+
+def test_a_lot_further_out_than_anywhere_on_campus_is_still_offered():
+    # The filter is a plausibility check, not a distance preference. This lot
+    # is half an hour away, further than anything on the real campus, which is
+    # about fifteen minutes end to end. It still has a coordinate somebody
+    # could drive to, so it has to survive however low it scores.
+    ctx = _parking_context()
+    cfg = scoring.parking_config(ctx)
+    far = [{"id": "far", "name": "Far corner", "lat": 33.8700, "lng": -117.8700,
+            "permits": ["student"]}]
+    out = scoring.rank(far, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+    assert len(out) == 1, out
+    assert out[0]["walk_minutes"] == 30
 
 
 def test_closer_lot_outranks_further_lot_when_equally_full():
@@ -218,6 +255,19 @@ def test_arrive_by_is_none_when_it_has_already_passed():
     assert scoring.arrive_by(out[0]["item"], ctx, out[0]["walk_minutes"]) is None
 
 
+def test_arrive_by_is_none_when_the_minute_to_leave_is_this_minute():
+    # The boundary, not a minute either side of it, which is the only case that
+    # tells minutes <= now_minutes from minutes < now_minutes. "Leave at 11:10"
+    # when it is already 11:10 is not a plan.
+    ctx = _parking_context()
+    lot = {"id": "x", "name": "x", "lat": 33.882349, "lng": -117.882900, "permits": ["student"]}
+    # class at 690 minutes, less a 5 minute walk and a 15 minute buffer, is 670
+    ctx["now_minutes"] = 670
+    assert scoring.arrive_by(lot, ctx, 5) is None
+    ctx["now_minutes"] = 669
+    assert scoring.arrive_by(lot, ctx, 5) == "11:10"
+
+
 def test_event_tag_overlap_uses_sets_not_counts():
     # software-engineering appears in both interests and career goals. Counting
     # occurrences instead of unique tags would push this over 1.0.
@@ -240,6 +290,37 @@ def test_event_tag_overlap_uses_sets_not_counts():
     # the reason names both. Asserting only "<= 100" could never fail.
     assert out[0]["match_percent"] == 100, out[0]
     assert "matches career and software-engineering" in out[0]["reasons"]
+
+
+def test_an_event_is_scored_over_its_own_tags_not_the_smaller_set():
+    # The divisor has to be the event's own tag count. Over the smaller of the
+    # two sets, an event carrying one tag the student asked for and one they
+    # did not scores a perfect tag match, which is the mistake the comment on
+    # tag_factor warns about. The test above cannot see it, because every tag
+    # that event carries is wanted and both divisors give the same answer.
+    ctx = {
+        "profile": {"interests": ["ai"], "career_goals": [],
+                    "permit_type": "student", "noise_pref": 2},
+        "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "CS",
+        "now_minutes": 600, "day_of_week": 1,
+        "class_meetings": [{"day_of_week": 1, "start": 780, "end": 855,
+                            "lat": 33.882349, "lng": -117.882750,
+                            "building_name": "Computer Science"}],
+    }
+    cfg = scoring.event_config(ctx)
+    base = {"name": "Workshop", "lat": 33.882349, "lng": -117.882750,
+            "starts_minutes": 900, "ends_minutes": 990, "day_offset": 0}
+    events = [dict(base, id="all-ai", tags=["ai"]),
+              dict(base, id="half-ai", tags=["ai", "knitting"])]
+    out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 2, ctx)
+    scores = {r["item"]["id"]: r["match_percent"] for r in out}
+    # both are next door to the class and both are today, so the tags are the
+    # only thing between them: one of two tags wanted is half of the 60 points
+    # the factor carries
+    assert scores["all-ai"] == 100, scores
+    assert scores["half-ai"] == 70, scores
+    reasons = {r["item"]["id"]: r["reasons"] for r in out}
+    assert "matches ai" in reasons["half-ai"], reasons
 
 
 def test_event_clashing_with_a_class_is_filtered_out():
@@ -293,7 +374,7 @@ def test_an_event_running_past_midnight_still_clashes_with_a_class():
     assert len(scoring.rank(overnight, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx)) == 1
 
 
-def test_sooner_always_scores_at_least_as_well():
+def test_sooner_always_scores_strictly_better():
     ctx = {
         "profile": {"interests": [], "career_goals": [], "permit_type": "student", "noise_pref": 2},
         "dest_lat": 33.882349, "dest_lng": -117.882750, "dest_name": "CS",
@@ -306,7 +387,11 @@ def test_sooner_always_scores_at_least_as_well():
              "starts_minutes": 900, "ends_minutes": 990, "day_offset": day}
         out = scoring.rank([e], cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
         scores.append(out[0]["match_percent"])
-    assert scores == sorted(scores, reverse=True), scores
+    # Strictly, not merely in order. The check used to be
+    # scores == sorted(scores, reverse=True), which a flat recency curve
+    # passes: every day scoring the same is still sorted descending, so
+    # returning a constant from soon_factor went unnoticed.
+    assert all(sooner > later for sooner, later in zip(scores, scores[1:])), scores
 
 
 def test_a_quieter_spot_is_never_worse_than_a_louder_one():
@@ -467,6 +552,54 @@ def test_tie_break_prefers_the_class_still_to_come():
     assert scoring.anchor_for(ctx, MONDAY, 600)[2] == "Still to come"
 
 
+def test_the_anchor_does_not_depend_on_the_order_the_schedule_arrives_in():
+    # Two courses can meet on the same day at the same time in different
+    # buildings. The schedule's uniqueness key includes the course code, so
+    # both rows are legal, and they tie on the gap, on being still to come and
+    # on their start, which was the whole of the sort key. Whichever Firestore
+    # handed back first then won, so two identical requests answered 93 percent
+    # and a 5 minute walk measured from Computer Science one time and 89
+    # percent and 7 minutes measured from Titan Hall the next.
+    ctx = _week_context(MONDAY, 600)
+    ctx["class_meetings"] = [
+        {"day_of_week": MONDAY, "start": 600, "end": 675,
+         "lat": CS_LAT, "lng": CS_LNG, "building_name": "Computer Science"},
+        {"day_of_week": MONDAY, "start": 600, "end": 675,
+         "lat": NUTWOOD_LAT, "lng": NUTWOOD_LNG, "building_name": "Titan Hall"},
+    ]
+    forwards = scoring.anchor_for(ctx, MONDAY, 600)
+    ctx["class_meetings"].reverse()
+    backwards = scoring.anchor_for(ctx, MONDAY, 600)
+    assert forwards == backwards, (forwards, backwards)
+    # and it is one of the two, not nothing at all
+    assert forwards[2] in ("Computer Science", "Titan Hall"), forwards
+
+
+def test_a_spot_with_no_class_that_day_is_neither_a_perfect_walk_nor_a_hopeless_one():
+    # NEUTRAL_WALK is the midpoint on purpose and nothing was holding it there.
+    # At 1.0 a spot with nothing to measure from would score as though the
+    # student were standing in it, which is the worse of the two: on a Saturday
+    # the top of the study spot list would be presented as right there. At 0.0
+    # it would lose to anywhere that happens to sit near a class instead.
+    quiet = {"noise_level": 2, "has_outlets": True}
+
+    def one(ctx, lat, lng):
+        cfg = scoring.spot_config(ctx)
+        spot = dict(quiet, id="s", name="Somewhere", lat=lat, lng=lng)
+        out = scoring.rank([spot], cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
+        return out[0]["match_percent"]
+
+    # Monday 10:00, sitting in the Computer Science class, and the spot is in
+    # that building, so the walk is nothing at all
+    best = one(_week_context(MONDAY, 600), CS_LAT, CS_LNG)
+    # Friday 16:30, in the Titan Hall class, and the spot is half an hour off
+    worst = one(_week_context(FRIDAY, 990), 33.8700, -117.8700)
+    # Saturday, no class, so nothing says where the student is
+    neutral = one(_week_context(SATURDAY, 600), CS_LAT, CS_LNG)
+
+    assert worst < neutral < best, (worst, neutral, best)
+
+
 def test_anchor_picks_the_class_nearest_in_time():
     ctx = _week_context(MONDAY, 600)
     ctx["class_meetings"].append(
@@ -509,11 +642,12 @@ def test_the_walk_reason_does_not_repeat_the_number():
 # the person. profiles.permit_type and profiles.noise_pref are nullable for
 # that reason, so the scorer has to be able to say "not known".
 #
-# The two halves were in different states. A missing permit already matched no
-# lot, because None is not in any lot's list, so that part only needed saying
-# out loud. A missing noise preference crashed on comparing an int to None, and
-# then, once it stopped crashing, quietly cost every spot about twenty points.
-# The tests that matter here are the noise ones.
+# The three halves were in different states. A missing permit already matched
+# no lot, because None is not in any lot's list, so that part only needed
+# saying out loud. A missing noise preference crashed on comparing an int to
+# None, and then, once it stopped crashing, quietly cost every spot about
+# twenty points. An empty interests list cost every event sixty, which is the
+# same mistake twice as large, and is the one that was still live.
 
 def _empty_profile_context(day=MONDAY, minutes=600):
     return {
@@ -703,6 +837,80 @@ def test_only_parking_carries_a_fullness():
     assert recommend._result(out[0], "spot")["pct_full"] is None
 
 
+# The event half of the same thing. Scoring a factor we cannot judge was worth
+# twenty points on a study spot and sixty on an event, because the tag factor
+# carries 0.6 of the total on its own.
+
+def _an_event(**overrides):
+    # Monday, an hour after the 09:00 class and in the same building, so the
+    # walk and the recency factors are both at their best and the tags are the
+    # only thing left that can move the score.
+    event = {"id": "e", "name": "Hack night", "tags": ["ai"],
+             "lat": CS_LAT, "lng": CS_LNG,
+             "starts_minutes": 660, "ends_minutes": 720, "day_offset": 0}
+    event.update(overrides)
+    return event
+
+
+def test_a_profile_with_nothing_on_it_does_not_cost_an_event_anything():
+    """The same shape as the noise tests above, and the same mistake.
+
+    The tag factor scored zero when the profile had no interests and no career
+    goals on it, and kept its weight of 0.6 either way, so there was no
+    difference between "we have nothing to compare" and "this is actively
+    wrong for you". Measured on the same perfect event, a filled in profile
+    read 90 percent and a brand new account read 30, and a brand new account is
+    exactly what the profile document holds on a first visit.
+    """
+    unset = _empty_profile_context()
+    cfg = scoring.event_config(unset)
+    without = scoring.rank([_an_event()], cfg["filters"], cfg["factors"],
+                           cfg["weights"], 1, unset)
+
+    stated = _empty_profile_context()
+    stated["profile"]["interests"] = ["ai"]
+    cfg = scoring.event_config(stated)
+    with_interests = scoring.rank([_an_event()], cfg["filters"], cfg["factors"],
+                                  cfg["weights"], 1, stated)
+
+    assert without[0]["match_percent"] == with_interests[0]["match_percent"] == 100
+
+
+def test_tags_we_cannot_judge_do_not_score_like_tags_that_are_wrong():
+    # Three events in one request, alike but for their tags. An event with no
+    # tags of its own is not a mismatch, it is an event there is nothing to
+    # judge on tags, and the two used to score the same.
+    ctx = _empty_profile_context()
+    ctx["profile"]["interests"] = ["ai"]
+    cfg = scoring.event_config(ctx)
+    events = [_an_event(id="wanted", tags=["ai"]),
+              _an_event(id="untagged", tags=[]),
+              _an_event(id="elsewhere", tags=["knitting"])]
+    out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 3, ctx)
+    scores = {r["item"]["id"]: r["match_percent"] for r in out}
+    assert scores["wanted"] == 100, scores
+    # scored on the two factors that are left, which are both at their best
+    assert scores["untagged"] == 100, scores
+    # and a real mismatch still costs the whole weight of the factor
+    assert scores["elsewhere"] == 40, scores
+
+
+def test_a_brand_new_account_does_not_see_every_event_at_the_same_low_score():
+    # The headline symptom. With the tag factor scored at zero and still
+    # weighted 0.6, nothing on a new account's first visit could pass 40
+    # percent however right the rest of it was, and the real cards all read 30.
+    # The walk and the recency have to be able to fill the card on their own.
+    ctx = _empty_profile_context()
+    cfg = scoring.event_config(ctx)
+    events = [_an_event(id="tonight"), _an_event(id="next-week", day_offset=5)]
+    out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 2, ctx)
+    scores = {r["item"]["id"]: r["match_percent"] for r in out}
+    assert scores["tonight"] == 100, scores
+    # Saturday, so there is no class to measure the walk from and the recency
+    # has fallen off. Still well clear of the old ceiling.
+    assert 40 < scores["next-week"] < 100, scores
+
+
 # ---------------------------------------------- a request from somewhere else
 #
 # The scoring endpoint has no sign in of its own, so anything on the internet
@@ -839,6 +1047,29 @@ def test_open_today_still_gets_checked_against_the_clock():
     after = _spots_context(now_minutes=1020)        # 17:00
     cfg = scoring.spot_config(after)
     assert scoring.rank([spot], cfg["filters"], cfg["factors"], cfg["weights"], 5, after) == []
+
+
+def test_somewhere_that_shuts_after_midnight_is_open_either_side_of_it():
+    # Nothing on campus publishes hours like this today, and the branch is kept
+    # because it is right for the one pair of times it is given. Nothing was
+    # covering it, so it could be deleted and a place open from eight in the
+    # evening until two in the morning would read as shut all evening: the
+    # straight comparison asks for 1200 <= 1380 <= 120, which is false.
+    spot = {"id": "late", "name": "Late night", "lat": CS_LAT, "lng": CS_LNG,
+            "noise_level": 3, "has_outlets": True,
+            "opens_at": "20:00", "closes_at": "02:00"}
+
+    def offered(now_minutes):
+        ctx = _spots_context(now_minutes=now_minutes)
+        cfg = scoring.spot_config(ctx)
+        return len(scoring.rank([spot], cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx))
+
+    assert offered(1200) == 1        # 20:00, the minute it opens
+    assert offered(1380) == 1        # 23:00, before midnight
+    assert offered(60) == 1          # 01:00, after it
+    assert offered(120) == 1         # 02:00, the minute it shuts
+    assert offered(180) == 0         # 03:00, shut
+    assert offered(720) == 0         # noon, shut
 
 
 def test_the_request_model_defaults_closed_today_to_false():

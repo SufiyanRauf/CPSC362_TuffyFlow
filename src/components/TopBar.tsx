@@ -13,10 +13,14 @@ type TopBarProps = {
   onSignOut: () => void
 }
 
+// Built once rather than on every call, because this runs on the minute tick
+// and building the formatter costs far more than formatting the date does.
+const DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAMPUS_TZ, weekday: 'long', month: 'long', day: 'numeric',
+})
+
 function today() {
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: CAMPUS_TZ, weekday: 'long', month: 'long', day: 'numeric',
-  }).format(new Date())
+  return DATE_FORMAT.format(new Date())
 }
 
 function initials(name: string) {

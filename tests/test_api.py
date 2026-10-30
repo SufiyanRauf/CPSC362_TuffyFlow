@@ -219,6 +219,116 @@ def test_a_number_outside_its_bounds_is_a_422_with_the_field_named():
     assert ["body", "now_minutes"] in [p["loc"] for p in reply.json()["detail"]]
 
 
+def _with_availability(**overrides):
+    row = {"lot_id": "eastside-south", "day_of_week": 1, "hour": 10,
+           "typical_pct_full": 62}
+    row.update(overrides)
+    return _a_body(availability=[row])
+
+
+def _with_event(**overrides):
+    row = {"id": "e1", "name": "Resume Workshop", "lat": CS_LAT, "lng": CS_LNG,
+           "tags": ["ai"], "starts_minutes": 900, "ends_minutes": 990,
+           "day_offset": 0}
+    row.update(overrides)
+    return _a_body(events=[row])
+
+
+def _with_meeting(**overrides):
+    row = {"day_of_week": 1, "start": 540, "end": 615,
+           "lat": CS_LAT, "lng": CS_LNG, "building_name": "Computer Science"}
+    row.update(overrides)
+    return _a_body(class_meetings=[row])
+
+
+def test_every_bounded_number_in_the_body_is_a_422_with_the_field_named():
+    """now_minutes was the only one of these with a test on it.
+
+    Each of the others is bounded for the same reason and reaches arithmetic
+    that assumes the bound holds: a class window ending at 99999 is compared
+    against the clock and against every event of the day, an hour of 40 is
+    matched against a column that only ever holds 0 to 23, and a lot that is
+    300 percent full buys itself a buffer of half an hour. The bounds could all
+    be deleted one at a time with the suite still green.
+    """
+    refused = [
+        (["body", "now_minutes"], _a_body(now_minutes=-1)),
+        (["body", "now_minutes"], _a_body(now_minutes=1440)),
+        (["body", "class_start_minutes"], _a_body(class_start_minutes=-1)),
+        (["body", "class_start_minutes"], _a_body(class_start_minutes=1440)),
+        (["body", "availability", "0", "hour"], _with_availability(hour=-1)),
+        (["body", "availability", "0", "hour"], _with_availability(hour=24)),
+        (["body", "availability", "0", "typical_pct_full"],
+         _with_availability(typical_pct_full=-1)),
+        (["body", "availability", "0", "typical_pct_full"],
+         _with_availability(typical_pct_full=101)),
+        (["body", "events", "0", "starts_minutes"], _with_event(starts_minutes=-1)),
+        (["body", "events", "0", "starts_minutes"], _with_event(starts_minutes=1440)),
+        (["body", "events", "0", "ends_minutes"], _with_event(ends_minutes=-1)),
+        (["body", "events", "0", "ends_minutes"], _with_event(ends_minutes=1440)),
+        (["body", "class_meetings", "0", "start"], _with_meeting(start=-1)),
+        (["body", "class_meetings", "0", "start"], _with_meeting(start=1440)),
+        (["body", "class_meetings", "0", "end"], _with_meeting(end=-1)),
+        (["body", "class_meetings", "0", "end"], _with_meeting(end=1440)),
+    ]
+    for loc, body in refused:
+        reply = client.post(PATH, json=body)
+        assert reply.status_code == 422, (loc, reply.status_code)
+        assert loc in [p["loc"] for p in reply.json()["detail"]], (loc, reply.text)
+
+
+def test_an_event_that_has_already_been_is_filtered_rather_than_refused():
+    # day_offset is allowed to be negative on purpose, and the field comment
+    # says so: a past event is a row we can read, and not_started drops it.
+    # Narrowing the field to ge=0 would 422 a body the app really sends, and
+    # dropping the branch in not_started would put last week's event on the
+    # card, because it starts later in the day than it is now.
+    reply = client.post(PATH, json=_a_body(events=[
+        {"id": "gone", "name": "Last week", "lat": CS_LAT, "lng": CS_LNG,
+         "tags": ["ai"], "starts_minutes": 900, "ends_minutes": 990,
+         "day_offset": -7},
+    ]))
+    assert reply.status_code == 200, reply.text
+    assert reply.json()["events"] == []
+
+
+def test_a_class_later_in_the_week_is_a_request_the_endpoint_accepts():
+    # class_day_offset is how many days ahead the next class is, so on a Friday
+    # evening it is 3 and the parking ranking reads Monday's occupancy rows.
+    # Narrowing the field to le=0 would 422 every request made on any day but
+    # the day of the class, which is most of a week.
+    reply = client.post(PATH, json=_a_body(day_of_week=5, now_minutes=1200,
+                                           class_day_offset=3))
+    assert reply.status_code == 200, reply.text
+    assert len(reply.json()["parking"]) == 1
+
+    # and the ends of the range still bite, since a week is as far ahead as
+    # the next class can ever be
+    for refused in (-1, 8):
+        reply = client.post(PATH, json=_a_body(class_day_offset=refused))
+        assert reply.status_code == 422, (refused, reply.status_code)
+        assert ["body", "class_day_offset"] in [p["loc"] for p in reply.json()["detail"]]
+
+
+def test_the_row_caps_sit_well_above_a_real_campus():
+    # The lists are capped so the quadratic part of the scoring is never handed
+    # something enormous. Nothing else in either file sends more than one row
+    # of anything, so the cap could be dropped to 2 and every request the app
+    # makes would be a 422 with the suite still green. The real campus has 24
+    # study spots on it.
+    spot = _a_body()["spots"][0]
+    campus = [dict(spot, id="s%d" % i) for i in range(24)]
+    reply = client.post(PATH, json=_a_body(spots=campus))
+    assert reply.status_code == 200, reply.text
+    # 20 because that is the top_n the route asks for, not because of the cap
+    assert len(reply.json()["spots"]) == 20
+
+    flood = [dict(spot, id="s%d" % i) for i in range(recommend.MANY + 1)]
+    reply = client.post(PATH, json=_a_body(spots=flood))
+    assert reply.status_code == 422, reply.status_code
+    assert ["body", "spots"] in [p["loc"] for p in reply.json()["detail"]]
+
+
 def test_an_empty_campus_is_an_empty_answer_rather_than_an_error():
     # What the first load sends while Firestore is still answering, and what a
     # failed read leaves behind. Three empty lists, not a 500 and not a 422.

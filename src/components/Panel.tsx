@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { Loadable } from '../types'
 
 type PanelProps<T> = {
@@ -28,6 +29,23 @@ const STUDENT_FACING = [
 ]
 
 export default function Panel<T>({ source, empty, children }: PanelProps<T>) {
+  const failure = source.state === 'error' ? source.message : null
+  const known = failure !== null
+    && (import.meta.env.DEV || STUDENT_FACING.some((start) => failure.startsWith(start)))
+
+  // The generic line throws away the one detail that says which half of the
+  // app is down, which is the detail you want while building, so it goes to
+  // the console on the way past.
+  //
+  // In an effect rather than in the render body below, where it was. A failed
+  // panel re-renders every time anything around it does, a filter moving or
+  // another panel finishing, and each of those printed the same warning again.
+  // Keyed on the message, so it is one line per failure and a second line
+  // means the failure actually changed.
+  useEffect(() => {
+    if (failure !== null && !known) console.warn('Panel could not load:', failure)
+  }, [failure, known])
+
   if (source.state === 'loading') {
     // Otherwise a reader is told nothing: the dashboard puts three of these up
     // and then quietly swaps each one for content. The note in App.tsx is about
@@ -37,14 +55,16 @@ export default function Panel<T>({ source, empty, children }: PanelProps<T>) {
     return <p role="status" className="py-6 text-sm text-ink-faint">Loading…</p>
   }
   if (source.state === 'error') {
-    const known = import.meta.env.DEV
-      || STUDENT_FACING.some((start) => source.message.startsWith(start))
-    // The generic line throws away the one detail that says which half of the
-    // app is down, which is the detail you want while building, so it goes to
-    // the console on the way past.
-    if (!known) console.warn('Panel could not load:', source.message)
     return (
-      <div className="rounded-lg border border-l-4 border-rule border-l-flame-ink bg-white px-4 py-3 text-sm">
+      // A status region for the same reason the loading line above is one, and
+      // it matters more here. A reader was told "Loading…", then that region
+      // was taken off the page and this one put up in its place with no live
+      // region on it, so the panel simply went quiet and the failure was never
+      // announced. Every screen in the app reports its failures through here.
+      <div
+        role="status"
+        className="rounded-lg border border-l-4 border-rule border-l-flame-ink bg-white px-4 py-3 text-sm"
+      >
         <p className="font-medium text-flame-ink">Could not load this.</p>
         <p className="mt-1 text-ink-soft">
           {known ? source.message : 'Something went wrong on our end. Try again in a moment.'}

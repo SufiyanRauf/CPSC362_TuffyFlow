@@ -7,10 +7,28 @@ import Pill from './Pill'
 import { ClockIcon, PinIcon, UsersIcon, WalkIcon } from './icons'
 import { CAMPUS_TZ } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
+import { useCampusHour } from '../lib/useMinuteTick'
 
 // The three things the walk factor can say. The card prints the minutes
 // itself, so this is only here to carry what they are measured from.
 const WALK_REASON = /^(measured from |right by |no class )/
+
+// Minutes are rounded up, so an event in the building you are already in comes
+// back as 0, and "0 min walk" sat directly above that factor's own "right by
+// Computer Science". Same sentence as RecCard and the parking screen, because
+// one number cannot read three ways.
+function walkText(minutes: number) {
+  return minutes === 0 ? 'Less than a minute away' : `${minutes} min walk`
+}
+
+// 24-hour, like the class and arrive-by times everywhere else. The dashboard
+// shows both at once at wide widths. Up here rather than in the loop below,
+// because a formatter is expensive to build and cheap to reuse, and the
+// options it is built from do not depend on the event being dated.
+const EVENT_TIME = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAMPUS_TZ, weekday: 'short', month: 'short', day: 'numeric',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+})
 
 // The scorer already ranks every event and the dashboard was showing only the
 // top one, so the rest of that work was being thrown away.
@@ -36,12 +54,7 @@ async function rankedEvents() {
       host: e.club_name,
       tags: e.tags,
       where: where.get(e.building_id) ?? '',
-      // 24-hour, like the class and arrive-by times everywhere else. The
-      // dashboard shows both at once at wide widths.
-      when: new Intl.DateTimeFormat('en-US', {
-        timeZone: CAMPUS_TZ, weekday: 'short', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-      }).format(start),
+      when: EVENT_TIME.format(start),
       walk: r.walk_minutes,
       measuredFrom: r.reasons.find((x) => WALK_REASON.test(x)) ?? '',
     }]
@@ -50,8 +63,13 @@ async function rankedEvents() {
 
 export default function EventsView() {
   const version = useDataVersion()
-  const events = useAsync(rankedEvents, [version])
-  const next = useAsync(findNextClass, [version])
+  // The ranking drops anything that has already started and the dates are
+  // built from the day they are read, and nothing bumps the data version on
+  // the clock, so on [version] alone a tab left open kept listing events that
+  // were over and still said tomorrow the morning after.
+  const hour = useCampusHour()
+  const events = useAsync(rankedEvents, [version, hour])
+  const next = useAsync(findNextClass, [version, hour])
 
   // The ranking is empty with no class at all, not only when the filter took
   // everything out, so an account with nothing on its schedule was being told
@@ -108,7 +126,7 @@ export default function EventsView() {
                       {e.walk !== null && (
                         <span className="inline-flex items-center gap-1.5">
                           <WalkIcon className="h-4 w-4 text-ink-faint" />
-                          {e.walk} min walk
+                          {walkText(e.walk)}
                         </span>
                       )}
                     </p>

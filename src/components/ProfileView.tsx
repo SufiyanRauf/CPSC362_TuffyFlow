@@ -19,6 +19,32 @@ const PERMITS: Permit[] = ['student', 'employee', 'resident', 'visitor']
 // so "has this been filled in" has one answer and not two.
 const orNull = (value: string) => (value.trim() ? value : null)
 
+// Keyed on whose profile it is, so a draft typed in the demo can never be put
+// back into a real account's form. That is the same hazard saveProfile checks
+// for, and a draft outliving a sign in is one more way to reach it.
+const draftKey = (id: string) => `tuffyflow:profile-draft:${id}`
+
+// Both ends of the draft are guarded because sessionStorage throws outright in
+// a private window and in some embedded browsers, and JSON.parse throws on
+// anything that is not what we wrote. Losing a draft is a nuisance. A profile
+// screen that will not render because storage said no is a bug.
+function readDraft(key: string, saved: Profile): Profile | null {
+  try {
+    const stored = sessionStorage.getItem(key)
+    if (!stored) return null
+    const draft = JSON.parse(stored) as Profile
+    // A draft survives a reload, so one written by an earlier version of the
+    // app can outlive the shape it was written in, and half a profile would
+    // crash the tag fields rather than restore anything. Measured against what
+    // loaded instead of taken on trust.
+    const whole = Object.keys(saved).every((field) => field in draft)
+      && Array.isArray(draft.interests) && Array.isArray(draft.career_goals)
+    return whole ? draft : null
+  } catch {
+    return null
+  }
+}
+
 async function loadProfile() {
   const [profile, meetings, buildings] = await Promise.all([
     getProfile(), getClassMeetings(), getBuildings(),
@@ -148,12 +174,44 @@ function TagField({ label, field, tags, onChange }: {
 }
 
 function Details({ saved }: { saved: Profile }) {
-  const [form, setForm] = useState<Profile>(saved)
+  const session = useSession()
+  const key = draftKey(saved.id)
+  // Read once, on the first render, because the answer decides both what the
+  // fields start as and whether the line under the button says anything. A
+  // draft that matches what loaded is nothing to restore and nothing to
+  // mention, and ignoring it is also what stops one left behind by a save made
+  // in another tab from being laid back over the newer rows.
+  const [restored] = useState(() => {
+    const draft = readDraft(key, saved)
+    return draft && JSON.stringify(draft) !== JSON.stringify(saved) ? draft : null
+  })
+  const [form, setForm] = useState<Profile>(restored ?? saved)
   const permitNoteId = useId()
-  const [note, setNote] = useState('')
+  const [note, setNote] = useState(restored ? 'Restored what you had typed. Not saved yet.' : '')
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   const dirty = JSON.stringify(form) !== JSON.stringify(saved)
+
+  // The fields above lived nowhere but this component's state, and the app
+  // renders a screen off the current view, so anything that moved the hash
+  // unmounted the form and threw every unsaved answer away: a sidebar button,
+  // the bottom bar a phone puts directly under the form, the account menu, or
+  // Back, which remounts and re-reads the database rather than bringing the
+  // typing back. Parked on every change rather than on the way out, because no
+  // single event covers a hash change, a Back and a closed tab between them.
+  // It clears itself once the form matches what loaded, which is what a
+  // successful save leaves behind, and what Discard does too.
+  useEffect(() => {
+    try {
+      if (dirty) sessionStorage.setItem(key, JSON.stringify(form))
+      else sessionStorage.removeItem(key)
+    } catch {
+      // Storage is refused in a private window and in some embedded browsers.
+      // The form still works there, it just cannot carry a draft across a
+      // navigation, and that is not worth an error in front of a student.
+    }
+  }, [key, form, dirty])
+
   // Clearing the note matters. It outlived the thing it was about: save, then
   // edit a field, and the line still read "Saved. The dashboard rescored."
   // next to a Save button that had gone live again. After a failure it was
@@ -174,7 +232,12 @@ function Details({ saved }: { saved: Profile }) {
     try {
       await saveProfile(form)
       setFailed(false)
-      setNote('Saved. The dashboard rescored.')
+      // Only an account was written to. The demo's profile is a module
+      // variable in campusData.ts, so telling someone it was saved was a
+      // promise the app cannot keep past the next reload.
+      setNote(session.kind === 'account'
+        ? 'Saved. The dashboard rescored.'
+        : 'The dashboard rescored. A reload puts the sample student back.')
     } catch (e) {
       setFailed(true)
       setNote(e instanceof Error ? e.message : 'That did not save. Try again.')
@@ -498,7 +561,7 @@ export default function ProfileView() {
         What the recommendations are matched against.{' '}
         {session.kind === 'account'
           ? 'Saved to your account, so it is still here the next time you log in.'
-          : 'This is the sample student everyone sees, so changes last until you sign out.'}
+          : 'This is the sample student everyone sees, and nothing here is stored, so a reload or a closed tab puts it back.'}
       </PageHeader>
 
       <Panel source={data}>

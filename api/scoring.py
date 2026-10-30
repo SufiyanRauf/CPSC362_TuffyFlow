@@ -11,6 +11,16 @@ DETOUR_FACTOR = 1.3
 WALK_METRES_PER_MINUTE = 80
 BEST_WALK_MINUTES = 2
 WORST_WALK_MINUTES = 20
+
+# Past this, the walk is not a long walk, it is a wrong coordinate. One lot
+# with 0, 0 on it measured 203903 minutes to class and still ranked second,
+# with "203903 min walk" printed on its card and an arrive-by time beside it.
+# The longest honest walk on this campus is about 15 minutes end to end, so an
+# hour is four times the worst real case and still nowhere near what a mistyped
+# coordinate produces: being a degree out is about 100 km, which is a day and a
+# half of walking.
+MAX_PLAUSIBLE_WALK_MINUTES = 60
+
 UNKNOWN_FULLNESS = 50
 BASE_PARKING_BUFFER_MINUTES = 10
 
@@ -23,6 +33,14 @@ MAX_ANCHOR_GAP_MINUTES = 180
 # What the walk factor scores when nothing anchors the day. The midpoint, so
 # distance neither helps nor hurts and the other factors decide.
 NEUTRAL_WALK = 0.5
+
+# What a factor returns in place of a number when there is nothing to judge.
+# rank() leaves it out of the score and the factors that did have something to
+# say divide its weight between them, which is the same redistribution the
+# no-noise weight table below does. A table cannot do this job on its own,
+# because whether the tags can be judged depends on the event as well as on the
+# profile, so it has to be decided one candidate at a time.
+NOTHING_TO_JUDGE = None
 
 
 
@@ -45,6 +63,18 @@ SPOT_WEIGHTS = {"walk": 0.4, "noise": 0.4, "outlets": 0.2}
 # percentage then means the same thing it always did: how much of what we can
 # judge this place gets right.
 SPOT_WEIGHTS_NO_NOISE = {"walk": 2 / 3, "noise": 0.0, "outlets": 1 / 3}
+
+# There is no second table for events, and the reason is worth writing down,
+# because the tag factor has exactly the same problem. A new account has no
+# interests and no career goals on it, and some events carry no tags at all,
+# and in both cases there is nothing to compare. Scored at zero against a
+# weight of 0.6 that put every event on a new account's first visit at 30
+# percent, which is what an event actively wrong for somebody should read.
+#
+# A table cannot fix it the way it fixed noise, because a noise preference is
+# missing for the whole request while tags can be unjudgeable for one event and
+# fine for the next. So the tag factor returns NOTHING_TO_JUDGE and rank()
+# redistributes its weight per event. The effect is the same, decided later.
 EVENT_WEIGHTS = {"tags": 0.6, "walk": 0.2, "soon": 0.2}
 
 
@@ -108,7 +138,17 @@ def anchor_for(context, day, minutes):
             gap = min(abs(cls["start"] - minutes), abs(cls["end"] - minutes))
         # a class still to come beats one already over at the same distance,
         # otherwise the answer depends on the order the schedule happens to be in
-        key = (gap, 0 if cls["end"] >= minutes else 1, cls["start"])
+        #
+        # Everything after that is the same tie-break rank() has on item id, and
+        # for the same reason. Two courses may legally meet on the same day at
+        # the same time in different buildings, the schedule's uniqueness key
+        # includes the course code, and those two tie on gap, on upcoming and on
+        # start. Whichever Firestore handed back first then won, so two
+        # identical requests came back with different walks and different
+        # buildings in the reason. ClassWindow carries no id, so the key runs on
+        # to the rest of what it does carry and the order is fixed by the data.
+        key = (gap, 0 if cls["end"] >= minutes else 1, cls["start"], cls["end"],
+               cls["lat"], cls["lng"], cls.get("building_name") or "")
         if nearest is None or key < nearest[0]:
             nearest = (key, cls)
     if nearest is None or nearest[0][0] > MAX_ANCHOR_GAP_MINUTES:
@@ -124,6 +164,7 @@ def rank(candidates, filters, factors, weights, top_n, context):
     results = []
     for c in survivors:
         total = 0.0
+        judged = 0.0
         reasons = []
         walk = None
         for name, factor in factors.items():
@@ -131,6 +172,14 @@ def rank(candidates, filters, factors, weights, top_n, context):
             value, reason = out[0], out[1]
             if len(out) > 2:
                 walk = out[2]
+            if value is NOTHING_TO_JUDGE:
+                # Out of the score altogether, not scored at zero. Zero says
+                # this candidate is wrong for the student, and the truth is
+                # that we have nothing to go on. The weight it would have
+                # carried goes to the factors that did have something to say.
+                if reason:
+                    reasons.append(reason)
+                continue
             # Clamp rather than assert: an assert becomes a 500 in one build
             # and disappears under python -O in another. The first test is for
             # not-a-number, which is only false for itself: min and max would
@@ -138,12 +187,19 @@ def rank(candidates, filters, factors, weights, top_n, context):
             # so a factor that went wrong would score a perfect match.
             value = 0.0 if value != value else max(0.0, min(1.0, value))
             total += value * weights[name]
+            judged += weights[name]
             if reason:
                 reasons.append(reason)
+        # Over the weight actually judged rather than over 1.0, so a percentage
+        # keeps meaning what it always did: how much of what we can judge this
+        # one gets right. Nothing judgeable at all cannot happen today, since
+        # walk and soon always return a number, but it would be a division by
+        # zero rather than a low score if it ever did.
+        score = total / judged if judged else 0.0
         results.append({
             "item": c,
-            "score": total,
-            "match_percent": round(total * 100),
+            "score": score,
+            "match_percent": round(score * 100),
             "reasons": reasons,
             "walk_minutes": walk,
         })
@@ -183,6 +239,22 @@ def parking_config(context):
         permit = ctx["profile"].get("permit_type")
         return permit is not None and permit in lot["permits"]
 
+    def walk_is_plausible(lot, ctx):
+        # A lot whose coordinates are wrong is not a lot anybody can park in.
+        # Given 0, 0 the scoring measured the walk anyway and offered the lot
+        # second with "203903 min walk" on the card, which is a 141 day walk
+        # presented as a plan. The browser already refuses to rank parking at
+        # all when the destination building has gone missing, for the same
+        # reason, and this is the other end of the same line.
+        #
+        # Filtered rather than scored, the way a lot whose permit does not
+        # match is: a walk nobody will ever take is not a worse recommendation,
+        # it is not a recommendation. Study spots and events do not need the
+        # same guard, because their coordinates come from a building the
+        # browser looked up and it drops the row when that lookup fails.
+        metres = haversine(lot["lat"], lot["lng"], ctx["dest_lat"], ctx["dest_lng"])
+        return walk_minutes(metres) <= MAX_PLAUSIBLE_WALK_MINUTES
+
     def walk_factor(lot, ctx):
         metres = haversine(lot["lat"], lot["lng"], ctx["dest_lat"], ctx["dest_lng"])
         mins = walk_minutes(metres)
@@ -197,7 +269,7 @@ def parking_config(context):
                 "usually about %d%% full when you would arrive" % pct)
 
     return {
-        "filters": [permit_allows],
+        "filters": [permit_allows, walk_is_plausible],
         "factors": {"walk": walk_factor, "fullness": fullness_factor},
         "weights": PARKING_WEIGHTS,
     }
@@ -318,9 +390,19 @@ def event_config(context):
     def tag_factor(event, ctx):
         mine = set(ctx["profile"]["interests"]) | set(ctx["profile"]["career_goals"])
         theirs = set(event.get("tags", []))
-        if not theirs:
-            return 0.0, ""
+        # Nothing to compare on either side, so there is nothing to judge. A
+        # brand new account has no interests and no career goals, which is what
+        # the profile document holds until somebody fills the profile screen
+        # in, and an event can arrive with no tags of its own. Both used to
+        # score zero against a weight of 0.6, so every event on a new account's
+        # first visit read 30 percent, the same as an event that is actively
+        # wrong for them. See the note on EVENT_WEIGHTS.
+        if not mine or not theirs:
+            return NOTHING_TO_JUDGE, ""
         shared = mine & theirs
+        # No overlap is a real answer, unlike the two cases above: we know what
+        # the student wants, we know what the event is about, and they do not
+        # meet. That earns a zero.
         if not shared:
             return 0.0, ""
         # over the event's own tags, not the smaller of the two sets, or a

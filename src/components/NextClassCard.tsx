@@ -21,6 +21,14 @@ function countdown(minutes: number, dayOffset: number, dayOfWeek: number) {
   return { value: DAYS[dayOfWeek] ?? 'Later', label: 'Next up' }
 }
 
+// The walk is rounded up to whole minutes, so a lot in the same building as
+// the class comes back as 0 and this card read "0 min walk". RecCard and the
+// parking screen both say this at zero, and the same number has to read the
+// same way wherever it is printed.
+function walkText(minutes: number) {
+  return minutes === 0 ? 'Less than a minute away' : `${minutes} min walk`
+}
+
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-ink-faint">
@@ -78,7 +86,7 @@ export default function NextClassCard({ nextClass, lot }: NextClassCardProps) {
               {lot.walk_minutes !== null && (
                 <span className="inline-flex items-center gap-1.5">
                   <WalkIcon className="h-4 w-4 text-ink-faint" />
-                  {lot.walk_minutes} min walk
+                  {walkText(lot.walk_minutes)}
                 </span>
               )}
               {fullness && <span>{fullness}</span>}

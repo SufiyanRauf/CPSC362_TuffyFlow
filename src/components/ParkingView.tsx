@@ -7,6 +7,7 @@ import Pill from './Pill'
 import { ArrowRightIcon, ClockIcon, WalkIcon } from './icons'
 import { BUSY_PERCENT, DAYS } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
+import { useCampusHour } from '../lib/useMinuteTick'
 import { directionsUrl } from '../lib/maps'
 import type { MapPoint } from './CampusMap'
 import type { Recommendation } from '../types'
@@ -49,6 +50,16 @@ function badges(lots: Recommendation[]) {
   return mark
 }
 
+// The scorer rounds the walk up to whole minutes, so a lot in the same
+// building as the class comes back as 0 and this row read "0 min walk" next to
+// the scorer's own reason "right by Computer Science". RecCard says the same
+// thing at zero, and two screens wording one number two ways is worse than
+// having the sentence written out twice.
+function walkText(minutes: number | null) {
+  if (minutes === null) return 'walk unknown'
+  return minutes === 0 ? 'Less than a minute away' : `${minutes} min walk`
+}
+
 // "ranked for CPSC 335, 09:00" with an arrive-by time of 08:42 reads as this
 // morning even when the class is tomorrow.
 function when(dayOffset: number, dayOfWeek: number) {
@@ -59,12 +70,21 @@ function when(dayOffset: number, dayOfWeek: number) {
 
 export default function ParkingView() {
   const version = useDataVersion()
-  const recs = useAsync(getRecommendations, [version])
-  const next = useAsync(findNextClass, [version])
+  // Both of these are worked out against the clock, and nothing bumps the data
+  // version on the clock, so without the hour in here the ranking and the
+  // arrive-by times stayed at whatever they were when the screen was opened.
+  const hour = useCampusHour()
+  const recs = useAsync(getRecommendations, [version, hour])
+  const next = useAsync(findNextClass, [version, hour])
 
+  // The "in <building>" half is dropped when we do not know the building,
+  // because findNextClass falls back to the word Campus for the name at the
+  // same moment it falls back to zero for the coordinate. Printing the
+  // fallback reads as a real place and it is not one.
   const heading = next.state === 'ready' && next.data
-    ? `${next.data.course_code}, ${next.data.start_time}` +
-      `${when(next.data.day_offset, next.data.day_of_week)} in ${next.data.building_name}`
+    ? `${next.data.course_code}, ${next.data.start_time}`
+      + when(next.data.day_offset, next.data.day_of_week)
+      + (next.data.building_lat === 0 ? '' : ` in ${next.data.building_name}`)
     : 'your next class'
 
   // Where the walks are measured to, so the map shows what the ranking is
@@ -108,13 +128,18 @@ export default function ParkingView() {
             // that case, the same sentinel the map marker above reads.
             // Otherwise the permit is the only thing left that can have
             // emptied this.
+            //
+            // The course is named rather than the building, because the
+            // building is exactly what we do not have here: its name has
+            // already fallen back to the word Campus, and saying we cannot
+            // find Campus on the campus map is nonsense.
             const unknownBuilding = next.data !== null && next.data.building_lat === 0
             return (
               <p className="rounded-xl border border-rule bg-paper px-5 py-6 text-sm text-ink-soft">
                 {next.data === null
                   ? 'No lots to rank. Add a class on your profile and these fill in.'
                   : unknownBuilding
-                    ? `No lots to rank, because we do not have ${next.data.building_name} on the campus map, so there is nowhere to measure the walk to. The other screens still work.`
+                    ? `No lots to rank, because we do not have a location for the building ${next.data.course_code} is in, so there is nowhere to measure the walk to. Everything else still works.`
                     : 'No lots to rank, because your profile does not say which permit you hold. Every lot takes some permits and not others, so there is no lot we can stand behind until it does.'}
               </p>
             )
@@ -161,7 +186,7 @@ export default function ParkingView() {
                         <p className="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-ink-soft">
                           <span className="inline-flex items-center gap-1.5">
                             <WalkIcon className="h-4 w-4 text-ink-faint" />
-                            {lot.walk_minutes !== null ? `${lot.walk_minutes} min walk` : 'walk unknown'}
+                            {walkText(lot.walk_minutes)}
                           </span>
                           {pct !== null && (
                             <span className="inline-flex items-center gap-2">

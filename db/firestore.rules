@@ -195,11 +195,18 @@ service cloud.firestore {
       // here. It lives under the profile so that owning it is the path rather
       // than a field anybody could set.
       match /class_meetings/{id} {
-        // "HH:MM" or "HH:MM:SS". Postgres had a time column and would not
-        // take anything else; here the format is the only thing keeping the
-        // end > start test below honest, because that compares two strings
-        // and only lines up with a comparison of two times while both are
-        // zero padded.
+        // "HH:MM:SS", and nothing else. Postgres had a time column and would
+        // not take anything else either; here the format is the only thing
+        // keeping the end > start test below honest, because that compares
+        // two strings and only lines up with a comparison of two times while
+        // both are the same length and zero padded. "HH:MM" was allowed once
+        // and that is what went wrong: a mixed pair let a class of no length
+        // through, so the seconds are required rather than optional.
+        //
+        // An input of type time hands back "HH:MM", so ProfileView appends
+        // the ":00" itself before writing. Anything else writing the bare
+        // "HH:MM" gets a permission error with no explanation, which is a bad
+        // half hour to spend, hence this paragraph.
         function aTime(value) {
           return value is string
             && value.matches('^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$');

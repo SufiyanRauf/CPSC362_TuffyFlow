@@ -4,13 +4,13 @@ TuffyFlow is a campus companion web application designed for students at Califor
 
 Live app: https://tuffyflow.vercel.app
 
-It serves everything described below, with one thing switched off: there is no
-Firebase project behind it yet, so the login screen says so and View demo is
-the way in. The demo is the whole app on the sample campus, which is what it
-was built to be good for.
+It serves everything described below, running on a real Firebase project. You
+can sign in with an email and password or with Google, and whatever you save
+is yours the next time you log in.
 
-Adding the config is a build time thing rather than a setting, so whoever adds
-it to Vercel has to redeploy afterwards or the live copy will not pick it up.
+There is also a View demo button that needs no account at all. It opens the
+whole app on a sample student's schedule, which is the quickest way to see what
+it does, and it is what we show in class.
 
 Early UI prototype, from before the app was built: https://genre-fetch-60235643.figma.site/
 
@@ -466,6 +466,15 @@ to a database.
    `firebase.json` at the repository root is what points that command at
    `db/firestore.rules`. You can also paste the file into the Rules tab in the
    console and press Publish, which does the same thing.
+7. Optional: App Check, which is what tells Firebase a request came from this
+   app rather than from a script holding a copy of the four values above.
+   Build, App Check, register the web app with the reCAPTCHA Enterprise
+   provider, and put the site key in `.env` as
+   `VITE_FIREBASE_RECAPTCHA_SITE_KEY`. It is public like the other four.
+   Leave it out and App Check simply never starts. Add it in Vercel and
+   redeploy as well: Vite writes it into the bundle at build time, so once
+   enforcement is switched on, a deployment built without it is refused every
+   request.
 
 Signing in works at this point, but every screen is empty until the campus is
 loaded.
