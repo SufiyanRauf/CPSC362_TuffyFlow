@@ -58,7 +58,7 @@ answer here, not a worse one.
 
 **2026-09-20: Every factor scaled to 0 to 1 before weighting**
 
-Walking minutes go up to about 25 and fullness goes up to 100. If we add the
+Walking minutes go up to 20 and fullness goes up to 100. If we add the
 raw numbers, fullness decides basically everything no matter what weights we
 pick. Scaling first means a weight of 0.5 actually means half the decision.
 
@@ -373,7 +373,7 @@ entirely, since in student org writing it nearly always means events.
 The occupancy curve used to be a single time of day shape with a per lot offset
 derived from the length of the lot's name, which is to say no information at
 all. Took readings off the campus parking board on a Sunday and on a Thursday
-and set the per lot numbers from those. Three readings are in data/parking_samples.csv.
+and set the per lot numbers from those. Four readings are in data/parking_samples.csv.
 > Superseded 2026-10-30: a fourth reading, on a Friday, gave Friday its own
 > shape. See the entry for that date. Two of them set the per lot
 numbers and the curve reproduces those to within a point. The third was taken
@@ -386,7 +386,7 @@ it is nearest the academic buildings while State College sits at 43. On the
 Sunday reading every structure was at or under 4 percent except S8 and S10 at 59,
 which is beside the stadium and the gym. Our first attempt applied the Thursday
 numbers to the weekend too and had Eastside at 54 percent on a Sunday against
-a real 0.5. The seed carries two columns now.
+a real 0.5. The seed carries three columns now.
 
 Worth saying plainly: two readings is not much. One timestamp per day, only the
 counted facilities, and only a Sunday on the weekend side, so Saturday is an
@@ -843,7 +843,7 @@ asks what the rules do rather than whether they are there: a logged out visitor
 sees nothing, an anonymous sign in counts as nobody, one student cannot reach
 another's profile or schedule, the campus is read only from a browser, a
 profile can only be created empty, and a class with a malformed time or an
-extra field is refused. Twenty three of them, and they pass.
+extra field is refused. Thirty two of them, and they pass.
 
 They were worth not trusting on a first green run, so we broke the rules on
 purpose, five times, and checked each break was caught: letting any signed in
@@ -884,7 +884,7 @@ to know it was worked out a moment ago. No component changed.
 There is a suite for it now, in tests/event_dates.test.mjs, which reads the
 dates at five points in the future and either side of the November clock
 change. We put both bugs back to check it could fail: a hard coded timezone
-offset broke three of the seven, and treating the day offset as hours broke
+offset broke three of the nine, and treating the day offset as hours broke
 four. It needs no emulator and no project, so it runs anywhere.
 
 **2026-10-28: Reading the whole thing before the demo**
@@ -909,7 +909,7 @@ test after it checking an empty database and passing for the wrong reason.
 The last one is the one to remember. We had been treating that suite as proof
 the rules worked, and for the back half of it we were proving nothing. The
 suite now uses a second uid for the create test instead of wiping the data,
-and the thirty tests all mean something.
+and the thirty two tests all mean something.
 
 Each of the five has a test on it now, and we put the bugs back afterwards to
 check the tests failed. Two of them did not fail on the first attempt, which
@@ -1103,7 +1103,31 @@ stores a day offset and a time of day rather than a timestamp, and this turns
 them into a start and an end when the row is read. The demo rows and the real
 ones both go through it, so the two cannot disagree.
 
-**data/parking_samples.csv**: the three readings off CSUF's live counts
+**src/components/ConfirmDialog.tsx**: the only modal in the app. Everything
+else answers after the fact with a status line, because almost nothing here is
+worth interrupting somebody for. This is for the two that are: taking a class
+off the schedule, which costs five fields to put back, and leaving, which ends
+the session.
+
+**src/components/ErrorBoundary.tsx**: catches a render that throws so the
+whole page does not go white. Offers a reload rather than clearing the flag,
+because re-rendering the same state would throw again and the button would
+look broken.
+
+**tests/test_api.py**: fifteen tests that go through the FastAPI app itself
+rather than calling the scorer directly. It exists because the endpoint once
+returned an empty body rather than a reason and every unit test stayed green.
+
+**tests/clock_text.test.mjs**: clockText and clockRange and toMinutes. Midnight
+and noon are the two cases worth pinning: replacing the modulo branch with a
+bare one breaks both and nothing else notices.
+
+**api/requirements.txt**: two packages the endpoint needs and three more for running it and the tests locally.
+
+**src/vite-env.d.ts**: the types for import.meta.env, so the Firebase config
+reads are checked rather than any.
+
+**data/parking_samples.csv**: the four readings off CSUF's live counts
 board, which the occupancy curve was fitted to. **docs/architecture.mmd**: the
 three recommenders drawn from the student's side, which GitHub renders.
 
@@ -1159,4 +1183,4 @@ occupancy of 150 used to sail through and score as if the lot were empty.
 
 **api/scoring.py**: the ranking engine itself: one rank function, configured
 three ways for parking, spots and events. Nothing in here touches the database
-or the network, which is why it is the one part with real tests.
+or the network, which is why it is the part with the most tests.

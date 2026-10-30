@@ -12,6 +12,21 @@ There is also a View demo button that needs no account at all. It opens the
 whole app on a sample student's schedule, which is the quickest way to see what
 it does, and it is what we show in class.
 
+**If you have just cloned this.** You need no credentials to build it, run it
+or run the tests. `npm install` then `npm run dev` serves the whole app on the
+bundled sample campus, and View demo works. None of the 136 tests need
+credentials either, though they do not all run off `npm install` alone: the 16
+date and clock tests do, the 88 Python ones want a virtualenv, and the 32
+security rules tests want `firebase-tools` and a JDK. Running it locally below
+has each. Only signing in and saving anything need your own
+Firebase project.
+
+**Two other documents are worth reading alongside this one.**
+[DECISIONS.md](DECISIONS.md) is the dated decision log: what we chose, why, and
+which of those choices we later reversed and for what reason. It also has a
+file by file inventory of the codebase. [db/README.md](db/README.md) covers the
+data layer and the move from Postgres to Firestore.
+
 Early UI prototype, from before the app was built: https://genre-fetch-60235643.figma.site/
 
 ---
@@ -206,7 +221,7 @@ two are kept apart on purpose.
 | Building names, codes and coordinates, from the campus map `locations.json`, 1 Oct 2026 | Class schedules and the demo student profile |
 | Parking lot names, coordinates and permit types, from the parking map at `parking.fullerton.edu`, 9 Oct 2026 | Typical parking occupancy for the six lots CSUF does not count |
 | Capacities of the four structures, from the parking availability board | |
-| Three parking readings on two days, in `data/parking_samples.csv` | |
+| Four parking readings on three days, in `data/parking_samples.csv` | |
 | 320 clubs: the Student Life and Leadership registered list of 22 Sep 2026, joined to the TitanLink directory for names, summaries, categories and IDs, read 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
 | Pollak Library floor designations, room booking rules and opening hours, from the library's own pages | |
 | Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
@@ -399,6 +414,14 @@ python3 -m venv .venv && .venv/bin/pip install -r api/requirements.txt
 .venv/bin/python -m uvicorn api.recommend:app --port 8000
 ```
 
+Two more that need nothing but the install above, and are the quickest way to
+see the project is sound:
+
+```bash
+npm run typecheck   # tsc over the whole front end, strict, no unused locals
+npm run build       # typecheck plus the production bundle
+```
+
 There are three sets of tests. The ranking engine and the endpoint in front of
 it, which is the part with the logic worth testing:
 
@@ -424,6 +447,10 @@ npm run test:rules
 
 The cask version of the JDK wants an administrator password; the formula above
 does not, and the emulator only needs it on the PATH.
+
+A green run of this suite still prints a long stream of red `PERMISSION_DENIED`
+blocks. Those are the refusals the tests are asserting, not failures. Read the
+`pass`/`fail` counts at the end.
 
 They check what the rules actually do rather than whether they are present: a
 logged out visitor sees nothing, an anonymous sign in counts as nobody, one

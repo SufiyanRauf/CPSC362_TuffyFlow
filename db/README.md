@@ -18,7 +18,7 @@ ever comes up.
 
 ## The SQL files are the previous design
 
-`schema.sql` and the five `seed_*.sql` files describe the Postgres database this
+`schema.sql`, `seed.sql` and the four `seed_*.sql` files describe the Postgres database this
 project was built on before it moved to Firestore. Nothing runs them any more.
 
 They are kept rather than deleted for two reasons. They are where the campus
@@ -28,9 +28,10 @@ access rules were worked out, which is the part of this project worth being
 able to explain: eight tables, twelve row level security policies, and a check
 at the end of the file that refuses to pass if any of it did not run.
 
-If you are reading those to understand the data, they are accurate, with one
-exception: occupancy diverged on 2026-10-30 when Friday got its own curve, so
-`src/lib/campusRows.ts` is the live copy of that and `seed.sql` is not. If you are
+If you are reading those to understand the data, they are accurate, with two
+exceptions. Occupancy diverged on 2026-10-30 when Friday got its own curve,
+and ten clubs' interest tags were revised after `seed_clubs.sql` was written.
+`src/lib/campusRows.ts` is the live copy of both. If you are
 reading them to understand what the app talks to, read `firestore.rules`
 instead.
 

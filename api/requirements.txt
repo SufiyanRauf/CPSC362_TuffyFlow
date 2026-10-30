@@ -1,7 +1,10 @@
-fastapi
-pydantic
+# Pinned to what we built and tested against, so a clone a month from now gets
+# the same resolve we did. Unpinned, a major release of fastapi or pydantic
+# lands silently and the endpoint stops matching the tests.
+fastapi==0.142.2
+pydantic==2.13.5
 
 # local only
-uvicorn
-pytest
-httpx
+uvicorn==0.54.0
+pytest==9.1.1
+httpx==0.28.1

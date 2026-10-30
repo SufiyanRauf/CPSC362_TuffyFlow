@@ -3,7 +3,7 @@
 //   npm run test:rules
 //
 // Needs Java, because the Firestore emulator is a Java program. On a Mac:
-// brew install --cask temurin. Without it the command fails saying so, and
+// brew install openjdk. Without it the command fails saying so, and
 // these never run.
 //
 // Why they exist: the rules are the whole security model, and until this file
