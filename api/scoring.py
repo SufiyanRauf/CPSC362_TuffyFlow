@@ -43,7 +43,6 @@ NEUTRAL_WALK = 0.5
 NOTHING_TO_JUDGE = None
 
 
-
 PARKING_WEIGHTS = {"walk": 0.6, "fullness": 0.4}
 SPOT_WEIGHTS = {"walk": 0.4, "noise": 0.4, "outlets": 0.2}
 
@@ -238,6 +237,18 @@ def lot_fullness(lot, context):
     return UNKNOWN_FULLNESS, False
 
 
+# All three configs take the request context and hand back the same three
+# keys, so recommend.py builds them the same way. Only spot_config reads the
+# context it is given, to pick between the two weight tables; parking and
+# events take it to keep the three the same shape, and so either can start
+# reading it later without the call site changing.
+#
+# The ctx inside the nested filters and factors is that same dictionary, not a
+# second one. rank() is generic, so it hands the context to every filter and
+# factor it is given, once per candidate, and the two names are the same object
+# on every call the app makes. The inner functions take it as an argument
+# rather than reading the enclosing name because the signature belongs to
+# rank(), which has no idea which config built them.
 def parking_config(context):
     def permit_allows(lot, ctx):
         # None until the profile screen is filled in, and None matches nothing
@@ -271,10 +282,14 @@ def parking_config(context):
 
     def fullness_factor(lot, ctx):
         pct, known = lot_fullness(lot, ctx)
+        # The same number either way, because an hour with no row is scored at
+        # the stand-in rather than left out. Only the sentence changes, and it
+        # has to, because a reading we have and a reading we do not have must
+        # not come out of the card saying the same thing.
+        value = 1 - pct / 100
         if not known:
-            return 1 - pct / 100, "no typical reading for that hour"
-        return (1 - pct / 100,
-                "usually about %d%% full when you would arrive" % pct)
+            return value, "no typical reading for that hour"
+        return value, "usually about %d%% full when you would arrive" % pct
 
     return {
         "filters": [permit_allows, walk_is_plausible],
@@ -445,6 +460,13 @@ def event_config(context):
 
     def soon_factor(event, ctx):
         days = event.get("day_offset", 0)
+        # In practice this is only ever 0. A negative day_offset is an event
+        # that has been and gone, not_started throws those out, it is always in
+        # the event filter list, and rank() runs every filter before it calls a
+        # single factor. The <= rather than == is defensive: a factor that is
+        # safe on its own inputs cannot be broken by a change to the filter
+        # list two screens away, and the honest score for a day already past is
+        # the same 1.0 that today gets.
         if days <= 0:
             return 1.0, "today"
         # anchored from 0 so the curve falls the whole way. The old version

@@ -134,6 +134,11 @@ describe('a signed in student', () => {
     await assertFails(setDoc(doc(db, 'buildings', 'invented'), { name: 'Nowhere' }))
     await assertFails(updateDoc(doc(db, 'clubs', 'club-1'), { name: 'Renamed' }))
     await assertFails(deleteDoc(doc(db, 'events', 'event-1')))
+    // All five, not three. parking_lots and spots carry the same
+    // "allow write: if false" and were the two nobody was writing to, so
+    // loosening either of them would not have turned anything red.
+    await assertFails(setDoc(doc(db, 'parking_lots', 'invented'), { name: 'Nowhere' }))
+    await assertFails(setDoc(doc(db, 'spots', 'invented'), { name: 'Nowhere' }))
   })
 })
 
@@ -150,6 +155,16 @@ describe('one student against another', () => {
     await assertFails(updateDoc(doc(alex(), 'profiles', JORDAN), { major: 'Changed' }))
     await assertFails(setDoc(doc(alex(), 'profiles', JORDAN), freshProfile('Impostor')))
     await assertFails(deleteDoc(doc(alex(), 'profiles', JORDAN)))
+  })
+
+  // Jordan already has a profile, so every write in the test above is an
+  // update and it is the update rule that refuses them. That left the create
+  // rule's own ownership check unexercised: changing it to plain signedIn()
+  // kept all thirty one tests green, and it would have let anybody claim a
+  // profile at the uid of somebody who had not signed in yet, with a name of
+  // their choosing. This needs a uid with nothing at it.
+  it('cannot create a profile at somebody else’s uid', async () => {
+    await assertFails(setDoc(doc(alex(), 'profiles', 'river-uid'), freshProfile('Impostor')))
   })
 
   it('cannot read or touch the other’s schedule', async () => {

@@ -23,7 +23,10 @@ import {
 import { firebaseAuth } from './firebase'
 import { dataChanged } from './dataVersion'
 
-export type Session =
+// Not exported. Nothing outside this file names the type: components read it
+// through useSession() and let TypeScript infer, and the data layer asks the
+// two narrow questions further down instead.
+type Session =
   // asking Firebase whether a session is already stored in this browser
   | { kind: 'loading' }
   | { kind: 'out' }
@@ -50,12 +53,15 @@ function set(next: Session) {
   dataChanged()
 }
 
-export function subscribeToSession(listener: () => void) {
+// The two halves useSyncExternalStore wants. Neither is exported, because the
+// hook that uses them is right below. dataVersion.ts has to export its pair
+// for the opposite reason: the hook reading it lives in another file.
+function subscribeToSession(listener: () => void) {
   listeners.add(listener)
   return () => { listeners.delete(listener) }
 }
 
-export function sessionSnapshot() {
+function sessionSnapshot() {
   return current
 }
 
@@ -74,6 +80,25 @@ export function accountId(): string | null {
 // writes it with updateProfile.
 export function accountName(): string | null {
   return current.kind === 'account' ? current.fullName : null
+}
+
+// Where the profile form keeps typing that has not been saved yet, so a reload
+// does not throw it away.
+//
+// Keyed on whose profile it is, so a draft typed in the demo can never be put
+// back into a real account's form. That is the same hazard saveProfile checks
+// for, and a draft outliving a sign in is one more way to reach it.
+//
+// A function here rather than the string written out in each place that needs
+// it. Two places do: the profile form, which saves and clears the draft, and
+// resetDemoData in campusData.ts, which has to clear the demo's draft when
+// somebody leaves the demo. Spelled out twice they can drift, and the way they
+// would drift is silent, because clearing a key nothing is stored under looks
+// exactly like clearing the right one. It lives in this file because what it
+// belongs to is the session: the draft lasts as long as the tab, and which
+// draft it is depends on who is using the app.
+export function draftKey(id: string) {
+  return `tuffyflow:profile-draft:${id}`
 }
 
 // Fires once on subscribe with whatever is in storage, which is also how the
@@ -129,7 +154,11 @@ export function enterDemo() {
   set({ kind: 'demo' })
 }
 
-export async function leaveDemo() {
+// Not async. There is nothing here to wait for: leaving the demo asks Firebase
+// what it already has in memory and sets the session, the way enterDemo above
+// does. It said async for a while and the promise it handed back was one more
+// thing for a caller to wonder about.
+export function leaveDemo() {
   // The demo is not an account, so leaving it is not signing out of anything.
   // Ending the Firebase session here would be reaching into somebody else's
   // tab: Firebase keeps one session per browser, and the reason this tab is
@@ -144,7 +173,10 @@ export async function leaveDemo() {
   // first place. currentUser can outlive a signOut whose network half failed,
   // and the demo is not a back door into an account somebody chose to leave.
   const user = signedOutOnPurpose ? null : (firebaseAuth?.currentUser ?? null)
-  if (!user) return set({ kind: 'out' })
+  if (!user) {
+    set({ kind: 'out' })
+    return
+  }
   set({
     kind: 'account',
     userId: user.uid,
@@ -182,7 +214,10 @@ export async function signOut() {
 // is something the person has to read and act on, not an exception.
 // ---------------------------------------------------------------------------
 
-export type AuthResult =
+// Not exported either. The three calls below return it and the login screen
+// reads ok and message off what comes back, so naming the type elsewhere has
+// never been necessary.
+type AuthResult =
   | { ok: true }
   | { ok: false; message: string }
 
@@ -278,8 +313,8 @@ export async function signUp(
     //
     // It does not stop the profile document being written with no name on it.
     // That happens in the gap above, while updateProfile is in flight, and by
-    // the time this line runs the document already exists. getProfile fills
-    // the name in when it notices.
+    // the time this line runs the document already exists. firestoreData's
+    // getOrCreateProfile fills the name in when it notices.
     if (current.kind === 'account' && current.userId === user.uid) {
       set({ ...current, fullName: named })
     }

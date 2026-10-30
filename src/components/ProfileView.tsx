@@ -1,4 +1,5 @@
-import { noiseWords } from '../lib/labels'
+import { canonicalTag, noiseWords, tagText } from '../lib/labels'
+import ConfirmDialog from './ConfirmDialog'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useAsync } from '../lib/useAsync'
 import {
@@ -6,7 +7,7 @@ import {
 } from '../lib/campusData'
 import { studentFacing } from '../lib/firestoreData'
 import { useDataVersion } from '../lib/useDataVersion'
-import { useSession } from '../lib/session'
+import { draftKey, useSession } from '../lib/session'
 import type { Building, ClassMeeting, Permit, Profile } from '../types'
 import Panel from './Panel'
 import PageHeader from './PageHeader'
@@ -38,11 +39,6 @@ const PERMIT_LABELS: Record<Permit, string> = {
 // A blank name or major is stored as nothing rather than as an empty string,
 // so "has this been filled in" has one answer and not two.
 const orNull = (value: string) => (value.trim() ? value : null)
-
-// Keyed on whose profile it is, so a draft typed in the demo can never be put
-// back into a real account's form. That is the same hazard saveProfile checks
-// for, and a draft outliving a sign in is one more way to reach it.
-const draftKey = (id: string) => `tuffyflow:profile-draft:${id}`
 
 // Both ends of the draft are guarded because sessionStorage throws outright in
 // a private window and in some embedded browsers, and JSON.parse throws on
@@ -145,7 +141,13 @@ function TagField({ label, field, tags, onChange, hintId }: {
     if (!draft.trim()) { say('Type something to add first.'); return }
     // club and event tags are lowercase words joined by hyphens, so anything
     // else can never match one and is only dead weight on the profile
-    const tag = draft.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    // canonicalTag last, so what gets stored is the word the data actually
+    // uses. Somebody typing "machine learning" used to be told in green that
+    // it had been added and then matched nothing for the rest of the term,
+    // because interests are compared to club and event tags by exact string
+    // and that vocabulary is small and never shown to anyone.
+    const typed = draft.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    const tag = canonicalTag(typed)
     if (!tag) { say('Letters and numbers only.'); return }
     if (tags.includes(tag)) { say(`You already have ${tag}.`); setDraft(''); return }
     // Same ceiling as db/firestore.rules. Said here rather than left to the
@@ -158,7 +160,12 @@ function TagField({ label, field, tags, onChange, hintId }: {
     // the chip appearing is the whole answer if you can see it, and nothing at
     // all if you cannot. The add row in the schedule already says its own
     // success out loud, so these match it.
-    say(`${tag} added to ${field}.`, false)
+    say(
+      tag === typed
+        ? `${tag} added to ${field}.`
+        : `${typed} added to ${field} as ${tagText(tag)}, which is the word the clubs use.`,
+      false,
+    )
   }
 
   function drop(tag: string) {
@@ -652,6 +659,11 @@ function Week({ meetings, buildings }: { meetings: ClassMeeting[]; buildings: Bu
   // waiting for it, so the row sat there unchanged for a second or two and the
   // obvious thing to do was press it again.
   const [removing, setRemoving] = useState('')
+  // Asked before, not reported after. Everything else on this screen answers
+  // once it has happened, which is right when the answer is cheap to undo.
+  // This one is not: putting a class back is the course code, the day, two
+  // times and the building again.
+  const [confirming, setConfirming] = useState<{ day: string; c: ClassMeeting } | null>(null)
   // Saturday and Sunday are in here now. A class on either used to have nowhere
   // to show, even though the scorer already handled any day of the week.
   const week = DAYS.map((name, day) => ({
@@ -661,7 +673,7 @@ function Week({ meetings, buildings }: { meetings: ClassMeeting[]; buildings: Bu
       .sort((a, b) => a.start_time.localeCompare(b.start_time)),
   }))
 
-  async function remove(dayName: string, c: ClassMeeting) {
+  async function reallyRemove(dayName: string, c: ClassMeeting) {
     if (removing) return
     // Focus goes to the day's own heading. It used to go to the next class
     // down, so a keyboard user who pressed Enter again deleted a second class,
@@ -748,7 +760,7 @@ function Week({ meetings, buildings }: { meetings: ClassMeeting[]; buildings: Bu
                       type="button"
                       id={`rm-${c.id}`}
                       aria-disabled={removing === c.id}
-                      onClick={() => void remove(day.name, c)}
+                      onClick={() => setConfirming({ day: day.name, c })}
                       aria-label={`Remove ${c.course_code} at ${clockText(c.start_time)} on ${day.name}`}
                       className="grid h-9 w-9 shrink-0 place-items-center rounded text-ink-faint hover:bg-titan-50 hover:text-flame-ink"
                     >
@@ -771,6 +783,21 @@ function Week({ meetings, buildings }: { meetings: ClassMeeting[]; buildings: Bu
           </div>
         ))}
       </div>
+
+      {confirming && (
+        <ConfirmDialog
+          title={`Remove ${confirming.c.course_code}?`}
+          detail={`It comes off ${confirming.day} at ${clockText(confirming.c.start_time)}. Putting it back means the course code, the day, both times and the building again.`}
+          confirmLabel="Remove class"
+          destructive
+          onConfirm={() => {
+            const { day, c } = confirming
+            setConfirming(null)
+            void reallyRemove(day, c)
+          }}
+          onCancel={() => setConfirming(null)}
+        />
+      )}
     </section>
   )
 }

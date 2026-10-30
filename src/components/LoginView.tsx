@@ -29,11 +29,14 @@ const field =
 const MIN_PASSWORD = 6
 
 type Mode = 'choose' | 'login' | 'signup'
-type Note = { bad: boolean; text: string }
 
 export default function LoginView() {
   const [mode, setMode] = useState<Mode>('choose')
-  const [note, setNote] = useState<Note | null>(null)
+  // Just the text. Other screens pair it with a bad flag because they report
+  // both halves, but nothing on this card can report a success: signing in
+  // replaces the whole screen, so the only thing left to say is what went
+  // wrong.
+  const [note, setNote] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -60,7 +63,7 @@ export default function LoginView() {
     setWrong(field)
     setNote(null)
     clearTimeout(complaining.current)
-    complaining.current = setTimeout(() => setNote({ bad: true, text }), 0)
+    complaining.current = setTimeout(() => setNote(text), 0)
   }
 
   useEffect(() => () => clearTimeout(complaining.current), [])
@@ -106,7 +109,11 @@ export default function LoginView() {
     heading.current?.focus()
   }, [mode])
 
-  async function run(action: () => Promise<{ ok: boolean; message?: string }>) {
+  // The two cases written out, rather than { ok: boolean; message?: string }.
+  // That older shape said a failure might arrive with no message, so this had
+  // to carry a stand-in sentence that nothing could ever reach: logIn, signUp
+  // and signInWithGoogle all put a message on every failure they report.
+  async function run(action: () => Promise<{ ok: true } | { ok: false; message: string }>) {
     setBusy(true)
     setNote(null)
     // whatever comes back is about the pair, not about one box, so nothing
@@ -115,12 +122,12 @@ export default function LoginView() {
     try {
       const result = await action()
       if (!result.ok) {
-        setNote({ bad: true, text: result.message ?? 'That did not work. Try again.' })
+        setNote(result.message)
       }
       // Success signs the session in and the app replaces this screen on its
       // own, Google included: it is a popup, so this page never goes away.
     } catch (e) {
-      setNote({ bad: true, text: e instanceof Error ? e.message : 'That did not work. Try again.' })
+      setNote(e instanceof Error ? e.message : 'That did not work. Try again.')
     } finally {
       setBusy(false)
     }
@@ -212,7 +219,7 @@ export default function LoginView() {
               type="button"
               onClick={() => {
                 if (busy) return
-                if (!signInAvailable) return setNote({ bad: true, text: NO_PROJECT })
+                if (!signInAvailable) return setNote(NO_PROJECT)
                 void run(signInWithGoogle)
               }}
               /* aria-disabled rather than disabled, for the reason written out
@@ -232,7 +239,7 @@ export default function LoginView() {
               type="button"
               onClick={() => {
                 if (busy) return
-                if (!signInAvailable) return setNote({ bad: true, text: NO_PROJECT })
+                if (!signInAvailable) return setNote(NO_PROJECT)
                 go('signup')
               }}
               aria-disabled={busy}
@@ -350,16 +357,14 @@ export default function LoginView() {
               // text-sm, the same as the rest of the prose on this card. It was
               // on a 13px size that existed nowhere else in the app, and this
               // is the line that tells somebody why their login failed.
-              ? 'mt-4 rounded-lg px-3 py-2 text-left text-sm ' +
-                // warm for a problem, green for a success. It used to use the
-                // pale blue, which reads as a note rather than as a fault.
-                (note.bad
-                  ? 'bg-tint-parking text-flame-ink'
-                  : 'bg-ok-soft text-ok')
+              //
+              // Warm, because everything this line ever says is a fault. It
+              // used to use the pale blue, which reads as a note instead.
+              ? 'mt-4 rounded-lg bg-tint-parking px-3 py-2 text-left text-sm text-flame-ink'
               : 'sr-only'
           }
         >
-          {note?.text}
+          {note}
         </p>
 
         <p className="mt-6 text-sm text-ink-soft">
@@ -384,7 +389,7 @@ export default function LoginView() {
                 type="button"
                 onClick={() => {
                   if (busy) return
-                  if (!signInAvailable) return setNote({ bad: true, text: NO_PROJECT })
+                  if (!signInAvailable) return setNote(NO_PROJECT)
                   go('login')
                 }}
                 aria-disabled={busy}

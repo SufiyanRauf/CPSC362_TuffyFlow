@@ -129,7 +129,8 @@ export default function EventsView() {
       <PageHeader title="Events">
         Events are ordered by how well they match your interests, how close they are to your
         classes that day, and how soon they start. Anything that overlaps one of your classes
-        is left out.
+        is left out. The match percent is scored out of what we can judge for you, so nothing
+        reaches a hundred.
       </PageHeader>
 
       <Panel

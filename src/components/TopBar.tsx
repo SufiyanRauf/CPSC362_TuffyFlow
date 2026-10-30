@@ -1,3 +1,4 @@
+import ConfirmDialog from './ConfirmDialog'
 import { useEffect, useRef, useState } from 'react'
 import { useAsync } from '../lib/useAsync'
 import { getProfile } from '../lib/campusData'
@@ -41,6 +42,10 @@ export default function TopBar({ onOpenProfile, onSignOut }: TopBarProps) {
   // overnight kept yesterday's until something else happened to rerender.
   useMinuteTick()
   const [open, setOpen] = useState(false)
+  // Asked before, because this one ends the session: an account has to type a
+  // password again, and the demo loses anything typed into it that was not
+  // saved. The menu closes first, so the question is not sitting under a panel.
+  const [leaving, setLeaving] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const firstItem = useRef<HTMLButtonElement>(null)
@@ -181,7 +186,7 @@ export default function TopBar({ onOpenProfile, onSignOut }: TopBarProps) {
               Profile
             </button>
             <button type="button" className={item + ' border-t border-rule'}
-                    onClick={() => choose(onSignOut)}>
+                    onClick={() => choose(() => setLeaving(true))}>
               <SignOutIcon className="h-4 w-4 text-ink-faint" />
               {/* The demo is not an account, so logging out of it is not a
                   thing it can do. Saying what it really does avoids the
@@ -196,6 +201,18 @@ export default function TopBar({ onOpenProfile, onSignOut }: TopBarProps) {
           </div>
         )}
       </div>
+
+      {leaving && (
+        <ConfirmDialog
+          title={session.kind === 'demo' ? 'Leave the demo?' : 'Log out?'}
+          detail={session.kind === 'demo'
+            ? 'The sample student goes back to how it started, and anything you typed here is dropped.'
+            : 'You will need your email and password to get back in.'}
+          confirmLabel={session.kind === 'demo' ? 'Leave demo' : 'Log out'}
+          onConfirm={() => { setLeaving(false); onSignOut() }}
+          onCancel={() => setLeaving(false)}
+        />
+      )}
     </header>
   )
 }

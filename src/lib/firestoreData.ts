@@ -184,7 +184,14 @@ export async function getBuildings(): Promise<Building[]> {
 
 // The lot document carries its own week of occupancy, which the two functions
 // below pull apart in the two shapes the app asks for.
-type LotDoc = ParkingLot & { availability?: Record<string, Record<string, number>> }
+//
+// Both levels say undefined, because both lookups really can miss: a day the
+// seed has no numbers for, and an hour outside the sixteen it writes. Without
+// the undefined the compiler promises a number for every key and the two
+// guards in getAvailabilityAround read as if they were for nothing.
+type LotDoc = ParkingLot & {
+  availability?: Record<string, Record<string, number | undefined> | undefined>
+}
 
 // The collection itself, held for the life of the page, because the two
 // functions below both need it and one screen asks for both: StructureFill
@@ -297,10 +304,9 @@ export async function getEvents(): Promise<CampusEvent[]> {
 // them null is what makes "not known" different from a guess. The rules
 // insist on exactly this shape for a create, so a browser cannot write itself
 // a profile that is already filled in.
-// Only the six fields the document actually holds. The id is the name of the
-// document, and a copy inside it is one more thing that can disagree with
-// itself, which is what saveProfile says a few lines down and what this used
-// to do anyway. The rules refuse a seventh field now, so the two cannot drift.
+// Only the six fields the document actually holds. The id is left out for the
+// reason saveProfile gives below, which is what this used to do anyway. The
+// rules refuse a seventh field now, so the two cannot drift.
 function emptyProfileFields(fullName: string | null) {
   return {
     full_name: fullName,
@@ -312,66 +318,72 @@ function emptyProfileFields(fullName: string | null) {
   }
 }
 
-export async function getProfile(userId: string, fullName: string | null): Promise<Profile> {
-  let fs, db, where, snapshot
+// Named for what it does rather than for what the screens wanted. A read that
+// finds nothing writes the document, and a read that finds one with no name on
+// it writes the name, so calling this a get would be hiding two writes behind
+// the one word that promises there are none. campusData.ts keeps the shorter
+// name for the components, which is the layer where it is true: they ask for a
+// profile and do not care which of the two happened.
+export async function getOrCreateProfile(
+  userId: string, fullName: string | null,
+): Promise<Profile> {
+  // One try around the whole body, the way every other call in this file is
+  // written. connect() has to be inside it: it was outside once, and a failed
+  // chunk fetch reached the screen as "Failed to fetch dynamically imported
+  // module", on every screen, because the top bar asks for the profile
+  // everywhere.
   try {
-    // connect() was outside this try, which meant a failed chunk fetch
-    // reached the screen as "Failed to fetch dynamically imported module",
-    // on every screen, because the top bar asks for the profile everywhere.
-    ;({ fs, db } = await connect())
-    where = fs.doc(db, 'profiles', userId)
-    snapshot = await fs.getDoc(where)
+    const { fs, db } = await connect()
+    const ref = fs.doc(db, 'profiles', userId)
+    const snapshot = await fs.getDoc(ref)
+
+    if (!snapshot.exists()) {
+      // Postgres had a trigger on the users table that wrote this row at
+      // signup. Firebase can only do that with a Cloud Function, which needs
+      // a paid plan, so the first look creates it instead. The rules allow a
+      // person to create their own and nobody else's.
+      const fresh = emptyProfileFields(fullName)
+      await fs.setDoc(ref, fresh)
+      return { id: userId, ...fresh }
+    }
+
+    const stored = snapshot.data()
+
+    // Backfill the name, which signing up loses on its own.
+    //
+    // createUserWithEmailAndPassword tells every listener about the new
+    // account before it returns, and at that moment Firebase has no name for
+    // them: the name is set a moment later, by a second call. Four screens ask
+    // for the profile the instant the session appears, so the document gets
+    // created in that gap with nothing on it, and the student lands on a
+    // dashboard that does not know who they are, permanently, because the
+    // document now exists.
+    //
+    // Writing it the moment we notice is what closes it. It costs one write,
+    // once, for accounts made the long way round.
+    if (stored.full_name == null && fullName) {
+      try {
+        await fs.updateDoc(ref, { full_name: fullName })
+        stored.full_name = fullName
+      } catch {
+        // not worth failing the whole screen over: the name is still on the
+        // account, and the profile screen can set it by hand
+      }
+    }
+    // Firestore leaves a missing field undefined rather than null, and the
+    // rest of the app tests for null. Normalizing here keeps that one
+    // difference from leaking into nine components.
+    return {
+      id: userId,
+      full_name: (stored.full_name as string | null) ?? null,
+      major: (stored.major as string | null) ?? null,
+      interests: (stored.interests as string[]) ?? [],
+      career_goals: (stored.career_goals as string[]) ?? [],
+      permit_type: (stored.permit_type as Permit | null) ?? null,
+      noise_pref: (stored.noise_pref as number | null) ?? null,
+    }
   } catch (e) {
     throw new Error(readable(e))
-  }
-
-  if (!snapshot.exists()) {
-    // Postgres had a trigger on the users table that wrote this row at signup.
-    // Firebase can only do that with a Cloud Function, which needs a paid
-    // plan, so the first look creates it instead. The rules allow a person to
-    // create their own and nobody else's.
-    const fresh = emptyProfileFields(fullName)
-    try {
-      await fs.setDoc(where, fresh)
-    } catch (e) {
-      throw new Error(readable(e))
-    }
-    return { id: userId, ...fresh }
-  }
-
-  const stored = snapshot.data()
-
-  // Backfill the name, which signing up loses on its own.
-  //
-  // createUserWithEmailAndPassword tells every listener about the new account
-  // before it returns, and at that moment Firebase has no name for them: the
-  // name is set a moment later, by a second call. Four screens ask for the
-  // profile the instant the session appears, so the document gets created in
-  // that gap with nothing on it, and the student lands on a dashboard that
-  // does not know who they are, permanently, because the document now exists.
-  //
-  // Writing it the moment we notice is what closes it. It costs one write,
-  // once, for accounts made the long way round.
-  if (stored.full_name == null && fullName) {
-    try {
-      await fs.updateDoc(where, { full_name: fullName })
-      stored.full_name = fullName
-    } catch {
-      // not worth failing the whole screen over: the name is still on the
-      // account, and the profile screen can set it by hand
-    }
-  }
-  // Firestore leaves a missing field undefined rather than null, and the rest
-  // of the app tests for null. Normalizing here keeps that one difference from
-  // leaking into nine components.
-  return {
-    id: userId,
-    full_name: (stored.full_name as string | null) ?? null,
-    major: (stored.major as string | null) ?? null,
-    interests: (stored.interests as string[]) ?? [],
-    career_goals: (stored.career_goals as string[]) ?? [],
-    permit_type: (stored.permit_type as Permit | null) ?? null,
-    noise_pref: (stored.noise_pref as number | null) ?? null,
   }
 }
 

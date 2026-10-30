@@ -21,7 +21,7 @@ import {
   parkingLots, spots,
 } from './campusRows'
 import { datedEvents } from './eventDates'
-import { accountId, accountName } from './session'
+import { accountId, accountName, draftKey } from './session'
 import { dataChanged, dataVersion } from './dataVersion'
 import * as live from './firestoreData'
 
@@ -33,12 +33,10 @@ let classMeetings: ClassMeeting[] = structuredClone(demoClassMeetings)
 // ---------------------------------------------------------------------------
 // Reads
 //
-// Two sources, one set of names. A signed in student gets their own rows out
-// of Firestore; the demo gets the arrays above. The header of this file says
-// why that choice lives here; what is worth adding is how it went: eight of
-// the eleven files that read through here changed, four for what accounts
-// brought with them and four because a real query has timing a local array
-// never had.
+// Two sources, one set of names, for the reason the header of this file gives.
+// What is worth adding here is how that went: eight of the eleven files that
+// read through here changed, four for what accounts brought with them and four
+// because a real query has timing a local array never had.
 // ---------------------------------------------------------------------------
 
 // The campus collections are the same five lists for everybody, and one screen
@@ -50,7 +48,10 @@ let classMeetings: ClassMeeting[] = structuredClone(demoClassMeetings)
 //
 // Two holds rather than one, because these collections do not all go stale at
 // the same time, and treating them as if they did is what made a dashboard
-// cost a hundred and forty reads where eighty six would do.
+// cost well over a hundred reads where eighty six would do. Eighty six is the
+// dashboard counted out, each list read once: seventeen buildings, twelve
+// lots, twenty four spots, twelve events, twenty class meetings and the one
+// profile document.
 //
 // seeded() is for the five collections db/firestore.rules refuses every write
 // to: buildings, parking_lots, spots, clubs and events. The seed script is the
@@ -154,7 +155,7 @@ export async function getProfile(): Promise<Profile> {
     // The name comes from the session rather than the database, because on a
     // brand new account there is no document yet and this is the call that
     // creates it. Firebase is the only thing that knows what to put on it.
-    return id ? live.getProfile(id, accountName()) : profile
+    return id ? live.getOrCreateProfile(id, accountName()) : profile
   })
 }
 
@@ -169,6 +170,13 @@ export async function getClassMeetings(): Promise<ClassMeeting[]> {
 
 // Only the rows for the arrival hour and the hours either side of it, which is
 // what the query filters on too.
+//
+// The one read here that is not held above, and deliberately: which rows come
+// back depends on the day and hour asked for, so a hold keyed on who is asking
+// would answer one hour's question with another hour's numbers. Little is lost
+// by it either, because the twelve lot documents these numbers are sliced out
+// of are held by lotDocs() in firestoreData.ts. The reads happen once for the
+// life of the page and only the slicing runs again.
 export async function getAvailabilityAround(day: number, hour: number): Promise<LotAvailability[]> {
   if (accountId()) return live.getAvailabilityAround(day, hour)
   return lotAvailability.filter(
@@ -291,16 +299,14 @@ export async function resetDemoData() {
   // sessionStorage so a reload does not lose it, and the demo's key never
   // changes, so typing a name without saving and picking Leave demo handed
   // that name to the next person who opened the demo in the same tab. The key
-  // is built by draftKey() in ProfileView.tsx, which is where it is defined
-  // and where this string has to keep matching it. Spelled out here because
-  // importing a component into this file to read one template string is the
-  // worse trade.
+  // comes from draftKey() in session.ts, which the profile form calls too, so
+  // there is one spelling of it and the two ends cannot drift.
   //
-  // Guarded the way both ends of the draft are guarded over there: storage
+  // Guarded the way both ends of the draft are guarded in the form: storage
   // throws outright in a private window, and failing to clear a draft is no
   // reason to fail leaving the demo.
   try {
-    sessionStorage.removeItem('tuffyflow:profile-draft:demo-profile')
+    sessionStorage.removeItem(draftKey(demoProfile.id))
   } catch {
     // nothing to do about it, and nothing worth saying
   }

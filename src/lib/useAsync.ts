@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Loadable } from '../types'
 
-export function useAsync<T>(load: () => Promise<T>, deps: unknown[] = []): Loadable<T> {
+// deps is required rather than defaulted to []. Every caller has something to
+// key on, and leaving it off would quietly mean "load once and never again",
+// which is the one thing none of these panels want.
+export function useAsync<T>(load: () => Promise<T>, deps: unknown[]): Loadable<T> {
   const [state, setState] = useState<Loadable<T>>({ state: 'loading' })
 
   useEffect(() => {

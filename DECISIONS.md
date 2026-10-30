@@ -163,6 +163,27 @@ fail the build on half finished code that runs fine locally, which costs time
 and does not catch anything we care about. Everything else in strict mode stays
 on.
 
+**Reversed on 2026-10-30, see below.**
+
+---
+
+**2026-10-30: Those two checks turned back on**
+
+The reasoning above was about writing the thing. It is written now, so the
+cost it was avoiding has gone and what is left is the part it was wrong about:
+they do catch things we care about.
+
+Turned on, `noUnusedLocals` immediately found a dead `useCampusHour()` call in
+Dashboard.tsx, left behind when both of that screen's loaders moved onto the
+minute. Worse than the dead line was the nine line comment above it explaining
+why there were two clocks, which there no longer were. That comment is exactly
+the kind a reader trusts, and it would have had somebody explain the screen
+wrongly. It also found a dead ref in ClubsView.tsx that had survived the move
+from a reveal button to real pagination.
+
+A parameter that genuinely has to stay unused gets an underscore, which both
+checks ignore.
+
 ---
 
 **2026-09-20: Replaced the .gitignore**

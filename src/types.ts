@@ -3,6 +3,10 @@ export type View = 'home' | 'parking' | 'spots' | 'clubs' | 'events' | 'profile'
 export type Building = {
   id: string
   name: string
+  // The campus abbreviation, MH or CS, which is how the campus map labels a
+  // building. Kept because it is what the SQL seed matched rows on, so it is
+  // the link back to where each row came from. Nothing reads it yet: every
+  // screen shows the full name.
   code: string
   lat: number
   lng: number
@@ -65,7 +69,9 @@ export type ParkingLot = {
   // employee and hourly all at once; Eastside North is student only.
   permits: Permit[]
   // null where CSUF does not publish a capacity, which is most of them. Only
-  // the facilities on the live counts board have a real figure.
+  // the facilities on the live counts board have a real figure. Kept as a
+  // record of what the published figure was when the rows were written.
+  // Nothing reads it yet: the parking screen works off typical_pct_full.
   total_spaces: number | null
 }
 
@@ -107,6 +113,9 @@ export type Spot = {
 // no page of their own, and the next import would bring them in.
 export type Club = {
   id: string
+  // The organization's own id on TitanLink, where these rows were scraped
+  // from. Kept so a row can be traced back to the page it came from and so a
+  // later import can match on it. Nothing reads it yet.
   titanlink_id: string | null
   name: string
   summary: string | null
@@ -143,7 +152,12 @@ export type SpotKind = 'study' | 'eat' | 'charge' | 'meet'
 
 // Day of week to opening and closing time, both "HH:MM". An empty object means
 // we do not know the hours, which is not the same as being shut all week.
-export type SpotHours = Record<number, [opens: string, closes: string]>
+//
+// Partial, because a day that is missing is a day the place is shut and that
+// is most of the food court on a Sunday. A plain Record claims every day is
+// in here, which made the "is it shut today" check look like dead code to
+// anybody reading the type instead of the data.
+export type SpotHours = Partial<Record<number, [opens: string, closes: string]>>
 
 export type RecCategory = 'parking' | 'spot' | 'event'
 
@@ -155,7 +169,6 @@ export type Recommendation = {
   kind?: SpotKind | null
   title: string
   match_percent: number
-  reason: string
   reasons: string[]
   lat: number | null
   lng: number | null

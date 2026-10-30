@@ -15,9 +15,11 @@
 
     "strict": true,
 
-    /* off on purpose, they break the build on half finished code, see DECISIONS.md */
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    /* on, because these are what catch a leftover ref or import that nothing
+       reads any more. Name a parameter you have to keep but do not use with a
+       leading underscore and the check leaves it alone. */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
 
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true

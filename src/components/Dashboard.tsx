@@ -9,7 +9,7 @@ import SectionHeader from './SectionHeader'
 import TodaySchedule from './TodaySchedule'
 import { ClockIcon, PinIcon } from './icons'
 import { useDataVersion } from '../lib/useDataVersion'
-import { useCampusHour, useMinuteTick } from '../lib/useMinuteTick'
+import { useMinuteTick } from '../lib/useMinuteTick'
 
 type DashboardProps = {
   onOpen: (view: View) => void
@@ -40,16 +40,18 @@ export default function Dashboard({ onOpen }: DashboardProps) {
   // data version only moves on a write or a sign in, so a tab left open
   // counted down to a class that had already started.
   //
-  // Two clocks, on purpose. The ranking keys on the hour because it is the
-  // expensive one: it reads the occupancy row for the hour and posts the lot
-  // of it to the scorer, and doing that sixty times as often buys nothing. The
-  // next class keys on the minute, because findNextClass only awaits
-  // getClassMeetings and getBuildings and both of those hand back a promise
-  // they are already holding, so re-running it costs no reads at all. On the
-  // hour it could be wrong for up to fifty-nine minutes at a stretch: a 09:30
-  // class left the hero reading "Starts in 0 min" until 10:00 while the table
-  // further down the same screen correctly said In class.
-  const hour = useCampusHour()
+  // One clock, on the minute, for both loaders. It used to be two: the ranking
+  // keyed on the hour because it looked like the expensive one. Both of them
+  // were wrong for up to fifty-nine minutes at a stretch because of it. A
+  // 09:30 class left the hero reading "Starts in 0 min" until 10:00 while the
+  // table further down the same screen correctly said In class, and worse, the
+  // lot block kept the previous class's answer, so "Be at lot by 11:07 AM" sat
+  // under "Next class MATH 338, 2:00 PM".
+  //
+  // Per minute is free for both. findNextClass only awaits getClassMeetings
+  // and getBuildings, which hand back promises they are already holding, and
+  // getRecommendations is keyed on which class is next, so it returns the
+  // promise it already has until the class actually changes.
   const minute = useMinuteTick()
   const profile = useAsync(getProfile, [version])
   const nextClass = useAsync(findNextClass, [version, minute])

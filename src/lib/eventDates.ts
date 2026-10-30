@@ -37,7 +37,7 @@ const DAY_FORMAT = new Intl.DateTimeFormat('en-CA', {
 function offsetAt(when: Date) {
   const name = OFFSET_FORMAT.formatToParts(when)
     .find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-08:00'
-  return name.replace('GMT', '') || '-08:00'
+  return name.replace('GMT', '')
 }
 
 // Today on campus, not on whichever laptop is running the demo. en-CA is the

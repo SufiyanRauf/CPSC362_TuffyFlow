@@ -819,7 +819,8 @@ def test_the_parking_result_carries_the_fullness_as_a_number():
     ])
     cfg = scoring.parking_config(ctx)
     out = scoring.rank(LOTS, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
-    results = {r["item"]["id"]: recommend._result(r, "parking", True, ctx) for r in out}
+    results = {r["item"]["id"]: recommend._result(r, "parking", with_parking_fields=True, context=ctx)
+               for r in out}
 
     assert results["near-empty"]["pct_full"] == 41
     # and None, not the stand-in the scoring uses, where there is no reading

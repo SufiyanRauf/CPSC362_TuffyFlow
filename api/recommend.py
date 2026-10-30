@@ -65,6 +65,11 @@ A_TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$")
 # being handed a list big enough to matter.
 MANY = 2000
 
+# How many of each category the route asks the scorer for. One number because
+# the three screens read the same way, and a named one because 20 on its own in
+# three calls looks like three unrelated decisions.
+TOP_N = 20
+
 
 # Full path, not "/recommend". Vercel passes the original path through to the app.
 @app.get("/api/recommend")
@@ -183,7 +188,9 @@ class RecommendRequest(BaseModel):
     class_meetings: list[ClassWindow] = Field(default=[], max_length=MANY)
 
 
-def _result(entry, category, with_arrive_by=None, context=None):
+def _result(entry, category, with_parking_fields=False, context=None):
+    """One card's worth of JSON. The flag turns on the two fields only a lot
+    has, which are the fullness percentage and the time to leave by."""
     item = entry["item"]
     walk = entry.get("walk_minutes")
     # Parking only, and None where there is no reading for that hour rather
@@ -191,20 +198,19 @@ def _result(entry, category, with_arrive_by=None, context=None):
     # this and used to recover it by stripping the non-digits out of the
     # reason sentence, which held only as long as that sentence contained
     # exactly one number.
-    pct, known = lot_fullness(item, context) if with_arrive_by else (None, False)
+    pct, known = lot_fullness(item, context) if with_parking_fields else (None, False)
     return {
         "id": item["id"],
         "category": category,
         "title": item["name"],
         "match_percent": entry["match_percent"],
-        "reason": entry["reasons"][0] if entry["reasons"] else "",
         "reasons": entry["reasons"],
         "lat": item.get("lat"),
         "lng": item.get("lng"),
         "kind": item.get("kind"),
         "walk_minutes": walk,
         "pct_full": pct if known else None,
-        "arrive_by": arrive_by(item, context, walk) if with_arrive_by else None,
+        "arrive_by": arrive_by(item, context, walk) if with_parking_fields else None,
     }
 
 
@@ -217,15 +223,16 @@ def recommend(body: RecommendRequest) -> dict:
     spots = spot_config(context)
     events = event_config(context)
 
-    ranked_lots = rank([l.model_dump() for l in body.lots],
-                       parking["filters"], parking["factors"], parking["weights"], 20, context)
+    ranked_lots = rank([lot.model_dump() for lot in body.lots],
+                       parking["filters"], parking["factors"], parking["weights"], TOP_N, context)
     ranked_spots = rank([s.model_dump() for s in body.spots],
-                        spots["filters"], spots["factors"], spots["weights"], 20, context)
+                        spots["filters"], spots["factors"], spots["weights"], TOP_N, context)
     ranked_events = rank([e.model_dump() for e in body.events],
-                         events["filters"], events["factors"], events["weights"], 20, context)
+                         events["filters"], events["factors"], events["weights"], TOP_N, context)
 
     return {
-        "parking": [_result(r, "parking", True, context) for r in ranked_lots],
+        "parking": [_result(r, "parking", with_parking_fields=True, context=context)
+                    for r in ranked_lots],
         "spots": [_result(r, "spot") for r in ranked_spots],
         "events": [_result(r, "event") for r in ranked_events],
     }

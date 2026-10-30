@@ -35,7 +35,6 @@ yarn-error.log*
 
 # TypeScript build info
 *.tsbuildinfo
-.venv
 
 # Firebase service account keys. These bypass every security rule, so they
 # never belong in the repository.

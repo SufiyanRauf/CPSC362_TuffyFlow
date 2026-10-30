@@ -122,7 +122,8 @@ export default function ParkingView() {
           something to act on. */}
       <PageHeader title="Parking">
         Every lot your permit allows, ranked for {heading}. The fullness numbers behind that
-        order are a typical pattern for that hour, not a live count.
+        order are a typical pattern for that hour, not a live count. The match percent is
+        scored out of what we can judge for you, so nothing reaches a hundred.
       </PageHeader>
 
       <Panel source={recs}>
