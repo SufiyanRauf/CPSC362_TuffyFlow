@@ -3,6 +3,7 @@ import {
   getAvailabilityAround, getBuildings, getClassMeetings, getEvents,
   getParkingLots, getProfile, getSpots,
 } from './campusData'
+import { dataVersion } from './dataVersion'
 
 const CAMPUS_TZ = 'America/Los_Angeles'
 
@@ -117,7 +118,14 @@ export async function findNextClass() {
   return nextClassFrom(meetings, buildings)
 }
 
-export async function getRecommendations(): Promise<RecommendResponse> {
+// Only ever reached when the next class's building is missing from the list,
+// and only in fields the scorer reads for the parking walk. It is here because
+// 0, 0 is not a stand-in for a place we do not know: it is a real point in the
+// Gulf of Guinea, and this way a stray reading of these numbers is at least on
+// the right continent.
+const CAMPUS_MIDDLE = { lat: 33.8816, lng: -117.8854 }
+
+async function loadRecommendations(): Promise<RecommendResponse> {
   // Everything the ranking needs, in one go, so it is all from whichever
   // source answered first.
   const [profile, lots, spots, events, buildings, meetings] = await Promise.all([
@@ -133,14 +141,30 @@ export async function getRecommendations(): Promise<RecommendResponse> {
   const arrivalHour = Math.floor(
     Math.max(0, next.start_minutes - 20) / 60,
   )
+  const where = (id: string) => buildings.find((b) => b.id === id)
+
+  // Where the walk to class gets measured to. A class whose building has gone
+  // from the list leaves us without one, and the scorer cannot tell a made up
+  // destination from a real one: given 0, 0 it measured the walk anyway and
+  // ranked every lot at 203913 minutes with an arrive-by time next to it,
+  // which is a 141 day walk offered as a plan. A spot or an event with nowhere
+  // to measure from already scores a neutral walk and says so on the card.
+  // Parking has no such reading to fall back on, so with no destination the
+  // lots are left out below and that ranking comes back empty rather than
+  // invented.
+  const dest = where(next.building_id)
+
   // The one query that has to wait, because which rows to ask for depends on
   // when the class is. Worst case it answers from the other source, and since
   // the seed writes campus documents at the sample rows' own ids, those would
   // quietly join rather than visibly fail. Not reachable today: every change
   // of person remounts the tree, so nothing survives across one.
-  const availability = await getAvailabilityAround(next.day_of_week, arrivalHour)
-
-  const where = (id: string) => buildings.find((b) => b.id === id)
+  //
+  // Skipped without a destination, because the parking ranking is the only
+  // thing that reads these rows and there is no parking ranking to make.
+  const availability = dest
+    ? await getAvailabilityAround(next.day_of_week, arrivalHour)
+    : []
 
   const body = {
     profile: {
@@ -149,17 +173,19 @@ export async function getRecommendations(): Promise<RecommendResponse> {
       interests: profile.interests,
       career_goals: profile.career_goals,
     },
-    dest_lat: next.building_lat,
-    dest_lng: next.building_lng,
+    dest_lat: dest?.lat ?? CAMPUS_MIDDLE.lat,
+    dest_lng: dest?.lng ?? CAMPUS_MIDDLE.lng,
     dest_name: next.building_name,
     now_minutes: minutes,
     day_of_week: dayOfWeek,
     arrival_hour: arrivalHour,
     class_start_minutes: next.start_minutes,
     class_day_offset: next.day_offset,
-    lots: lots.map((l) => ({
-      id: l.id, name: l.name, lat: l.lat, lng: l.lng, permits: l.permits,
-    })),
+    lots: dest
+      ? lots.map((l) => ({
+        id: l.id, name: l.name, lat: l.lat, lng: l.lng, permits: l.permits,
+      }))
+      : [],
     availability,
     spots: spots.flatMap((s) => {
       const b = where(s.building_id)
@@ -232,4 +258,43 @@ export async function getRecommendations(): Promise<RecommendResponse> {
     )
   }
   return assertResponse(await res.json())
+}
+
+// The ranking is the most expensive thing the app does, and one screen asks
+// for it twice: the dashboard panel and the events rail both call it, as do
+// the parking screen and that same rail, so drawing one screen was two full
+// rounds of reads and two posts to the scorer. campusData holds the campus
+// lists the same way and for the same reason, which is that Firestore charges
+// by the document read and the free tier is about 50,000 a day.
+//
+// Keyed on dataVersion() and the campus hour together. dataVersion() is the
+// app's signal that the rows behind a screen have moved on, so a write or a
+// sign in cannot be served a ranking from before it, and the hour is what the
+// ranking is worked out against: which occupancy row to read, which events
+// have not started yet, how long until the class. The hour rather than the
+// minute because that is what the screens already depend on.
+let rankedFor = ''
+let ranked: Promise<RecommendResponse> | null = null
+
+export function getRecommendations(): Promise<RecommendResponse> {
+  const asked = `${dataVersion()}:${Math.floor(campusNow().minutes / 60)}`
+  if (asked !== rankedFor) {
+    rankedFor = asked
+    ranked = null
+  }
+
+  if (!ranked) {
+    // The promise, not the response, so the panels asking at the same moment
+    // share one request instead of starting several.
+    //
+    // Dropped on failure for the same reason campusData drops a failed read:
+    // keeping a rejected promise means one request off bad wifi keeps failing
+    // for the life of the page even after the network comes back. Only if the
+    // key has not moved on, so a late rejection cannot throw away a newer one.
+    ranked = loadRecommendations().catch((e: unknown) => {
+      if (rankedFor === asked) ranked = null
+      throw e
+    })
+  }
+  return ranked
 }

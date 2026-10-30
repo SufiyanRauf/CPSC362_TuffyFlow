@@ -34,6 +34,15 @@ export type Session =
 let current: Session = firebaseAuth ? { kind: 'loading' } : { kind: 'out' }
 const listeners = new Set<() => void>()
 
+// Set when somebody asks to sign out, cleared the next time Firebase reports a
+// user. signOut below drops the local session without waiting for the network,
+// on purpose, so if Firebase's own sign out throws then currentUser can outlive
+// it. leaveDemo reads currentUser to decide where to go, which means a sign out
+// that failed, followed by View demo and Leave demo, would hand the browser
+// back the account the person had just left without asking them for anything.
+// Signed out is the one state nothing should be able to undo by accident.
+let signedOutOnPurpose = false
+
 function set(next: Session) {
   current = next
   for (const listener of listeners) listener()
@@ -81,6 +90,11 @@ if (firebaseAuth) {
       if (current.kind !== 'demo' && current.kind !== 'out') set({ kind: 'out' })
       return
     }
+    // Somebody has signed in, which is the only thing that makes currentUser
+    // worth trusting again. This sits above the demo check rather than below
+    // it because a sign in that happened somewhere else is still a sign in:
+    // the tab stays in the demo, but leaving it now has somewhere to go.
+    signedOutOnPurpose = false
     // Opened in another tab and signed in there? A tab somebody is browsing
     // the demo in should stay in the demo rather than being pulled into an
     // account mid page.
@@ -125,7 +139,11 @@ export async function leaveDemo() {
   // So it asks who, if anyone, this browser is signed in as, and goes there.
   // That also answers the other way in: the first check can time out into the
   // login screen, somebody picks View demo, and the session turns up after.
-  const user = firebaseAuth?.currentUser ?? null
+  //
+  // Unless a sign out is what put this browser on the login screen in the
+  // first place. currentUser can outlive a signOut whose network half failed,
+  // and the demo is not a back door into an account somebody chose to leave.
+  const user = signedOutOnPurpose ? null : (firebaseAuth?.currentUser ?? null)
   if (!user) return set({ kind: 'out' })
   set({
     kind: 'account',
@@ -138,6 +156,9 @@ export async function leaveDemo() {
 export async function signOut() {
   // Screen first. Whatever the network does, the person asked to leave, and
   // leaving them looking at their own data would be the wrong way to fail.
+  // The flag goes with it, before the listeners run, because from here on
+  // nothing may read its way back into this account on Firebase's word alone.
+  signedOutOnPurpose = true
   set({ kind: 'out' })
   if (!firebaseAuth) return
   try {
@@ -149,6 +170,8 @@ export async function signOut() {
   } catch {
     // It has already dropped the local session by this point. There is
     // nothing useful left to say and the screen is already on the login card.
+    // What it cannot promise is that Firebase dropped its own, which is what
+    // the flag above is for.
   }
 }
 

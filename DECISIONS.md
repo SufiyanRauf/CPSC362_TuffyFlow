@@ -857,6 +857,43 @@ change. We put both bugs back to check it could fail: a hard coded timezone
 offset broke three of the seven, and treating the day offset as hours broke
 four. It needs no emulator and no project, so it runs anywhere.
 
+**2026-10-28 — Reading the whole thing before the demo**
+
+With the demo coming we read the whole codebase again rather than only the
+parts we had just changed, in five passes: the event dates, the access rules
+and the data layer, the Python engine, the React screens, and the
+documentation against the code.
+
+Five things came out of it that were worth the time. A single event document
+left in the old shape took out four screens at once with a raw error rather
+than one empty list, because one bad row threw for the whole collection. The
+distance function returned a 500 for two points on opposite sides of the
+planet, where a rounding error made the argument to a square root negative.
+The arrive by time wrapped past midnight, so a walk longer than the time
+before class answered a nine o'clock lecture with "leave at 16:05". The
+profile rules capped how many interests you could have and said nothing about
+what was inside them, so one interest could be a megabyte. And one of the
+rules tests cleared the database halfway through its own run, which left every
+test after it checking an empty database and passing for the wrong reason.
+
+The last one is the one to remember. We had been treating that suite as proof
+the rules worked, and for the back half of it we were proving nothing. The
+suite now uses a second uid for the create test instead of wiping the data,
+and the thirty tests all mean something.
+
+Each of the five has a test on it now, and we put the bugs back afterwards to
+check the tests failed. Two of them did not fail on the first attempt, which
+is the whole reason for doing it: one assertion worked out its expected value
+with the same arithmetic as the code it was checking, so changing the code
+moved both sides and the test stayed green.
+
+Worth recording about the review itself: one suggestion we were given would
+have broken the test it was meant to fix. It assumed a write would be refused
+whether the document existed or not, and that is not true here, because an
+update is allowed to carry values that a create refuses. We only knew because
+we went and read the rule. That is the argument for the explain-it-line-by-line
+rule in a sentence.
+
 ---
 
 ## What each file does
@@ -1035,6 +1072,11 @@ ones both go through it, so the two cannot disagree.
 **data/parking_samples.csv** — the three readings off CSUF's live counts
 board, which the occupancy curve was fitted to. **docs/architecture.mmd** — the
 three recommenders drawn from the student's side, which GitHub renders.
+
+**src/lib/useWideScreen.ts** — whether there is room for the right rail. It
+asks the browser rather than leaving it to the rail's own classes, because
+hiding something in CSS still mounts it, and the two panels in that rail were
+fetching about 127 documents on every phone that could not show them.
 
 **src/lib/time.ts, labels.ts, maps.ts** — the small shared ones: campus time
 and the weekday names, the words for a kind of spot and for a person, and the

@@ -100,15 +100,22 @@ export default function ParkingView() {
             if (next.state !== 'ready') {
               return <Panel source={next}>{() => null}</Panel>
             }
-            // Past that, the schedule is known. If there is a next class then
-            // the permit is the only thing that can have emptied this, so say
-            // that rather than listing both and making the student work out
-            // which.
+            // Past that, the schedule is known, and there are two more ways
+            // to get here. A class whose building is no longer in the campus
+            // data leaves nowhere to measure the walk to, and the ranking is
+            // skipped rather than measured against a made up point, so say
+            // that instead of blaming the permit. building_lat is zero in
+            // that case, the same sentinel the map marker above reads.
+            // Otherwise the permit is the only thing left that can have
+            // emptied this.
+            const unknownBuilding = next.data !== null && next.data.building_lat === 0
             return (
               <p className="rounded-xl border border-rule bg-paper px-5 py-6 text-sm text-ink-soft">
-                {next.data !== null
-                  ? 'No lots to rank, because your profile does not say which permit you hold. Every lot takes some permits and not others, so there is no lot we can stand behind until it does.'
-                  : 'No lots to rank. Add a class on your profile and these fill in.'}
+                {next.data === null
+                  ? 'No lots to rank. Add a class on your profile and these fill in.'
+                  : unknownBuilding
+                    ? `No lots to rank, because we do not have ${next.data.building_name} on the campus map, so there is nowhere to measure the walk to. The other screens still work.`
+                    : 'No lots to rank, because your profile does not say which permit you hold. Every lot takes some permits and not others, so there is no lot we can stand behind until it does.'}
               </p>
             )
           }

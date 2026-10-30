@@ -175,11 +175,20 @@ service cloud.firestore {
       // Somebody has to be able to erase themselves. Postgres did it without
       // being asked: the profile row hung off auth.users with on delete
       // cascade, and the schedule hung off the profile the same way, so
-      // removing the account took the lot. Firebase cascades nothing and a
-      // document's subcollections outlive it, so refusing this left a
-      // withdrawn student's whole week of whereabouts sitting at a path
-      // nobody could reach. Clearing the schedule first is the caller's job,
-      // and db/delete_account.mjs does it.
+      // removing the account took the lot. Firebase cascades nothing, and a
+      // document's subcollections outlive it, so deleting this one leaves the
+      // week of class meetings underneath it still there.
+      //
+      // The rule below still reaches them: it matches on the path, and a
+      // subcollection does not need its parent document to exist, so the
+      // owner can list and delete their own schedule afterwards. What cannot
+      // reach them is this app, which has no screen for it. Clearing the
+      // schedule first is therefore the caller's job, and
+      // db/delete_account.mjs does it in that order.
+      //
+      // Nothing in the app deletes a profile today. If anything ever does, it
+      // has to clear the subcollection first, or the next sign in writes a
+      // fresh empty profile on top of last term's whereabouts.
       allow delete: if isMe(uid);
 
       // A week of somebody's whereabouts, which is the most private thing

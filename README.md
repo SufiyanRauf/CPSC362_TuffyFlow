@@ -334,9 +334,10 @@ Completed:
 
 * Project concept, initial presentation and UI prototype
 * Database schema, security policies and seed data
-* The ranking engine, in Python, with 56 tests
-* The access rules, with 23 tests against Firebase's emulator
-* The event dates, with 7 tests that need neither Java nor a project
+* The ranking engine, in Python, with 62 tests, and the endpoint it is
+  served behind, with 11 more that go through the app itself
+* The access rules, with 30 tests against Firebase's emulator
+* The event dates, with 9 tests that need neither Java nor a project
 * Dashboard, parking, spots, clubs, events and profile screens
 * Sign up, log in, Google sign in and sign out, written and tested as far as
   they can be without a project to point them at
@@ -383,12 +384,18 @@ python3 -m venv .venv && .venv/bin/pip install -r api/requirements.txt
 .venv/bin/python -m uvicorn api.recommend:app --port 8000
 ```
 
-There are three sets of tests. The ranking engine, which is the part with the
-logic worth testing:
+There are three sets of tests. The ranking engine and the endpoint in front of
+it, which is the part with the logic worth testing:
 
 ```bash
 .venv/bin/python -m pytest tests/
 ```
+
+That covers the scoring itself and the request handling around it. The second
+half matters more than it sounds: a bad number used to come back as a 500 with
+an empty body rather than a reason, and the test that was supposed to catch
+that called the error handler directly, so it could not tell whether the
+handler was wired to the app at all. Those tests now go through the app.
 
 And the access rules, which are the part worth being certain about. These run
 against Firebase's emulator rather than a real project, so they need Java:

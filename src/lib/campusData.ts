@@ -139,16 +139,19 @@ export async function getAvailabilityAround(day: number, hour: number): Promise<
 
 export async function saveProfile(next: Profile) {
   const id = accountId()
-  if (id) {
-    // Whose form is this. The app remounts when the person changes, which is
-    // what normally stops a stale form reaching the wrong account, but that
-    // is mitigation by timing and this is the check. A form built for one
-    // account cannot be written to another.
-    if (next.id !== id) {
-      throw new Error('That form belongs to a different account. Reload the page.')
-    }
-    await live.saveProfile(id, next)
+  // Whose form is this. The app remounts when the person changes, which is
+  // what normally stops a stale form reaching the wrong account, but that
+  // is mitigation by timing and this is the check. A form built for one
+  // account cannot be written to another.
+  //
+  // The demo is held to the same rule rather than waved through, because the
+  // profile it keeps is where addClassMeeting below reads the owner for a new
+  // class. A stale form carrying a real account's id would put that id on
+  // rows that are nobody's.
+  if (next.id !== (id ?? profile.id)) {
+    throw new Error('That form belongs to a different account. Reload the page.')
   }
+  if (id) await live.saveProfile(id, next)
   // A spread would keep sharing the interests and career_goals arrays with
   // the form that produced them, which is the same hazard the seed above is
   // cloned to avoid.
@@ -162,6 +165,12 @@ let nextClassId = 0
 export async function addClassMeeting(meeting: Omit<ClassMeeting, 'id' | 'profile_id'>) {
   const id = accountId()
   if (id) {
+    // No id to doubt here, unlike the two writes either side of this one. The
+    // form hands over the class and nothing else, and firestoreData names the
+    // document after the class under whoever is signed in now, so even a form
+    // filled in a moment earlier writes a row that belongs to this account.
+    // Knowing which source it was filled in against would mean the component
+    // passing that, which is a change to a signature every caller shares.
     await live.addClassMeeting(id, meeting)
   } else {
     // The same check the database makes, so the demo cannot reach a state a
@@ -185,13 +194,36 @@ export async function addClassMeeting(meeting: Omit<ClassMeeting, 'id' | 'profil
   dataChanged()
 }
 
+// Every class the demo knows about is called cm-0, or cm-new-1 for one added
+// inside it. An account's are named after the class, in capitals, so the id
+// alone says which of the two sources a row was listed from.
+function fromDemoSchedule(id: string) {
+  return /^cm-(new-)?\d+$/.test(id)
+}
+
+const WRONG_SCHEDULE = 'That class belongs to a different account. Reload the page.'
+
 export async function removeClassMeeting(id: string) {
   const account = accountId()
   // The schedule is a subcollection under the person, so deleting from it
   // needs to know whose it is. Postgres took the row id alone and let a
   // policy decide; here the path is the restriction.
-  if (account) await live.removeClassMeeting(account, id)
-  else classMeetings = classMeetings.filter((m) => m.id !== id)
+  if (account) {
+    // Whose row is this, for the reason saveProfile gives: the remount is
+    // timing and this is the check. It matters more here than it does there,
+    // because Firestore deletes a document that is not in the collection
+    // without complaining and the rules allow it, so a row from the other
+    // source comes back as a delete that worked on a schedule that still has
+    // the class on it.
+    if (fromDemoSchedule(id)) throw new Error(WRONG_SCHEDULE)
+    await live.removeClassMeeting(account, id)
+  } else {
+    // The same both ways round. Filtering an array by an id that is not in it
+    // is as quiet as the delete above, and an account's row is not the demo's
+    // to remove.
+    if (!fromDemoSchedule(id)) throw new Error(WRONG_SCHEDULE)
+    classMeetings = classMeetings.filter((m) => m.id !== id)
+  }
   dataChanged()
 }
 
