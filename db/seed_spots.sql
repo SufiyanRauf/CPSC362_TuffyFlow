@@ -19,12 +19,16 @@
 -- The library hours are real, from the hours page: Monday to Thursday 7am to
 -- 11:59pm, Friday 7am to 5pm, Saturday and Sunday 9am to 5pm. The spots table
 -- only has one opens_at and one closes_at, so the Monday to Thursday range is
--- what gets stored and the full week is in hours_note. That means is_open will
--- say a library floor is open late on a Friday when it shut at 5. Day aware
--- hours are the fix and they are not in this schema yet.
+-- what gets stored and the full week is in hours_note. That was a real problem
+-- while this table was the live one: is_open said a library floor was open late
+-- on a Friday when it shut at 5. It is not a problem now. The Firestore
+-- documents carry a per day hours map (SpotHours in src/types.ts), recommend.ts
+-- picks the right day out of it, and is_open reads that. Only this dead table
+-- still has the single pair.
 --
--- Same shape for the Student Genius Center, 7am to 10pm Monday to Thursday,
--- and its hours come from the IT page, not the library one.
+-- Same shape for the Student Genius Center, 7am to 10pm Monday to Thursday.
+-- Its hours are off the IT page, but every row in this insert carries the
+-- library source_url below, so the attribution on that one row is wrong.
 
 
 delete from spots;
@@ -43,7 +47,7 @@ from (values
   ('Library North 4th Floor',  'study', 4, 'North', 3, true,  110, false, time '07:00', time '23:59', 'Group study space, talking permitted. Mon to Thu 7am to 11:59pm, Fri 7am to 5pm, Sat and Sun 9am to 5pm'),
   ('Library South 4th Floor',  'study', 4, 'South', 1, true,   80, false, time '07:00', time '23:59', 'Quiet study floor, phones off. Mon to Thu 7am to 11:59pm, Fri 7am to 5pm, Sat and Sun 9am to 5pm'),
   ('Library South 5th Floor',  'study', 5, 'South', 3, true,  100, false, time '07:00', time '23:59', 'Group study space, talking permitted. Mon to Thu 7am to 11:59pm, Fri 7am to 5pm, Sat and Sun 9am to 5pm'),
-  ('Group Study Rooms',        'meet',  1, 'North', 3, true,    6, true,  time '07:00', time '23:59', 'Bookable in 2 hour slots, 7am to 11pm. Groups of 2 or more need a second CWID. Up to 5 bookings a week, 2 weeks ahead.'),
+  ('Group Study Rooms',        'meet',  1, 'North', 3, true,    6, true,  time '07:00', time '23:00', 'Bookable in 2 hour slots, 7am to 11pm. Groups of 2 or more need a second CWID. Up to 5 bookings a week, 2 weeks ahead.'),
   ('Student Genius Center',    'charge',1, 'North', 3, true,   20, false, time '07:00', time '22:00', 'Laptop checkout and tech help. Mon to Thu 7am to 10pm, Fri 7am to 5pm, Sat 9am to 5pm, closed Sunday. Pollak Library North, first floor.')
 ) as v(name, kind, floor, section, noise, outlets, seats, reservable, opens, closes, note)
 join buildings b on b.code = 'PL';

@@ -54,3 +54,22 @@ export function clockText(value: string) {
   const shown = hour % 12 === 0 ? 12 : hour % 12
   return `${shown}:${String(minute).padStart(2, '0')} ${suffix}`
 }
+
+// A range, with the AM or PM said once when both ends share it. Printing it
+// twice is correct but long: "11:30 AM to 12:45 PM" has to keep both because
+// it crosses noon, but "9:00 AM to 10:15 AM" does not, and the schedule table
+// is narrow enough that the extra characters pushed the status column further
+// off the side of a phone.
+export function clockRange(from: string, to: string) {
+  const a = clockText(from)
+  const b = clockText(to)
+  // Only collapse when the first end really is a time ending in a meridiem.
+  // Taken on the last two characters alone, two passthrough values agreeing on
+  // their last two characters got three characters eaten off the first:
+  // clockRange('TBA', 'TBA') came back as "\u2013TBA". clockText goes out of its
+  // way to hand back anything that is not a time, and this has to do the same.
+  const mark = a.slice(-2)
+  const collapsible = (mark === 'AM' || mark === 'PM') && mark === b.slice(-2)
+  if (!collapsible) return `${a}\u2013${b}`
+  return `${a.slice(0, -3)}\u2013${b}`
+}

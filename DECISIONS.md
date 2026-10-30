@@ -167,6 +167,25 @@ on.
 
 ---
 
+**2026-10-30: Friday gets its own parking curve**
+
+The occupancy model had one weekday shape, fitted to the Thursday readings, and
+it reproduces those exactly. A Friday reading off the board at 11:51 showed it
+was 81 points wrong: it said Eastside North was 99 percent full when the board
+said 18, and the order of the lots inverts, with Eastside North the busiest
+structure on a Thursday and the emptiest on a Friday. Far fewer classes run
+here on a Friday. So the seed carries three shapes now, not two, and Friday
+lands exactly on its reading.
+
+Honest limit: Friday rests on one reading at one hour, so its midday level is
+measured and the rest of its day is not. The parking footnote says so.
+
+This is also why `src/lib/campusRows.ts` no longer mirrors `db/seed.sql`: that
+file is the previous Postgres design, nothing runs it, and it has no Friday
+branch.
+
+---
+
 **2026-10-30: Those two checks turned back on**
 
 The reasoning above was about writing the thing. It is written now, so the
@@ -354,7 +373,9 @@ entirely, since in student org writing it nearly always means events.
 The occupancy curve used to be a single time of day shape with a per lot offset
 derived from the length of the lot's name, which is to say no information at
 all. Took readings off the campus parking board on a Sunday and on a Thursday
-and set the per lot numbers from those. Three readings are in data/parking_samples.csv. Two of them set the per lot
+and set the per lot numbers from those. Three readings are in data/parking_samples.csv.
+> Superseded 2026-10-30: a fourth reading, on a Friday, gave Friday its own
+> shape. See the entry for that date. Two of them set the per lot
 numbers and the curve reproduces those to within a point. The third was taken
 after the curve was fitted and never used to fit it, which makes it the only
 real check we have.
@@ -405,8 +426,6 @@ the twelve events were silently dropped and the insert reported success. There
 is now a check at the end of seed_events.sql that raises if the count is not
 twelve. A seed file that can lose rows without saying anything is worse than
 one that fails.
-
----
 
 ---
 
@@ -572,8 +591,6 @@ a real query is still untested and stays untested until the project exists.
 
 ---
 
----
-
 **2026-10-23: Row level security goes on beside each table, and the file checks itself**
 
 > Also about the Postgres design. The bug it describes was real and is worth
@@ -624,8 +641,6 @@ Fixed in one place rather than nine: the whole signed in app is keyed on who
 is using it, so a change of person remounts it and every stale answer goes
 with it. Starting again is the right behavior when the person changed, and it
 cannot be forgotten by a screen added later.
-
----
 
 ---
 
@@ -708,8 +723,6 @@ file, read by all three, cannot.
 
 ---
 
----
-
 **2026-10-23: Nothing fetches on the clock any more**
 
 Firestore charges by the document read, which turned a habit that cost nothing
@@ -717,10 +730,10 @@ on Postgres into a bill, and then into an outage.
 
 Three things on the dashboard passed the minute tick into their loaders, so
 each of them went and fetched the same documents once a minute whether or not
-anything had changed. Counted: 188 reads a minute from one tab sitting there
+anything had changed. Counted: 176 reads a minute from one tab sitting there
 with nobody touching it. The worst was the Coming up rail, which reads the
 scored events, so every minute it was a whole round of recommendations and a
-request to the scoring service, 127 documents, to notice that an event starting
+request to the scoring service, 115 documents, to notice that an event starting
 at half past had started.
 
 The free plan allows about 50,000 reads a day. One tab left open ate that in
@@ -739,8 +752,6 @@ still refresh. A twelve hour day with a tab open is about 1,800 of the 50,000.
 
 The general shape of it is worth remembering: the clock changing is a reason to
 recompute, not a reason to refetch.
-
----
 
 ---
 
@@ -780,8 +791,6 @@ Counted after: Monday to Thursday all twenty four are open, Friday twenty one,
 Saturday nine of which one is food, Sunday seven and none of them food. That
 last line is the library, which is the honest answer to where you can work on
 a Sunday.
-
----
 
 ---
 
@@ -1101,7 +1110,7 @@ three recommenders drawn from the student's side, which GitHub renders.
 **src/lib/useWideScreen.ts**: whether there is room for the right rail. It
 asks the browser rather than leaving it to the rail's own classes, because
 hiding something in CSS still mounts it, and the two panels in that rail were
-fetching about 127 documents on every phone that could not show them.
+fetching about 115 documents on every phone that could not show them.
 
 **src/lib/time.ts, labels.ts, maps.ts**: the small shared ones: campus time
 and the weekday names, the words for a kind of spot and for a person, and the

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useAsync } from '../lib/useAsync'
 import { getBuildings, getClassMeetings } from '../lib/campusData'
 import { campusNow } from '../lib/recommend'
-import { clockText, toMinutes } from '../lib/time'
+import { clockRange, toMinutes } from '../lib/time'
 import { useMinuteTick } from '../lib/useMinuteTick'
 import { useDataVersion } from '../lib/useDataVersion'
 import Panel from './Panel'
@@ -40,8 +40,13 @@ function shape({ meetings, buildings }: Awaited<ReturnType<typeof todaysRows>>) 
       return {
         id: m.id,
         course: m.course_code,
-        from: clockText(m.start_time),
-        to: clockText(m.end_time),
+        // One span, and clockRange says the AM or PM once when both ends share
+        // it. Printing it twice pushed this column wide enough that the status
+        // pill sat further off the side of a phone than the table was sized
+        // for. It only narrows the column on days where nothing crosses noon:
+        // a class running 11:30 to 12:45 has to keep both markers, and the
+        // widest row is what sizes the column.
+        when: clockRange(m.start_time, m.end_time),
         where: where.get(m.building_id) ?? 'Campus',
         status,
       }
@@ -80,7 +85,7 @@ export default function TodaySchedule() {
               {rows.map((c, i) => (
                 <tr key={c.id} className={i % 2 === 1 ? 'bg-paper/50' : 'bg-white'}>
                   <td className="whitespace-nowrap px-4 py-3 tabular-nums text-ink-soft">
-                    {c.from}–{c.to}
+                    {c.when}
                   </td>
                   <th scope="row" className="px-4 py-3 text-left font-semibold text-titan">
                     {c.course}

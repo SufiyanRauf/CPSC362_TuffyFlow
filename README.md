@@ -236,23 +236,30 @@ on a Saturday.
 
 Availability is a typical pattern by day and hour, never a live reading. CSUF
 publishes current counts for six facilities, the four structures plus S8 and S10
-as one combined row, and we read that board three times: once on a Sunday and
-twice on the Thursday. The Sunday reading and the first of the Thursday ones
-set the per lot numbers, first written down in `db/seed.sql` and now carried
-in `src/lib/campusRows.ts`, and the curve reproduces both to
-within a point. The second Thursday reading came after the curve was already
-fitted, which makes it the only real check we have.
+as one combined row, and we read that board four times: once on a Sunday, twice
+on a Thursday and once on a Friday. The Sunday reading, the first Thursday one
+and the Friday one set the per lot numbers, first written down in `db/seed.sql`
+and now carried in `src/lib/campusRows.ts`, and the curve reproduces all three
+exactly. The second Thursday reading came after the curve was already fitted,
+which makes it the only real check we have, and every lot came out within three
+points.
 
-Three readings, but only two independent days, and only two of them set the
-numbers, so it is worth being plain about what they do and do not support. They
-cover only the six counted facilities and only a Sunday on the weekend side, so
+Four readings on three days, so it is worth being plain about what they do and
+do not support. The Friday one is why Friday has a shape of its own: the single
+weekday curve, fitted to the Thursday, said Eastside North was 99 percent full
+at midday on a Friday when the board said 18, and the order of the lots inverts
+between the two days. Friday now lands exactly, but on one reading at one hour,
+so its level at midday is measured and the rest of its day is not. They cover
+only the six counted facilities and only a Sunday on the weekend side, so
 Saturday is an assumption. The six employee, resident and hourly lots are not on
 the board at all and their figures are guesses.
 
 The weekday and weekend shapes turned out to be genuinely different rather than
-one curve scaled down, which is why the seed carries two columns. On a weekday
-Eastside fills to about 88 percent because it is nearest the academic
-buildings, while State College sits around 43. On the Sunday reading every
+one curve scaled down, which is why the seed carries three columns. From Monday
+to Thursday Eastside fills to about 88 percent because it is nearest the
+academic buildings, while State College sits around 43. On the Friday reading
+Eastside North was the emptiest structure on campus at 18 percent, which is the
+opposite of its weekday order and is why Friday is separate. On the Sunday reading every
 structure was at 4 percent or just under except S8 and S10 at 59, which are next to
 the stadium and the gym.
 
@@ -340,8 +347,8 @@ Completed:
 * Database schema, security policies and seed data
 * The ranking engine, in Python, with 73 tests, and the endpoint it is
   served behind, with 15 more that go through the app itself
-* The access rules, with 31 tests against Firebase's emulator
-* The event dates and the clock formatting, with 12 tests that need neither Java nor a project
+* The access rules, with 32 tests against Firebase's emulator
+* The event dates and the clock formatting, with 16 tests that need neither Java nor a project
 * Dashboard, parking, spots, clubs, events and profile screens
 * Sign up, log in, Google sign in and sign out, all working against the live
   project

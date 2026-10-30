@@ -47,5 +47,6 @@ serviceAccountKey*.json
 .firebaserc
 
 # Local working notes. Never pushed: planning docs stay off GitHub.
-CHECKLIST.local.md
-PLAN.local.md
+# *.local above does not match *.local.md, which is how the checklist nearly
+# got committed. The glob covers any future one.
+*.local.md

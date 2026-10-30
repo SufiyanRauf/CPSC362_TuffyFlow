@@ -28,7 +28,9 @@ access rules were worked out, which is the part of this project worth being
 able to explain: eight tables, twelve row level security policies, and a check
 at the end of the file that refuses to pass if any of it did not run.
 
-If you are reading those to understand the data, they are accurate. If you are
+If you are reading those to understand the data, they are accurate, with one
+exception: occupancy diverged on 2026-10-30 when Friday got its own curve, so
+`src/lib/campusRows.ts` is the live copy of that and `seed.sql` is not. If you are
 reading them to understand what the app talks to, read `firestore.rules`
 instead.
 

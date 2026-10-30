@@ -89,8 +89,9 @@ alter table spots enable row level security;
 
 comment on column spots.floor is
   'Pollak Library is one building but eight places to work with different rules,
-   six library floors plus the group study rooms and the Student Genius Center,
-   so floor and section are what make them separate rows.';
+   six library floors plus the group study rooms and the Student Genius Center.
+   Floor and section are not what separate them: three of the eight share floor
+   1 North. The unique key on (name, building_id) is what does.';
 
 comment on column spots.opens_at is
   'Where we have published hours. Null means we do not know, not open all day.

@@ -148,7 +148,7 @@ export default function Dashboard({ onOpen }: DashboardProps) {
           {/* No "right now" in the note any more. These are ranked for the
               next class, and on a Friday evening the next class is Monday,
               which the hero says out loud forty pixels above this. The nouns
-              went too: the middle card is whatever scored highest out of the
+              went too: the spot card is whatever scored highest out of the
               spots and the scorer does not filter on kind, so it can be headed
               Food or Meet up under a note that promised a study spot. What is
               true either way is what the ranking is reading, so that is what
@@ -190,7 +190,14 @@ export default function Dashboard({ onOpen }: DashboardProps) {
                 </button>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2">
+              // Two columns only when there are two cards. A weekend, or a day
+              // where everything clashes with a class, leaves one of the two
+              // empty, and a lone card holding exactly half a row with half a
+              // row of nothing beside it reads as something having failed to
+              // load rather than as a card.
+              <div className={'grid gap-4 ' + (
+                data.spots[0] && data.events[0] ? 'md:grid-cols-2' : ''
+              )}>
                 {/* Parking used to have a slot here and it was printing the
                     hero's lot a second time: same name, same walk, same
                     arrive-by time, and a sentence about how full it usually is

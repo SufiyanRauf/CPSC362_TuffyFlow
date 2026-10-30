@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 
 type ConfirmDialogProps = {
   title: string
@@ -20,13 +20,23 @@ type ConfirmDialogProps = {
 export default function ConfirmDialog({
   title, detail, confirmLabel, destructive = false, onConfirm, onCancel,
 }: ConfirmDialogProps) {
+  // Generated, not hardcoded: two of these mounted at once would otherwise
+  // share ids and a reader would announce the wrong one's title.
+  const titleId = useId()
+  const detailId = useId()
   const cancelRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
   // Focus lands on Cancel, not on the action. A dialog that opens with the
   // destructive button focused turns a stray Enter into the thing it was
-  // supposed to prevent.
-  useEffect(() => { cancelRef.current?.focus() }, [])
+  // supposed to prevent. On the way out it goes back to whatever opened the
+  // dialog, because letting it fall on the body means the next Tab starts
+  // again from the skip link at the top of the page.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    cancelRef.current?.focus()
+    return () => opener?.focus?.()
+  }, [])
 
   // Escape closes it, and Tab cannot walk out of it into the page behind.
   // Without the trap a keyboard user tabs straight past the dialog onto the
@@ -40,6 +50,13 @@ export default function ConfirmDialog({
       const stops = panel.querySelectorAll<HTMLElement>('button')
       const first = stops[0]
       const last = stops[stops.length - 1]
+      // A click on the title or the padding blurs to the body, and from there
+      // neither end matched and Tab walked out into the page behind the
+      // dialog. Far enough to reach the account menu and press Log out, which
+      // opened a second dialog inside the sticky header, so it painted
+      // underneath this one's backdrop. Anything outside the panel comes back
+      // to the first button.
+      if (!panel.contains(document.activeElement)) { e.preventDefault(); first.focus(); return }
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
     }
@@ -57,14 +74,15 @@ export default function ConfirmDialog({
     >
       <div
         ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="confirm-title"
-        aria-describedby="confirm-detail"
+        aria-labelledby={titleId}
+        aria-describedby={detailId}
         className="w-full max-w-sm rounded-xl border border-rule bg-white p-5 shadow-lg"
       >
-        <h2 id="confirm-title" className="text-lg font-semibold text-titan">{title}</h2>
-        <p id="confirm-detail" className="mt-1.5 text-sm text-ink-soft">{detail}</p>
+        <h2 id={titleId} className="text-lg font-semibold text-titan">{title}</h2>
+        <p id={detailId} className="mt-1.5 text-sm text-ink-soft">{detail}</p>
 
         <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
           <button

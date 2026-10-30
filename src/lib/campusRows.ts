@@ -100,7 +100,9 @@ const parkingLots: ParkingLot[] = [
     permits: ['visitor'], total_spaces: null },
 ]
 
-// Mirrors the generate_series in db/seed.sql and has to stay in step with it.
+// Was a mirror of the generate_series in db/seed.sql. That file is the previous
+// Postgres design and nothing runs it, and this now has a Friday branch it
+// never had, so the two no longer match. This is the live copy.
 // Hours 6 to 21, clamped to 0..99.
 //
 // The six counted facilities are measured, from data/parking_samples.csv:
@@ -115,27 +117,37 @@ const parkingLots: ParkingLot[] = [
 // Only Sunday was sampled, so Saturday is an assumption.
 //
 // The six lots that are not on the board carry guesses, marked below.
-const LOT_DEMAND: Record<string, { weekday: number; weekend: number }> = {
+// Friday is its own day. The curve used to have one weekday shape, fitted to
+// the Thursday readings in data/parking_samples.csv, and it fits those to
+// within a point. It was 81 points wrong on a Friday: at 11:51 on 30 Oct it
+// claimed Eastside North was 99 percent full when the board said 18. The order
+// of the lots inverts too, Eastside North being the busiest structure on a
+// Thursday and the emptiest on a Friday, so this is not a base that can be
+// shifted. Far fewer classes run here on Fridays.
+//
+// Honest limit: friday rests on one reading, at one hour. The level at midday
+// is measured, the shape of the rest of the day is not.
+const LOT_DEMAND: Record<string, { weekday: number; weekend: number; friday: number }> = {
   // Measured, from data/parking_samples.csv.
-  "Nutwood Parking Structure":       { weekday: -24, weekend:  -1 },
-  "State College Parking Structure": { weekday: -31, weekend:   1 },
-  "Eastside North Parking Structure": { weekday: 12, weekend:  -3 },
-  "Eastside South Parking Structure": { weekday: 14, weekend:  -1 },
+  "Nutwood Parking Structure":       { weekday: -24, weekend:  -1, friday: -9 },
+  "State College Parking Structure": { weekday: -31, weekend:   1, friday: -22 },
+  "Eastside North Parking Structure": { weekday: 12, weekend:  -3, friday: -37 },
+  "Eastside South Parking Structure": { weekday: 14, weekend:  -1, friday: -19 },
   // The board reports these two as one row, so the pair's reading is the best
   // we have for either of them on its own.
-  "S8":                { weekday:  -9, weekend:  56 },
-  "S10":                             { weekday:  -9, weekend:  56 },
+  "S8":                { weekday:  -9, weekend:  56, friday: -14 },
+  "S10":                             { weekday:  -9, weekend:  56, friday: -14 },
   // Guesses from here down. None of these are on the board. Employee lots are
   // small and fill early, then empty out at the weekend when nobody is at work.
-  "E1":               { weekday: -10, weekend:   0 },
-  "E3":             { weekday: -13, weekend:   0 },
-  "E6":                              { weekday: -18, weekend:   0 },
+  "E1":               { weekday: -10, weekend:   0, friday: -20 },
+  "E3":             { weekday: -13, weekend:   0, friday: -23 },
+  "E6":                              { weekday: -18, weekend:   0, friday: -28 },
   // Resident lots are the other way round: the cars belong to people who live
   // there, so they stay put at the weekend instead of going home.
-  "R1":          { weekday:  -5, weekend:  45 },
-  "R2":                              { weekday:  -5, weekend:  45 },
+  "R1":          { weekday:  -5, weekend:  45, friday: -15 },
+  "R2":                              { weekday:  -5, weekend:  45, friday: -15 },
   // A small lot that fills before the structures do.
-  "Student Union Way (hourly)":      { weekday:   5, weekend: -30 },
+  "Student Union Way (hourly)":      { weekday:   5, weekend: -30, friday: -5 },
 }
 function buildAvailability(): LotAvailability[] {
   const rows: LotAvailability[] = []
@@ -144,10 +156,18 @@ function buildAvailability(): LotAvailability[] {
       for (let hour = 6; hour <= 21; hour++) {
         const weekend = day === 0 || day === 6
         const demand = LOT_DEMAND[lot.name]
+        // Friday gets a lower, flatter hump than the other weekdays, because
+        // the one Friday reading we have sits about forty points under what
+        // the weekday curve predicted for the same hour.
+        const friday = day === 5
         const base = weekend
           ? 1 + Math.max(0, 3 - Math.abs(hour - 13))
-          : hour < 8 ? 20 : hour > 18 ? 25 : 92 - Math.abs(hour - 11) * 9
-        const offset = weekend ? demand?.weekend ?? 0 : demand?.weekday ?? 0
+          : friday
+            ? hour < 8 ? 10 : hour > 18 ? 12 : 55 - Math.abs(hour - 11) * 5
+            : hour < 8 ? 20 : hour > 18 ? 25 : 92 - Math.abs(hour - 11) * 9
+        const offset = weekend
+          ? demand?.weekend ?? 0
+          : friday ? demand?.friday ?? 0 : demand?.weekday ?? 0
         rows.push({
           lot_id: lot.id, day_of_week: day, hour,
           // floor 1, ceiling 99: never claim a lot is literally empty or full.

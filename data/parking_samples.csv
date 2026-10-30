@@ -16,6 +16,13 @@
 # The board also lists a Fullerton Free Church overflow lot, 800 spaces, shown
 # as open for 24 Aug to 10 Dec rather than counted. It is off campus and has no
 # live number, so it is not in the seed.
+#
+# The Friday reading changed the model. The curve had one weekday shape, fitted
+# to the Thursday readings, and it fits those to within a point. Friday is not
+# that shape at all: at 11:51 Eastside North was 18 percent full where the
+# Thursday curve predicted 99, and the order of the lots inverts, with Eastside
+# North the busiest structure on Thursday and the emptiest on Friday. Fridays
+# carry far fewer classes here, so Friday now has its own numbers.
 date,day,time,lot,total_spots,spaces_free
 2026-09-20,Sunday,12:23,Nutwood Structure,2484,2436
 2026-09-20,Sunday,12:23,State College Structure,1373,1318
@@ -32,3 +39,8 @@ date,day,time,lot,total_spots,spaces_free
 2026-10-01,Thursday,13:57,Eastside North,1880,218
 2026-10-01,Thursday,13:57,Eastside South,1341,162
 2026-10-01,Thursday,13:57,S8 and S10,2104,712
+2026-10-30,Friday,11:51,Nutwood Structure,2484,1349
+2026-10-30,Friday,11:51,State College Structure,1373,914
+2026-10-30,Friday,11:51,Eastside North,1880,1544
+2026-10-30,Friday,11:51,Eastside South,1341,864
+2026-10-30,Friday,11:51,S8 and S10,2104,1232

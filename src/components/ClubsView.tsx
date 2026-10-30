@@ -174,7 +174,7 @@ export default function ClubsView() {
     .filter((c) => tags.length === 0 || tags.some((t) => c.club.tags.includes(t)))
     .filter((c) => !onlyMatches || c.shared.length > 0)
     // Counting shared tags treats every tag as equally informative, and they
-    // are nowhere near it: "career" is on 103 of the 320 clubs and "ai" is on
+    // are nowhere near it: "career" is on 105 of the 320 clubs and "ai" is on
     // one. Sorting by count put the American Choral Directors Association
     // first and the French Club fourth for a student whose interests are ai,
     // software engineering, data science and music, because each of those
@@ -320,17 +320,6 @@ export default function ClubsView() {
           Only ones that match me
         </label>
 
-        <label className="flex min-h-11 items-center gap-2 text-sm text-ink-soft">
-          Per page
-          <select
-            value={perPage}
-            onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
-            className="min-h-11 rounded-md border border-rule-strong bg-white px-2.5 py-2 text-sm"
-          >
-            {PER_PAGE.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
-
         {filtered && (
           // underlined always, not on hover. Navy and a bolder weight are the
           // only things telling this apart from the words beside it otherwise,
@@ -456,12 +445,30 @@ export default function ClubsView() {
                 ))}
               </ul>
 
-              {pages > 1 && (
+              {scored.length > 0 && (
                 // Previous, a window of numbers, Next. The window is there
                 // because 320 clubs at ten a page is 32 pages, and 32 buttons
                 // is its own wall. First and last are always reachable so the
                 // ends of the list are never more than one press away.
-                <nav aria-label="Club pages" className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+                //
+                // Previous and Next hold the two ends and only the numbers wrap
+                // among themselves. Flat in one row the seven slots came to
+                // about 447px against 358px of phone, so Next dropped onto a
+                // centred second row on its own while Previous stayed up on the
+                // first, which reads as a broken layout rather than a pager.
+                // Per page lives here too now: it is a page control, and in the
+                // filter bar it was a fourth 44px row standing between somebody
+                // and the first club.
+                <nav
+                  aria-label="Club pages and page size"
+                  className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
+                >
+                  {/* The arrows and the numbers go when there is only one
+                      page. Per page does not: it is the control that decides
+                      how many pages there are, and hiding it on a single page
+                      meant somebody who set 100 could never set it back. */}
+                  {pages > 1 && (
+                  <>
                   <button
                     type="button"
                     onClick={() => goToPage(onPage - 1)}
@@ -476,6 +483,7 @@ export default function ClubsView() {
                     Previous
                   </button>
 
+                  <div className="flex flex-wrap items-center justify-center gap-1.5">
                   {pageWindow(onPage, pages).map((n, i) =>
                     n === 0 ? (
                       <span key={`gap-${i}`} className="px-1 text-sm text-ink-faint">...</span>
@@ -498,6 +506,8 @@ export default function ClubsView() {
                     ),
                   )}
 
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => goToPage(onPage + 1)}
@@ -511,6 +521,19 @@ export default function ClubsView() {
                   >
                     Next
                   </button>
+                  </>
+                  )}
+
+                  <label className="flex min-h-11 w-full items-center justify-center gap-2 text-sm text-ink-soft">
+                    Per page
+                    <select
+                      value={perPage}
+                      onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
+                      className="min-h-11 rounded-md border border-rule-strong bg-white px-2.5 py-2 text-sm"
+                    >
+                      {PER_PAGE.map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </label>
                 </nav>
               )}
             </div>

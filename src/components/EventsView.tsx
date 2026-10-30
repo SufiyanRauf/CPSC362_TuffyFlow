@@ -10,9 +10,12 @@ import { CAMPUS_TZ, campusDate } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
 import { useCampusHour } from '../lib/useMinuteTick'
 
-// The three things the walk factor can say. The card prints the minutes
-// itself, so this is only here to carry what they are measured from.
-const WALK_REASON = /^(measured from |right by |no class )/
+// The two things the walk factor can say. The card prints the minutes itself,
+// so this is only here to carry what they are measured from. It used to have a
+// third alternative for "no class that day to measure a walk from"; the scorer
+// stopped saying that and returns an empty reason instead, so there is nothing
+// left for it to match.
+const WALK_REASON = /^(measured from |right by )/
 
 // Minutes are rounded up, so an event in the building you are already in comes
 // back as 0, and "0 min walk" sat directly above that factor's own "right by
@@ -90,21 +93,16 @@ async function rankedEvents() {
       id: r.id,
       title: r.title,
       match: r.match_percent,
-      reasons: r.reasons,
       host: e.club_name,
       tags: e.tags,
       where: where.get(e.building_id) ?? '',
       // Both ends. "4:00 PM" alone does not say whether this is a talk you
       // can fit in a gap or something that runs all afternoon, and ends_at was
       // already being fetched and thrown away.
-      when: `${named}, ${EVENT_TIME.format(start)} to ${END_TIME.format(new Date(e.ends_at))}`,
+      when: `${named}, ${EVENT_TIME.format(start)}\u2013${END_TIME.format(new Date(e.ends_at))}`,
       mine: e.tags.filter((t) => mine.has(t)),
       walk: r.walk_minutes,
       measuredFrom: r.reasons.find((x) => WALK_REASON.test(x)) ?? '',
-      // The scorer writes this and the screen used to drop it. Without it the
-      // top card gave no reason at all for being top, which is why an event
-      // four days out could sit above one happening tonight and look arbitrary.
-      matched: r.reasons.find((x) => x.startsWith('matches ')) ?? '',
     }]
   })
 }
@@ -167,8 +165,11 @@ export default function EventsView() {
                   {e.title}
                 </h2>
                 <p className="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-ink-soft">
-                  <span className="inline-flex items-center gap-1.5">
-                    <ClockIcon className="h-4 w-4 text-ink-faint" />
+                  {/* items-start, because when the range wraps to two lines
+                      items-center puts the icon in the gutter between them.
+                      Same shape RecCard uses for its own wrapping rows. */}
+                  <span className="inline-flex items-start gap-1.5">
+                    <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-ink-faint" />
                     {e.when}
                   </span>
                   {e.where && (
@@ -184,9 +185,6 @@ export default function EventsView() {
                     </span>
                   )}
                 </p>
-                {e.matched && (
-                  <p className="mt-1 text-sm text-ink-soft">{tagText(e.matched)}</p>
-                )}
                 <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-ink-faint">
                   <UsersIcon className="h-4 w-4" />
                   {e.host}
@@ -211,6 +209,12 @@ export default function EventsView() {
                       }
                     >
                       {tagText(t)}
+                      {/* The tint and the heavier weight are both only visible,
+                          and the card used to carry a "matches ai and music"
+                          sentence that said this in words. Dropping it left a
+                          reader with a flat list of tag names and nothing
+                          saying which ones put the event here. */}
+                      {e.mine.includes(t) && <span className="sr-only">, one of yours</span>}
                     </span>
                   ))}
                 </div>

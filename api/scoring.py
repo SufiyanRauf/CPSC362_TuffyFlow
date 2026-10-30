@@ -302,8 +302,9 @@ def arrive_by(lot, context, walk):
     """Class start minus the walk minus a buffer. The buffer grows when the lot
     is usually full, which is a second honest use of the occupancy data.
 
-    Returns None only when the time has genuinely passed, which can only happen
-    for a class later today. For a class on another day the time still stands."""
+    Returns None when the leave time would land before midnight on the day of
+    the class, which can happen on any day if the walk is long enough, and, for
+    a class today, when that minute has already gone."""
     pct, _ = lot_fullness(lot, context)
     buffer_minutes = BASE_PARKING_BUFFER_MINUTES + round(pct / 100 * 10)
     minutes = context["class_start_minutes"] - (walk or 0) - buffer_minutes
@@ -322,7 +323,7 @@ def arrive_by(lot, context, walk):
 def spot_config(context):
     def is_open(spot, ctx):
         # Shut today is the end of it, whatever the clock says. Almost every
-        # food place on this campus publishes Monday to Thursday hours and
+        # food place on this campus publishes weekday hours and
         # nothing else, so without this the app offered fifteen of the sixteen
         # on a Saturday and all sixteen on a Sunday, each with a match score.
         if spot.get("closed_today"):

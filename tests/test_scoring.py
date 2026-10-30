@@ -649,7 +649,7 @@ def test_the_walk_reason_does_not_repeat_the_number():
 # saying out loud. A missing noise preference crashed on comparing an int to
 # None, and then, once it stopped crashing, quietly cost every spot about
 # twenty points. An empty interests list cost every event sixty, which is the
-# same mistake twice as large, and is the one that was still live.
+# same mistake three times as large, and is the one that was still live.
 
 def _empty_profile_context(day=MONDAY, minutes=600):
     return {
@@ -1004,7 +1004,7 @@ def test_a_body_with_infinity_in_it_gets_a_reason_not_a_crash():
 # ------------------------------------------------------ open on the day, too
 #
 # is_open only ever looked at the clock. Nearly every food place on this campus
-# publishes Monday to Thursday hours and nothing else, so on a Saturday the app
+# publishes weekday hours and nothing at the weekend, so on a Saturday the app
 # offered fifteen of the sixteen of them, with a match score, while the hours
 # printed on the same card said they were shut.
 

@@ -321,10 +321,11 @@ export default function ParkingView() {
       </Panel>
 
       <p className="text-xs text-ink-faint">
-        CSUF counts the four structures, and counts S8 and S10 together. We read its board
-        twice and fitted the hour by hour pattern ourselves, so the shape of the day is our
-        work rather than a published figure. The employee, resident and hourly lots it does
-        not count at all, so those are estimates.
+        CSUF counts the four structures, and counts S8 and S10 together. We read its board on
+        a Thursday, a Friday and a Sunday and fitted the hour by hour pattern ourselves, so
+        the shape of the day is our work rather than a published figure. Friday rests on a
+        single midday reading. The employee, resident and hourly lots it does not count at
+        all, so those are estimates.
       </p>
     </div>
   )
