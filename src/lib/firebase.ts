@@ -16,7 +16,7 @@
 // where nobody can edit them.
 
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 import { getAuth, type Auth } from 'firebase/auth'
 
 const config = {
@@ -35,6 +35,12 @@ const config = {
 // Optional on purpose, and separately from the four values above. Somebody
 // cloning this repository has no reCAPTCHA key, and the app should still run
 // for them rather than refuse to start.
+//
+// reCAPTCHA Enterprise rather than the classic v3 provider. Classic still
+// works and was what we set up first, but the Firebase console marks it
+// deprecated, and a project nobody is actively maintaining should not be
+// built on something with an end date. Enterprise is free on the Spark plan
+// for 10,000 checks a month, which is far more than this will ever use.
 function protect(app: FirebaseApp) {
   const siteKey = import.meta.env.VITE_FIREBASE_RECAPTCHA_SITE_KEY
   if (!siteKey) return
@@ -51,7 +57,7 @@ function protect(app: FirebaseApp) {
 
   try {
     initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(siteKey),
+      provider: new ReCaptchaEnterpriseProvider(siteKey),
       // Tokens last about an hour. Refreshing them in the background is what
       // stops a student who leaves a tab open over a lecture coming back to a
       // dashboard that cannot read anything.
