@@ -72,24 +72,30 @@ function demandRows<T>(what: string, rows: T[]) {
 // login screen already turns these into sentences; without the same thing here
 // the identical outage would read properly before signing in and show "Failed
 // to fetch" on every screen after it.
+// The one sentence here written for whoever set the project up rather than for
+// a student. It is a constant because studentFacing() below has to recognise
+// it again to swap it out, and two copies of a sentence drift.
+const RULES_REFUSED
+  = 'The database would not allow that. Check that db/firestore.rules has been published.'
+
 function readable(error: unknown): string {
   const code = (error as { code?: string })?.code ?? ''
   if (code === 'permission-denied') {
-    return 'The database would not allow that. Check that db/firestore.rules has been published.'
+    return RULES_REFUSED
   }
   if (code === 'unavailable' || code === 'deadline-exceeded') {
     return 'Could not reach the server. Check your connection and try again.'
   }
   if (code === 'unauthenticated') {
-    return 'You have been signed out. Sign in again.'
+    return 'You have been logged out. Log in again.'
   }
   if (code === 'not-found') {
-    return 'That is not in the database any more. Reload the page.'
+    return 'That is not there any more. Reload the page.'
   }
   if (code === 'resource-exhausted') {
     // The free plan stops serving rather than billing, so this is a real
     // Saturday afternoon answer and not a theoretical one.
-    return 'The database has hit its daily limit. It starts answering again tomorrow.'
+    return 'Tuffy Flow has hit its limit for today. It starts working again tomorrow.'
   }
   const message = error instanceof Error ? error.message : String(error)
   const m = message.toLowerCase()
@@ -98,6 +104,61 @@ function readable(error: unknown): string {
     return 'Could not reach the server. Check your connection and try again.'
   }
   return message
+}
+
+// The sentences a student can actually do something about: the ones readable()
+// writes above, the fetch failures in recommend.ts, and the three the app
+// throws at a student itself when a form belongs to somebody else or a class
+// is already on the schedule. Everything else that gets this far is written
+// for whoever is building the app, a seed script to run or a rules file to
+// publish, or it is the raw text of whatever the Firebase SDK threw, because
+// readable() hands back the original message when it recognises nothing.
+//
+// So this is a list of what may be shown rather than a list of what may not.
+// The app is deployed where anybody can open it, and a message nobody has
+// thought about yet comes out generic that way instead of putting a shell
+// command in front of a visitor.
+const STUDENT_FACING = [
+  'Could not reach the server.',
+  'You have been logged out.',
+  'That is not there any more.',
+  'Tuffy Flow has hit its limit for today.',
+  'That class is already on your schedule',
+  'That class belongs to a different account.',
+  'That form belongs to a different account.',
+]
+
+// What a student gets instead when nothing above matches. A panel said this
+// already; the writes were saying nothing of the kind.
+const GENERIC = 'Something went wrong on our end. Try again in a moment.'
+
+// The one developer sentence that has a better student answer than the
+// generic line. A refused rule and an App Check token that did not come
+// through both arrive as permission-denied, so a deployed site really does
+// reach this. "do that" rather than "save that" because this is shown by the
+// panels too, and a read the rules turned down is not a save.
+const NOT_ALLOWED = 'Your account is not allowed to do that right now. Try again in a moment.'
+
+// Decided here rather than in Panel, where it started, because the panels were
+// not the only thing showing these. The Profile screen prints what a failed
+// save threw straight into its note, so the rules sentence, shell command and
+// all, was one refused write away from a visitor's screen while the panels
+// right next to it were careful about exactly that. One list, both callers,
+// and it sits next to readable() so that rewording a sentence up there cannot
+// quietly stop matching the list down here, which is what happened the first
+// time the list was written out twice.
+//
+// The fallback is a parameter because a write knows what it was doing and can
+// say so ("That class did not save."), while a panel only knows a read came
+// back wrong.
+//
+// None of it applies while running locally, where the shell command is the
+// whole point of the message.
+export function studentFacing(message: string, fallback = GENERIC): string {
+  if (import.meta.env.DEV && message) return message
+  if (STUDENT_FACING.some((start) => message.startsWith(start))) return message
+  if (message === RULES_REFUSED) return NOT_ALLOWED
+  return fallback
 }
 
 async function readAll<T>(name: string): Promise<T[]> {
@@ -361,6 +422,14 @@ export async function saveProfile(userId: string, next: Profile) {
   }
 }
 
+// Two codes that differ only in punctuation or case land on the same id, so
+// anything comparing codes has to agree with that or the duplicate guard has a
+// hole in it.
+function sameCourse(a: string, b: string) {
+  const flat = (v: string) => v.replace(/[^A-Za-z0-9]+/g, '-').toUpperCase()
+  return flat(a) === flat(b)
+}
+
 // Firestore ids cannot hold a slash and are easier to read without colons.
 function meetingId(meeting: Omit<ClassMeeting, 'id' | 'profile_id'>) {
   return [
@@ -378,7 +447,12 @@ export async function addClassMeeting(
   // Firestore has nothing of the kind, so the check is here, and the demo
   // makes the same one for the same reason.
   const already = (await getClassMeetings(userId)).some(
-    (m) => m.course_code === meeting.course_code
+    // Compared the way the id is built, not raw. The id collapses punctuation,
+    // so "CPSC-362" and "CPSC 362" at the same day and time are one document:
+    // a raw comparison let the second past this guard and setDoc then replaced
+    // the first, so the class looked like it had vanished rather than like a
+    // refusal.
+    (m) => sameCourse(m.course_code, meeting.course_code)
       && m.day_of_week === meeting.day_of_week
       && m.start_time === meeting.start_time,
   )

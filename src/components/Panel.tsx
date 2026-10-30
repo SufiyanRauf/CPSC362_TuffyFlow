@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { Loadable } from '../types'
+import { studentFacing } from '../lib/firestoreData'
 
 type PanelProps<T> = {
   source: Loadable<T>
@@ -7,31 +8,21 @@ type PanelProps<T> = {
   children: (data: T) => React.ReactNode
 }
 
-// The sentences a student can actually do something about, from readable() in
-// firestoreData.ts and the fetch failures in recommend.ts. Everything else that
-// reaches here is written for whoever is building the app: a seed script to
-// run, a rules file to publish, a uvicorn command to start, or the raw text of
-// whatever the Firebase SDK threw, because readable() hands back the original
-// message when it recognises nothing.
-//
-// So this is a list of what may be shown rather than a list of what may not.
-// The app is deployed where anybody can open it, and a message nobody has
-// thought about yet comes out generic that way instead of putting a shell
-// command in front of a visitor.
-//
-// None of it applies while running locally, where the shell command is the
-// whole point of the message.
-const STUDENT_FACING = [
-  'Could not reach the server.',
-  'You have been signed out.',
-  'That is not in the database any more.',
-  'The database has hit its daily limit.',
-]
+// A retry button would be a new control and this is not the place for one, but
+// a failed panel was a dead end with nothing on it to press, which reads as
+// the app being broken for good. It is not: both caches drop a rejected
+// promise, campusData.ts where it holds a read and recommend.ts where it holds
+// a score, so leaving the screen and coming back genuinely asks again. No
+// student is going to work that out, so this says it.
+const RETRY = 'Opening another screen and coming back will ask again, or you can reload the page.'
 
 export default function Panel<T>({ source, empty, children }: PanelProps<T>) {
   const failure = source.state === 'error' ? source.message : null
-  const known = failure !== null
-    && (import.meta.env.DEV || STUDENT_FACING.some((start) => failure.startsWith(start)))
+  // The allowlist this used to hold now lives in firestoreData.ts, next to the
+  // sentences it is deciding about, because the Profile screen's saves print
+  // what they caught too and were not running any of this.
+  const shown = failure === null ? null : studentFacing(failure)
+  const generic = failure !== null && shown !== failure
 
   // The generic line throws away the one detail that says which half of the
   // app is down, which is the detail you want while building, so it goes to
@@ -43,37 +34,69 @@ export default function Panel<T>({ source, empty, children }: PanelProps<T>) {
   // Keyed on the message, so it is one line per failure and a second line
   // means the failure actually changed.
   useEffect(() => {
-    if (failure !== null && !known) console.warn('Panel could not load:', failure)
-  }, [failure, known])
+    if (generic) console.warn('Panel could not load:', failure)
+  }, [failure, generic])
+
+  const emptied = source.state === 'ready'
+    && Array.isArray(source.data) && source.data.length === 0
+  const emptyLine = empty ?? 'Nothing to show.'
+
+  // One region, mounted for as long as the panel is, whose text changes. Three
+  // of these go up on a first dashboard load, five on a wide screen, and the
+  // old shape put the words inside a region as it created it, which is the
+  // case App.tsx is careful about. So a reader heard "Loading…" three times
+  // and then nothing at all, because each loading region was taken off the
+  // page and no region was left to change. A failure was worse: that region
+  // went too and a brand new one appeared holding the only failure message in
+  // the app, which is a coin flip on whether it is ever read out.
+  //
+  // Empty is in here as well. It had no live region of any kind, so a refetch
+  // that comes back with nothing left a reader on the last thing they heard.
+  const announced = source.state === 'loading'
+    ? 'Loading…'
+    : failure !== null
+      ? `Could not load this. ${shown} ${RETRY}`
+      : emptied ? emptyLine : ''
+
+  // Both visible designs are unchanged. What changed is that neither of them
+  // carries the live region any more, so nothing is announced twice.
+  const live = <p role="status" className="sr-only">{announced}</p>
 
   if (source.state === 'loading') {
-    // Otherwise a reader is told nothing: the dashboard puts three of these up
-    // and then quietly swaps each one for content. The note in App.tsx is about
-    // a line that is the only thing on the page, so it gets read as the page
-    // anyway. A panel arrives in a page that is already up, where a status
-    // region appearing does get announced.
-    return <p role="status" className="py-6 text-sm text-ink-faint">Loading…</p>
+    return (
+      <>
+        {live}
+        <p aria-hidden="true" className="py-6 text-sm text-ink-faint">Loading…</p>
+      </>
+    )
   }
   if (source.state === 'error') {
     return (
-      // A status region for the same reason the loading line above is one, and
-      // it matters more here. A reader was told "Loading…", then that region
-      // was taken off the page and this one put up in its place with no live
-      // region on it, so the panel simply went quiet and the failure was never
-      // announced. Every screen in the app reports its failures through here.
-      <div
-        role="status"
-        className="rounded-lg border border-l-4 border-rule border-l-flame-ink bg-white px-4 py-3 text-sm"
-      >
-        <p className="font-medium text-flame-ink">Could not load this.</p>
-        <p className="mt-1 text-ink-soft">
-          {known ? source.message : 'Something went wrong on our end. Try again in a moment.'}
-        </p>
-      </div>
+      <>
+        {live}
+        <div
+          className="rounded-lg border border-l-4 border-rule border-l-flame-ink
+                     bg-white px-4 py-3 text-sm"
+        >
+          <p className="font-medium text-flame-ink">Could not load this.</p>
+          <p className="mt-1 text-ink-soft">{shown}</p>
+          <p className="mt-1 text-ink-soft">{RETRY}</p>
+        </div>
+      </>
     )
   }
-  if (Array.isArray(source.data) && source.data.length === 0) {
-    return <p className="py-6 text-sm text-ink-faint">{empty ?? 'Nothing to show.'}</p>
+  if (emptied) {
+    return (
+      <>
+        {live}
+        <p className="py-6 text-sm text-ink-faint">{emptyLine}</p>
+      </>
+    )
   }
-  return <>{children(source.data)}</>
+  return (
+    <>
+      {live}
+      {children(source.data)}
+    </>
+  )
 }

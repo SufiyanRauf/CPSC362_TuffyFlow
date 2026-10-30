@@ -65,6 +65,18 @@ export default function LoginView() {
 
   useEffect(() => () => clearTimeout(complaining.current), [])
 
+  // aria-invalid on its own gets read out as "invalid entry" and nothing else,
+  // so somebody tabbing back to the box hears that it is wrong without hearing
+  // why. The note underneath is already the message, so the field at fault
+  // points at it, and only that field: pointing all three at it would have
+  // every box reading out a complaint meant for one of them. It is a list of
+  // ids rather than one, because the password box already points at its own
+  // rule and that should still be read.
+  function describe(field: 'email' | 'password' | 'name', own?: string) {
+    const parts = [own, wrong === field ? noteId : undefined].filter(Boolean)
+    return parts.length > 0 ? parts.join(' ') : undefined
+  }
+
   // There used to be a block here that read a refused Google sign in back out
   // of the query string, because the redirect version of it comes home that
   // way and leaves the parameters in the address bar. Firebase opens a popup
@@ -132,7 +144,7 @@ export default function LoginView() {
     }
     if (mode === 'signup') {
       if (!name.trim()) {
-        complain('name', 'Give us a name to put on your profile.')
+        complain('name', 'Your name is missing.')
         document.getElementById(ids.name)?.focus()
         return
       }
@@ -155,8 +167,11 @@ export default function LoginView() {
           flat cut-out. Tight and darker actually lifts it off the page. */}
       <div className="my-auto w-full max-w-sm rounded-xl bg-white px-7 py-8 text-center
                       shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
-        {/* the same mark the sidebar uses, so the login belongs to the app */}
-        <span className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-flame text-xl
+        {/* the same mark the sidebar uses, so the login belongs to the app.
+            Hidden from readers, which otherwise hear "TF" before the heading
+            that says the same thing in full. */}
+        <span aria-hidden="true"
+              className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-flame text-xl
                          font-bold text-titan">
           TF
         </span>
@@ -169,7 +184,7 @@ export default function LoginView() {
         {mode === 'choose' ? (
           <>
             <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-ink-soft">
-              Where to park, where to work, and what is on between your classes.
+              Where to park, where to work, and what's happening between your classes.
             </p>
 
             <button
@@ -181,13 +196,13 @@ export default function LoginView() {
             >
               View demo
             </button>
-            <p id={hints.demo} className="mx-auto mt-2 max-w-xs text-[0.8125rem] text-ink-faint">
+            <p id={hints.demo} className="mx-auto mt-2 max-w-xs text-xs text-ink-faint">
               Opens a sample student schedule. No sign up needed.
             </p>
 
             <div className="my-6 flex items-center gap-3">
               <span className="h-px flex-1 bg-rule" />
-              <span className="text-[0.8125rem] text-ink-faint">or</span>
+              <span className="text-xs text-ink-faint">or</span>
               <span className="h-px flex-1 bg-rule" />
             </div>
 
@@ -224,15 +239,19 @@ export default function LoginView() {
               aria-describedby={noteId}
               className={'mt-3 ' + outline}
             >
-              Create an account
+              {/* The same words as the submit button on the card this opens, so
+                  it does not look like two different things. */}
+              Create account
             </button>
           </>
         ) : (
           <form onSubmit={submit} className="mt-5 text-left">
+            {/* It used to promise a permit and class times, neither of which is
+                on this card. There are three boxes here, so say three. */}
             {mode === 'signup' && (
               <p className="mb-4 text-center text-sm text-ink-soft">
-                Your name, your permit and your class times are what the
-                recommendations are scored against.
+                We only need a name, an email and a password. Your permit and
+                class times come later, on your profile.
               </p>
             )}
 
@@ -244,7 +263,13 @@ export default function LoginView() {
                   value={name}
                   onChange={(e) => { setWrong(null); setName(e.target.value) }}
                   autoComplete="name"
+                  // aria-required rather than the native required attribute,
+                  // for all three boxes. required hands the browser its own
+                  // validation bubble, which would fire before the checks in
+                  // submit() and say less than they do.
+                  aria-required="true"
                   aria-invalid={wrong === 'name' || undefined}
+                  aria-describedby={describe('name')}
                   maxLength={80}
                   placeholder="Alex Nguyen"
                   className={field}
@@ -264,7 +289,9 @@ export default function LoginView() {
                 // username rather than email on the log in form, which is the
                 // pairing a password manager expects next to current-password
                 autoComplete={mode === 'signup' ? 'email' : 'username'}
+                aria-required="true"
                 aria-invalid={wrong === 'email' || undefined}
+                aria-describedby={describe('email')}
                 placeholder="you@csu.fullerton.edu"
                 className={field}
               />
@@ -280,10 +307,13 @@ export default function LoginView() {
                 // new-password is what tells a password manager to offer one
                 // rather than filling in the old one
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                aria-required="true"
                 aria-invalid={wrong === 'password' || undefined}
                 // the rule underneath is part of what this field expects, so
-                // it has to be readable before failing rather than after
-                aria-describedby={mode === 'signup' ? hints.password : undefined}
+                // it has to be readable before failing rather than after, and
+                // it stays readable alongside a complaint rather than being
+                // replaced by one
+                aria-describedby={describe('password', mode === 'signup' ? hints.password : undefined)}
                 className={field}
               />
             </label>
@@ -317,7 +347,10 @@ export default function LoginView() {
           role="status"
           className={
             note
-              ? 'mt-4 rounded-lg px-3 py-2 text-left text-[0.8125rem] ' +
+              // text-sm, the same as the rest of the prose on this card. It was
+              // on a 13px size that existed nowhere else in the app, and this
+              // is the line that tells somebody why their login failed.
+              ? 'mt-4 rounded-lg px-3 py-2 text-left text-sm ' +
                 // warm for a problem, green for a success. It used to use the
                 // pale blue, which reads as a note rather than as a fault.
                 (note.bad

@@ -5,9 +5,9 @@ import Panel from './Panel'
 import PageHeader from './PageHeader'
 import Pill from './Pill'
 import { ArrowRightIcon, ClockIcon, WalkIcon } from './icons'
-import { BUSY_PERCENT, DAYS } from '../lib/time'
+import { BUSY_PERCENT, DAYS, clockText } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
-import { useCampusHour } from '../lib/useMinuteTick'
+import { useMinuteTick } from '../lib/useMinuteTick'
 import { directionsUrl } from '../lib/maps'
 import type { MapPoint } from './CampusMap'
 import type { Recommendation } from '../types'
@@ -44,7 +44,10 @@ function badges(lots: Recommendation[]) {
   // than ahead of them as a zero would
   const pct = (l: Recommendation) => l.pct_full ?? 101
   const emptiest = [...lots].sort((a, b) => pct(a) - pct(b))[0]
-  if (lots[0]) mark.set(lots[0].id, 'Best overall')
+  // "Best match" rather than "Best overall", because the events screen marks
+  // its own top row that way and it is the same idea sitting next to the same
+  // percentage on both screens.
+  if (lots[0]) mark.set(lots[0].id, 'Best match')
   if (closest && !mark.has(closest.id)) mark.set(closest.id, 'Shortest walk')
   if (emptiest && !mark.has(emptiest.id)) mark.set(emptiest.id, 'Most space')
   return mark
@@ -56,7 +59,7 @@ function badges(lots: Recommendation[]) {
 // thing at zero, and two screens wording one number two ways is worse than
 // having the sentence written out twice.
 function walkText(minutes: number | null) {
-  if (minutes === null) return 'walk unknown'
+  if (minutes === null) return 'Walk time unknown'
   return minutes === 0 ? 'Less than a minute away' : `${minutes} min walk`
 }
 
@@ -73,16 +76,21 @@ export default function ParkingView() {
   // Both of these are worked out against the clock, and nothing bumps the data
   // version on the clock, so without the hour in here the ranking and the
   // arrive-by times stayed at whatever they were when the screen was opened.
-  const hour = useCampusHour()
-  const recs = useAsync(getRecommendations, [version, hour])
-  const next = useAsync(findNextClass, [version, hour])
+  const minute = useMinuteTick()
+  const recs = useAsync(getRecommendations, [version, minute])
+  // On the minute, not the hour. Keyed on the hour, this screen kept saying
+  // "ranked for CPSC 362, 11:30 AM" with "Be at lot by 11:07 AM" on every row
+  // until noon, for a class that started at half past. The ranking is keyed on
+  // which class is next, so asking every minute costs nothing until the class
+  // actually changes.
+  const next = useAsync(findNextClass, [version, minute])
 
   // The "in <building>" half is dropped when we do not know the building,
   // because findNextClass falls back to the word Campus for the name at the
   // same moment it falls back to zero for the coordinate. Printing the
   // fallback reads as a real place and it is not one.
   const heading = next.state === 'ready' && next.data
-    ? `${next.data.course_code}, ${next.data.start_time}`
+    ? `${next.data.course_code}, ${clockText(next.data.start_time)}`
       + when(next.data.day_offset, next.data.day_of_week)
       + (next.data.building_lat === 0 ? '' : ` in ${next.data.building_name}`)
     : 'your next class'
@@ -104,8 +112,17 @@ export default function ParkingView() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* The fullness caveat used to live in the footnote at the bottom, which
+          is below a map that is 288px tall on a phone, so a student read
+          "usually 41% full" and a "Most space" badge and never got to the part
+          saying those come from a pattern rather than a camera. The badge is
+          the worst of it, because it is phrased like something observed. The
+          caveat belongs next to the sentence everybody reads; which lots CSUF
+          counts stays at the bottom, because that is reference rather than
+          something to act on. */}
       <PageHeader title="Parking">
-        Every lot your permit allows, ranked for {heading}.
+        Every lot your permit allows, ranked for {heading}. The fullness numbers behind that
+        order are a typical pattern for that hour, not a live count.
       </PageHeader>
 
       <Panel source={recs}>
@@ -137,10 +154,10 @@ export default function ParkingView() {
             return (
               <p className="rounded-xl border border-rule bg-paper px-5 py-6 text-sm text-ink-soft">
                 {next.data === null
-                  ? 'No lots to rank. Add a class on your profile and these fill in.'
+                  ? 'Nothing to show yet. Add a class on your profile and these fill in.'
                   : unknownBuilding
                     ? `No lots to rank, because we do not have a location for the building ${next.data.course_code} is in, so there is nowhere to measure the walk to. Everything else still works.`
-                    : 'No lots to rank, because your profile does not say which permit you hold. Every lot takes some permits and not others, so there is no lot we can stand behind until it does.'}
+                    : 'No lots to rank, because your profile does not say which permit you hold. Every lot takes some permits and not others.'}
               </p>
             )
           }
@@ -169,7 +186,7 @@ export default function ParkingView() {
                     key={lot.id}
                     className={
                       'rounded-xl border px-5 py-4 ' +
-                      (i === 0 ? 'border-titan-200 bg-titan-50/60' : 'border-rule bg-white')
+                      (i === 0 ? 'border-titan-200 bg-titan-50' : 'border-rule bg-white')
                     }
                   >
                     <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-3">
@@ -179,7 +196,13 @@ export default function ParkingView() {
                           <Pill tone="match">{lot.match_percent}% match</Pill>
                         </div>
 
-                        <h2 className={(i === 0 ? 'text-xl ' : 'text-base ') + 'mt-2 font-semibold text-titan'}>
+                        {/* The lot is the answer to the question this screen
+                            asks, and the arrive-by time on the right is a
+                            qualifier on it, so the name sits one size step
+                            above the time on every row. The next class card
+                            puts a course code over its countdown the same
+                            way. */}
+                        <h2 className={(i === 0 ? 'text-2xl ' : 'text-lg ') + 'mt-2 font-semibold text-titan'}>
                           {lot.title}
                         </h2>
 
@@ -199,6 +222,15 @@ export default function ParkingView() {
                                 />
                               </span>
                               usually {pct}% full
+                              {/* The bar turning orange is otherwise the only
+                                  thing saying this lot counts as busy, and a
+                                  color on its own is not a cue for everyone.
+                                  The rail does the same beside its own number.
+                                  The word is busy and not full because the
+                                  number right before it already says full. */}
+                              {pct >= BUSY_PERCENT && (
+                                <span className="font-semibold text-flame-ink">busy</span>
+                              )}
                             </span>
                           )}
                         </p>
@@ -212,12 +244,28 @@ export default function ParkingView() {
 
                       <div className="flex shrink-0 items-center gap-5">
                         <div className="text-right">
+                          {/* "Arrive by" never said arrive where. The scorer
+                              works this out as the class start minus the walk
+                              minus a buffer for circling the lot, so it is the
+                              time to be at the lot, and the 11 min walk on the
+                              left is already taken off. Read as the time to be
+                              at class it is 11 minutes late, which is the one
+                              thing this screen exists to stop. Kept to four
+                              short words because this slot is uppercase at
+                              0.7rem and sits beside the Directions button.
+                              RecCard and NextClassCard print the same number
+                              and have to say the same thing. */}
                           <p className="flex items-center justify-end gap-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-ink-faint">
                             <ClockIcon className="h-3.5 w-3.5" />
-                            {lot.arrive_by ? 'Arrive by' : 'Leave'}
+                            {lot.arrive_by ? 'Be at lot by' : 'Leave'}
                           </p>
-                          <p className="mt-1 whitespace-nowrap text-2xl font-semibold tabular-nums tracking-tight text-titan">
-                            {lot.arrive_by ?? 'now'}
+                          <p
+                            className={
+                              (i === 0 ? 'text-xl ' : 'text-base ') +
+                              'mt-1 whitespace-nowrap font-semibold tabular-nums tracking-tight text-titan'
+                            }
+                          >
+                            {lot.arrive_by ? clockText(lot.arrive_by) : 'now'}
                           </p>
                         </div>
 
@@ -226,6 +274,11 @@ export default function ParkingView() {
                             href={directionsUrl(lot.title, lot.lat, lot.lng)}
                             target="_blank"
                             rel="noreferrer noopener"
+                            // Ten lots means ten links, and a screen reader
+                            // reading them as a list of ten rows all saying
+                            // Directions is no use. The visible word stays
+                            // inside the label it is read by.
+                            aria-label={`Directions to ${lot.title}`}
                             className={
                               'inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium ' +
                               (i === 0
@@ -256,7 +309,7 @@ export default function ParkingView() {
               <CampusMap
                 points={points}
                 caption={
-                  'Orange is the top pick, pale blue the rest of the ranking' +
+                  'Orange is the top pick, pale blue the other lots' +
                   (classPoint ? ', navy where your class is.' : '.')
                 }
               />
@@ -267,9 +320,10 @@ export default function ParkingView() {
       </Panel>
 
       <p className="text-xs text-ink-faint">
-        Occupancy is a typical pattern for that hour, not a live count. The four structures and
-        the two stadium lots come from CSUF's availability board; the employee, resident and
-        hourly lots are not counted, so those are our own estimates.
+        CSUF counts the four structures, and counts S8 and S10 together. We read its board
+        twice and fitted the hour by hour pattern ourselves, so the shape of the day is our
+        work rather than a published figure. The employee, resident and hourly lots it does
+        not count at all, so those are estimates.
       </p>
     </div>
   )

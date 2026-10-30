@@ -77,7 +77,9 @@ Preferences include:
 * Whether you need power outlets
 * Distance from wherever today's classes put you, when they put you anywhere
 
-The spots screen also filters by kind: study, food, charging or meeting space.
+The spots screen filters between study spaces, which covers the meeting rooms and the
+charging centre too, and food. The ranked spot with a walking distance and a match is the
+one on the dashboard; the spots screen itself is the browse list.
 
 Example:
 
@@ -96,7 +98,8 @@ Match: 93%
 
 ### Club and Event Discovery
 
-Students receive recommendations for clubs and campus events based on their interests, career goals, and availability.
+Students receive recommendations for clubs and campus events based on their interests and
+career goals. Events also check availability, and anything clashing with a class is left out.
 
 Example interests:
 
@@ -151,7 +154,7 @@ The factors differ per feature:
 
 | Feature | Filters | Factors |
 |---|---|---|
-| Parking | Permit type | Walking distance, typical fullness at arrival hour |
+| Parking | Permit type, and a walk under an hour, which catches a bad coordinate | Walking distance, typical fullness at arrival hour |
 | Campus spots | Open now | Walking distance, noise level, power outlets |
 | Events | Time conflicts with a class, already started | Tag overlap with interests, walking distance, how soon it starts |
 
@@ -204,7 +207,7 @@ two are kept apart on purpose.
 | Parking lot names, coordinates and permit types, from the parking map at `parking.fullerton.edu`, 9 Oct 2026 | Typical parking occupancy for the six lots CSUF does not count |
 | Capacities of the four structures, from the parking availability board | |
 | Three parking readings on two days, in `data/parking_samples.csv` | |
-| 320 clubs: the Student Life and Leadership registered list of 22 Sep 2026, joined to the TitanLink directory for names, summaries, descriptions, categories and IDs, read 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
+| 320 clubs: the Student Life and Leadership registered list of 22 Sep 2026, joined to the TitanLink directory for names, summaries, categories and IDs, read 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
 | Pollak Library floor designations, room booking rules and opening hours, from the library's own pages | |
 | Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
 | | All events |
@@ -335,10 +338,10 @@ Completed:
 
 * Project concept, initial presentation and UI prototype
 * Database schema, security policies and seed data
-* The ranking engine, in Python, with 62 tests, and the endpoint it is
-  served behind, with 11 more that go through the app itself
-* The access rules, with 30 tests against Firebase's emulator
-* The event dates, with 9 tests that need neither Java nor a project
+* The ranking engine, in Python, with 73 tests, and the endpoint it is
+  served behind, with 15 more that go through the app itself
+* The access rules, with 31 tests against Firebase's emulator
+* The event dates and the clock formatting, with 12 tests that need neither Java nor a project
 * Dashboard, parking, spots, clubs, events and profile screens
 * Sign up, log in, Google sign in and sign out, all working against the live
   project
@@ -355,7 +358,8 @@ Completed:
   be database constraints
 * Deployed to Vercel, which rebuilds on every push to main
 
-* App Check, so the database only answers requests that came from this app
+* App Check, wired and reporting in monitoring mode, so the database can tell which
+  requests came from this app
 
 Left to do:
 
@@ -540,7 +544,7 @@ document and every class in it behind, at a path nothing can reach.
 
 ## Course Information
 
-Course: CPSC 362 – Foundations of Software Engineering
+Course: CPSC 362: Foundations of Software Engineering
 University: California State University, Fullerton
 Professor: Mehdi Peiravi
 Semester: Fall 2026

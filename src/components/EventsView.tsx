@@ -1,11 +1,12 @@
+import { tagText } from '../lib/labels'
 import { useAsync } from '../lib/useAsync'
 import { getRecommendations, findNextClass } from '../lib/recommend'
-import { getBuildings, getEvents } from '../lib/campusData'
+import { getBuildings, getEvents, getProfile } from '../lib/campusData'
 import Panel from './Panel'
 import PageHeader from './PageHeader'
 import Pill from './Pill'
 import { ClockIcon, PinIcon, UsersIcon, WalkIcon } from './icons'
-import { CAMPUS_TZ } from '../lib/time'
+import { CAMPUS_TZ, campusDate } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
 import { useCampusHour } from '../lib/useMinuteTick'
 
@@ -21,23 +22,60 @@ function walkText(minutes: number) {
   return minutes === 0 ? 'Less than a minute away' : `${minutes} min walk`
 }
 
-// 24-hour, like the class and arrive-by times everywhere else. The dashboard
+// AM/PM, like the class and arrive-by times everywhere else. The dashboard
 // shows both at once at wide widths. Up here rather than in the loop below,
 // because a formatter is expensive to build and cheap to reuse, and the
 // options it is built from do not depend on the event being dated.
+//
+// The weekday comes from its own formatter now, because it is the part that
+// gives way to Today or Tomorrow. The two together print exactly what the one
+// formatter used to, "Fri, Oct 30, 16:00", for any other day.
 const EVENT_TIME = new Intl.DateTimeFormat('en-US', {
-  timeZone: CAMPUS_TZ, weekday: 'short', month: 'short', day: 'numeric',
-  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  timeZone: CAMPUS_TZ, month: 'short', day: 'numeric',
+  hour: 'numeric', minute: '2-digit', hour12: true,
 })
+
+const END_TIME = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAMPUS_TZ, hour: 'numeric', minute: '2-digit', hour12: true,
+})
+
+const EVENT_DAY = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAMPUS_TZ, weekday: 'short',
+})
+
+// The rail already does this and said why: "Tue" alone does not tell you
+// whether that is today or next week. The full screen was the one still
+// printing "Fri, Oct 30" for an event that starts in two hours, and on a Friday
+// the top two cards read the same thing.
+//
+// The date stays. The window of events runs nine days, so offsets 1 and 8 land
+// on the same weekday, and two cards reading "Fri" would be two different days
+// with nothing on screen telling them apart.
+//
+// Tomorrow is counted off today's date rather than by adding 24 hours to the
+// clock. Between midnight and 1am on the morning the clocks go back, 24 hours
+// later is still the same date in California, and the whole screen quietly
+// loses the word Tomorrow for that hour. Noon UTC is the small hours here
+// either side of a change, so it never lands on the wrong day.
+function dayNames() {
+  const today = campusDate(new Date())
+  const [y, m, d] = today.split('-').map(Number)
+  return { today, tomorrow: campusDate(new Date(Date.UTC(y, m - 1, d + 1, 12))) }
+}
 
 // The scorer already ranks every event and the dashboard was showing only the
 // top one, so the rest of that work was being thrown away.
 async function rankedEvents() {
-  const [recs, events, buildings] = await Promise.all([
-    getRecommendations(), getEvents(), getBuildings(),
+  const [recs, events, buildings, profile] = await Promise.all([
+    getRecommendations(), getEvents(), getBuildings(), getProfile(),
   ])
+  // Read off the profile rather than by picking the scorer's "matches ai and
+  // music" sentence apart. That sentence is for reading, and parsing it back
+  // would tie this screen's chips to the scorer's wording.
+  const mine = new Set([...profile.interests, ...profile.career_goals])
   const byId = new Map(events.map((e) => [e.id, e]))
   const where = new Map(buildings.map((b) => [b.id, b.name]))
+  const { today, tomorrow } = dayNames()
   // The ranking and the event list are two separate reads, so the ranking can
   // name an event this copy of the list does not have. That row has no time
   // and no host to print, which came out as a clock icon and a person icon
@@ -46,6 +84,8 @@ async function rankedEvents() {
     const e = byId.get(r.id)
     if (!e) return []
     const start = new Date(e.starts_at)
+    const day = campusDate(start)
+    const named = day === today ? 'Today' : day === tomorrow ? 'Tomorrow' : EVENT_DAY.format(start)
     return [{
       id: r.id,
       title: r.title,
@@ -54,9 +94,17 @@ async function rankedEvents() {
       host: e.club_name,
       tags: e.tags,
       where: where.get(e.building_id) ?? '',
-      when: EVENT_TIME.format(start),
+      // Both ends. "4:00 PM" alone does not say whether this is a talk you
+      // can fit in a gap or something that runs all afternoon, and ends_at was
+      // already being fetched and thrown away.
+      when: `${named}, ${EVENT_TIME.format(start)} to ${END_TIME.format(new Date(e.ends_at))}`,
+      mine: e.tags.filter((t) => mine.has(t)),
       walk: r.walk_minutes,
       measuredFrom: r.reasons.find((x) => WALK_REASON.test(x)) ?? '',
+      // The scorer writes this and the screen used to drop it. Without it the
+      // top card gave no reason at all for being top, which is why an event
+      // four days out could sit above one happening tonight and look arbitrary.
+      matched: r.reasons.find((x) => x.startsWith('matches ')) ?? '',
     }]
   })
 }
@@ -79,9 +127,9 @@ export default function EventsView() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Events">
-        Ranked on how well the tags match your interests, how far it is from your classes
-        that day, and how soon it
-        starts. Anything clashing with one of your classes is left out.
+        Events are ordered by how well they match your interests, how close they are to your
+        classes that day, and how soon they start. Anything that overlaps one of your classes
+        is left out.
       </PageHeader>
 
       <Panel
@@ -89,7 +137,7 @@ export default function EventsView() {
         empty={
           haveClass
             ? 'Nothing upcoming that fits around your classes.'
-            : 'Nothing to rank. Add a class on your profile and these fill in.'
+            : 'Nothing to show yet. Add a class on your profile and these fill in.'
         }
       >
         {(rows) => (
@@ -99,55 +147,69 @@ export default function EventsView() {
                 key={e.id}
                 className={
                   'rounded-xl border px-5 py-4 ' +
-                  (i === 0 ? 'border-titan-200 bg-titan-50/60' : 'border-rule bg-white')
+                  (i === 0 ? 'border-titan-200 bg-titan-50' : 'border-rule bg-white')
                 }
               >
-                <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-                  <div className="min-w-0">
-                    {i === 0 && (
-                      <p className="mb-2">
-                        <Pill tone="mark">Best match</Pill>
-                      </p>
-                    )}
-                    <h2 className={(i === 0 ? 'text-lg ' : 'text-base ') + 'font-semibold text-titan'}>
-                      {e.title}
-                    </h2>
-                    <p className="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-ink-soft">
-                      <span className="inline-flex items-center gap-1.5">
-                        <ClockIcon className="h-4 w-4 text-ink-faint" />
-                        {e.when}
-                      </span>
-                      {e.where && (
-                        <span className="inline-flex items-center gap-1.5">
-                          <PinIcon className="h-4 w-4 text-ink-faint" />
-                          {e.where}
-                        </span>
-                      )}
-                      {e.walk !== null && (
-                        <span className="inline-flex items-center gap-1.5">
-                          <WalkIcon className="h-4 w-4 text-ink-faint" />
-                          {walkText(e.walk)}
-                        </span>
-                      )}
-                    </p>
-                    <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-ink-faint">
-                      <UsersIcon className="h-4 w-4" />
-                      {e.host}
-                    </p>
-                    {/* what the walk is measured from, or that nothing on that
-                        day says where you would be starting from */}
-                    {e.measuredFrom && (
-                      <p className="mt-1 text-sm text-ink-faint">{e.measuredFrom}</p>
-                    )}
-                  </div>
-
+                {/* The match pill used to be a row of its own opposite this
+                    block. On a phone there was no room for it beside the
+                    event, so it wrapped down underneath the host and the
+                    measured from line, which left the number the whole
+                    ranking is built on at the bottom of the card. The parking
+                    rows keep their pill beside the title, where it stays at
+                    any width, so this does the same. */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {i === 0 && <Pill tone="mark">Best match</Pill>}
                   <Pill tone="match">{e.match}% match</Pill>
                 </div>
 
+                <h2 className={(i === 0 ? 'text-2xl ' : 'text-lg ') + 'mt-2 font-semibold text-titan'}>
+                  {e.title}
+                </h2>
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-ink-soft">
+                  <span className="inline-flex items-center gap-1.5">
+                    <ClockIcon className="h-4 w-4 text-ink-faint" />
+                    {e.when}
+                  </span>
+                  {e.where && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <PinIcon className="h-4 w-4 text-ink-faint" />
+                      {e.where}
+                    </span>
+                  )}
+                  {e.walk !== null && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <WalkIcon className="h-4 w-4 text-ink-faint" />
+                      {walkText(e.walk)}
+                    </span>
+                  )}
+                </p>
+                {e.matched && (
+                  <p className="mt-1 text-sm text-ink-soft">{tagText(e.matched)}</p>
+                )}
+                <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-ink-faint">
+                  <UsersIcon className="h-4 w-4" />
+                  {e.host}
+                </p>
+                {/* what the walk is measured from, or that nothing on that
+                    day says where you would be starting from */}
+                {e.measuredFrom && (
+                  <p className="mt-1 text-sm text-ink-faint">{e.measuredFrom}</p>
+                )}
+
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {e.tags.map((t) => (
-                    <span key={t} className="rounded-md bg-titan-50 px-2 py-0.5 text-xs text-ink-soft">
-                      {t}
+                    <span
+                      key={t}
+                      className={
+                        'rounded-md px-2 py-0.5 text-xs ' +
+                        (e.mine.includes(t)
+                          // same as the club cards: the tags that are yours are
+                          // the reason this event is on the screen at all
+                          ? 'bg-flame/15 font-semibold text-flame-ink'
+                          : 'text-ink-soft ' + (i === 0 ? 'bg-white' : 'bg-titan-50'))
+                      }
+                    >
+                      {tagText(t)}
                     </span>
                   ))}
                 </div>
@@ -157,8 +219,15 @@ export default function EventsView() {
         )}
       </Panel>
 
+      {/* This used to lead with "we made up", which reads as a warning about
+          the whole screen and invites a student to throw out the ranking too.
+          The ranking is real code over the real club list and the student's
+          real schedule. So the real part goes first, and the invented part is
+          scoped to what is actually invented, in the same hedged voice the
+          parking and clubs footnotes use. */}
       <p className="text-xs text-ink-faint">
-        Events are the one part of this data we made up. The clubs hosting them are real.
+        The clubs hosting these are real, and the order runs on your own classes and interests.
+        The event titles and times are our own.
       </p>
     </div>
   )

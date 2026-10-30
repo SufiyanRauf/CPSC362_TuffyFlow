@@ -27,7 +27,7 @@ const groups: { heading: string | null; items: Item[] }[] = [
     heading: 'Around class',
     items: [
       { id: 'parking', label: 'Parking', short: 'Parking', Icon: CarIcon },
-      { id: 'spots', label: 'Study spots', short: 'Spots', Icon: DeskIcon },
+      { id: 'spots', label: 'Spots', short: 'Spots', Icon: DeskIcon },
     ],
   },
   {
@@ -55,7 +55,10 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
                  md:w-60 md:shrink-0 md:overflow-y-auto md:border-t-0 md:bg-titan md:pb-0"
     >
       <div className="hidden items-center gap-2.5 px-5 py-5 md:flex">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-flame text-sm font-bold text-titan">
+        {/* hidden from readers because the full name is right next to it, and
+            without this one hears "TF Tuffy Flow Cal State Fullerton" */}
+        <span aria-hidden="true"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-flame text-sm font-bold text-titan">
           TF
         </span>
         <span className="flex flex-col leading-tight">
@@ -68,8 +71,12 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
 
       {groups.map((group) => (
         <div key={group.heading ?? 'top'} className="contents md:block">
+          {/* The same size and letter spacing as every other uppercase label
+              in the app, which the cards and the parking screen already share.
+              This one used to be a notch smaller and a notch wider for no
+              reason anybody could point at. */}
           {group.heading && (
-            <p className="hidden px-5 pb-1.5 pt-5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-titan-200 md:block">
+            <p className="hidden px-5 pb-1.5 pt-5 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-titan-200 md:block">
               {group.heading}
             </p>
           )}
@@ -85,7 +92,7 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
                 aria-current={current ? 'page' : undefined}
                 className={
                   'relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 ' +
-                  'px-1 text-[0.65rem] md:min-h-0 md:w-full md:flex-row md:justify-start md:gap-3 ' +
+                  'px-1 text-xs md:min-h-0 md:w-full md:flex-row md:justify-start md:gap-3 ' +
                   'md:px-5 md:py-2.5 md:text-sm ' +
                   (current
                     ? 'font-semibold text-titan md:bg-white/10 md:font-medium md:text-white'
@@ -95,7 +102,7 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
                 {current && (
                   <span
                     aria-hidden="true"
-                    className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-flame-ink
+                    className="absolute inset-x-2 top-0 h-1 rounded-full bg-flame-ink
                                md:inset-x-auto md:left-0 md:top-0 md:h-full md:w-1 md:bg-flame"
                   />
                 )}

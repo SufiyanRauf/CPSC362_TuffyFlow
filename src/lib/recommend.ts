@@ -4,8 +4,9 @@ import {
   getParkingLots, getProfile, getSpots,
 } from './campusData'
 import { dataVersion } from './dataVersion'
-
-const CAMPUS_TZ = 'America/Los_Angeles'
+// time.ts exists so nothing redeclares these. This file had its own copy of
+// both, which is the drift that file was written to stop.
+import { CAMPUS_TZ, toMinutes } from './time'
 
 // The browser's own clock is wherever the laptop is. Everything here has to be
 // campus local or the arrival hour lookup shifts and the numbers quietly change.
@@ -49,11 +50,6 @@ function daysBetween(fromISODate: string, toISODate: string) {
   const a = Date.parse(`${fromISODate}T00:00:00Z`)
   const b = Date.parse(`${toISODate}T00:00:00Z`)
   return Math.round((b - a) / 86400000)
-}
-
-function toMinutes(time: string) {
-  const [h, m] = time.split(':').map(Number)
-  return h * 60 + m
 }
 
 // Split out from findNextClass so that getRecommendations can work it out
@@ -155,7 +151,7 @@ async function loadRecommendations(): Promise<RecommendResponse> {
   // Where the walk to class gets measured to. A class whose building has gone
   // from the list leaves us without one, and the scorer cannot tell a made up
   // destination from a real one: given 0, 0 it measured the walk anyway and
-  // ranked every lot at 203913 minutes with an arrive-by time next to it,
+  // ranked all twelve lots at just over 203,900 minutes with an arrive-by time
   // which is a 141 day walk offered as a plan. A spot or an event with nowhere
   // to measure from already scores a neutral walk and says so on the card.
   // Parking has no such reading to fall back on, so with no destination the
@@ -292,9 +288,27 @@ async function loadRecommendations(): Promise<RecommendResponse> {
 let rankedFor = ''
 let ranked: Promise<RecommendResponse> | null = null
 
-export function getRecommendations(): Promise<RecommendResponse> {
+export async function getRecommendations(): Promise<RecommendResponse> {
+  // The class has to be in the key, not just the hour. The hour was the only
+  // thing moving it, and a class that starts at half past flips which class is
+  // next in the middle of an hour, so the cached answer stayed pinned to the
+  // previous one. On the demo schedule that put "Be at lot by 11:07 AM" under
+  // "Next class MATH 338, 2:00 PM", with the lot picked for the walk to
+  // Computer Science while the heading named McCarthy Hall, for the half hour
+  // from 11:30 to 12:00. Twice a week, Monday and Wednesday, which are the
+  // two days MATH 338 follows CPSC 362.
+  //
+  // Both reads here are memoised promises, so asking for them before deciding
+  // the key costs nothing after the first call and no Firestore reads.
+  const [meetings, buildings] = await Promise.all([getClassMeetings(), getBuildings()])
+  const next = nextClassFrom(meetings, buildings)
   const today = campusParts(new Date())
-  const asked = `${dataVersion()}:${today.date}:${Math.floor(today.minutes / 60)}`
+  // The hour stays in as well, because the spot ranking asks whether somewhere
+  // is open right now, which moves without the class moving.
+  const forClass = next
+    ? `${next.course_code}:${next.day_offset}:${next.start_minutes}`
+    : 'none'
+  const asked = `${dataVersion()}:${today.date}:${Math.floor(today.minutes / 60)}:${forClass}`
   if (asked !== rankedFor) {
     rankedFor = asked
     ranked = null

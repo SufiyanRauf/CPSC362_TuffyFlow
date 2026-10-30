@@ -20,7 +20,7 @@ import { CAMPUS_TZ } from './time.ts'
 // Built once at module load, not inside the two functions below. Building an
 // Intl.DateTimeFormat is the expensive part, reading a date with one is cheap,
 // and these were being rebuilt three times per event: dating twelve events
-// took 1.5 ms of that and nothing else. Neither one closes over anything, so
+// built thirty six formatters to read twelve dates. Neither one closes over anything, so
 // there is nothing per call to keep them out of module scope, and an instance
 // is safe to hand a different date every time.
 const OFFSET_FORMAT = new Intl.DateTimeFormat('en-US', {

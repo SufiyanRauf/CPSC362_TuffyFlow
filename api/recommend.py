@@ -210,8 +210,8 @@ def _result(entry, category, with_arrive_by=None, context=None):
 
 @app.post("/api/recommend")
 def recommend(body: RecommendRequest) -> dict:
+    # model_dump is recursive, so profile is already a plain dict in here.
     context = body.model_dump()
-    context["profile"] = body.profile.model_dump()
 
     parking = parking_config(context)
     spots = spot_config(context)

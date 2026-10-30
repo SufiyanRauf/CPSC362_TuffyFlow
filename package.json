@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "seed": "node db/seed_firestore.mjs",
     "test:rules": "firebase emulators:exec --only firestore \"node --test tests/firestore_rules.test.mjs\"",
-    "test:dates": "node --test tests/event_dates.test.mjs"
+    "test:dates": "node --test tests/event_dates.test.mjs tests/clock_text.test.mjs"
   },
   "dependencies": {
     "firebase": "^13.1.0",

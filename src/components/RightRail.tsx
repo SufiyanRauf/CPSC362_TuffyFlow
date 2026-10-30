@@ -19,11 +19,16 @@ type RightRailProps = {
 export default function RightRail({ onOpen }: RightRailProps) {
   return (
     <aside
-      aria-label="Campus right now"
+      // not "campus right now": nothing in here is a live reading. The strip
+      // below says in its own caption that it is what these usually look like.
+      aria-label="Campus at a glance"
       className="w-80 shrink-0 self-stretch border-l border-rule bg-white px-5 py-7"
     >
       <section>
-        <SectionHeader icon={<ChartIcon className="h-4 w-4" />} title="Structures" />
+        {/* Two of the six rows under this are S8 and S10, which are surface
+            lots by the stadium and not structures at all, so the old heading
+            was wrong for a third of what it sat over. */}
+        <SectionHeader icon={<ChartIcon className="h-4 w-4" />} title="How full the lots are" />
         <StructureFill />
       </section>
 

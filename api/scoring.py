@@ -54,7 +54,8 @@ SPOT_WEIGHTS = {"walk": 0.4, "noise": 0.4, "outlets": 0.2}
 # that half is neutral. It is not. Noise is a ceiling, so a stated preference
 # scores 1.0 for every spot at or under it, which is most of them; half is
 # therefore the bottom of the range that actually comes up, not the middle.
-# Measured, it cost a new account about twenty points on every study spot, and
+# Worked out from the weights, it cost a new account twenty points on every
+# study spot it would otherwise have scored full, and
 # it handed the ordering to outlets, a factor with half the weight.
 #
 # So the factor is not scored at all and the other two take its share. The
@@ -158,7 +159,14 @@ def anchor_for(context, day, minutes):
 
 
 def rank(candidates, filters, factors, weights, top_n, context):
-    """Throw out what is impossible, score the rest, sort, explain the top few."""
+    """Throw out what is impossible, score the rest, sort, explain the top few.
+
+    A factor returns (value, reason) or (value, reason, walk_minutes). The
+    third element is the walk in minutes: rank carries it onto the result and
+    uses it as the first tie break, because all three configurations have a
+    walk factor and the shorter walk is the right answer when two candidates
+    score the same.
+    """
     survivors = [c for c in candidates if all(f(c, context) for f in filters)]
 
     results = []
@@ -324,7 +332,9 @@ def spot_config(context):
         # may be on another day entirely
         anchor = anchor_for(ctx, ctx.get("day_of_week", 0), ctx["now_minutes"])
         if anchor is None:
-            return NEUTRAL_WALK, "no class today to measure a walk from", None
+            # Quiet for the same reason as the event walk factor: no walk
+            # minutes is the honest answer and the card leaves walking out.
+            return NEUTRAL_WALK, "", None
         lat, lng, place = anchor
         metres = haversine(spot["lat"], spot["lng"], lat, lng)
         mins = walk_minutes(metres)
@@ -417,7 +427,14 @@ def event_config(context):
         day = (ctx.get("day_of_week", 0) + event.get("day_offset", 0)) % 7
         anchor = anchor_for(ctx, day, event["starts_minutes"])
         if anchor is None:
-            return NEUTRAL_WALK, "no class that day to measure a walk from", None
+            # No reason sentence. This used to say "no class that day to
+            # measure a walk from", which turned up on every weekend event and
+            # on any weekday the student is off, so a card could carry a line
+            # about the walk it could not work out and nothing else. Handing
+            # back no walk minutes already says it honestly: the card simply
+            # does not mention walking. Same as tag_factor above, which stays
+            # quiet rather than explaining why it had nothing to go on.
+            return NEUTRAL_WALK, "", None
         lat, lng, place = anchor
         metres = haversine(event["lat"], event["lng"], lat, lng)
         mins = walk_minutes(metres)

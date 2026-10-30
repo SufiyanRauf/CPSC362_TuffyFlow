@@ -286,5 +286,23 @@ export async function resetDemoData() {
   profile = structuredClone(demoProfile)
   classMeetings = structuredClone(demoClassMeetings)
   nextClassId = 0
+  // The three lines above only put back what the demo holds in memory, which
+  // left a hole I walked into: the profile form keeps unsaved typing in
+  // sessionStorage so a reload does not lose it, and the demo's key never
+  // changes, so typing a name without saving and picking Leave demo handed
+  // that name to the next person who opened the demo in the same tab. The key
+  // is built by draftKey() in ProfileView.tsx, which is where it is defined
+  // and where this string has to keep matching it. Spelled out here because
+  // importing a component into this file to read one template string is the
+  // worse trade.
+  //
+  // Guarded the way both ends of the draft are guarded over there: storage
+  // throws outright in a private window, and failing to clear a draft is no
+  // reason to fail leaving the demo.
+  try {
+    sessionStorage.removeItem('tuffyflow:profile-draft:demo-profile')
+  } catch {
+    // nothing to do about it, and nothing worth saying
+  }
   dataChanged()
 }

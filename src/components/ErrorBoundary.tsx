@@ -47,7 +47,13 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     return (
       <main className="grid min-h-screen place-items-center bg-paper px-4">
         <div className="max-w-sm rounded-xl border border-rule bg-white px-6 py-7 text-center">
-          <h1 className="text-lg font-semibold text-titan">TuffyFlow could not draw this page.</h1>
+          {/* The name has a space in it everywhere else in the app, and
+              "draw" is what a renderer does, not a word a student would use
+              about a page. The size was the smallest h1 in the app, on the
+              one screen that takes the whole app over. */}
+          <h1 className="text-2xl font-semibold text-titan">
+            Tuffy Flow could not show this page.
+          </h1>
           <p className="mt-2 text-sm text-ink-soft">
             Something went wrong on our end, not on yours. Reloading usually puts you back on
             the screen you were on.
@@ -58,7 +64,11 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
             // component that threw would be handed the same state and throw
             // the same way, so the button would look broken.
             onClick={() => window.location.reload()}
-            className="mt-5 min-h-11 rounded-md bg-titan px-4 text-sm font-medium text-white
+            // rounded-lg, which is what the other six primary buttons in the
+            // app use. This one was the only rounded-md and it looked like a
+            // button from a different app, which is not what you want on the
+            // screen that is already telling somebody something broke.
+            className="mt-5 min-h-11 rounded-lg bg-titan px-4 text-sm font-medium text-white
                        hover:bg-titan-700"
           >
             Reload the page

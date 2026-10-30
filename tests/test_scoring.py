@@ -513,8 +513,10 @@ def test_spot_walk_is_measured_from_todays_class_not_the_next_one():
 
 def test_event_walk_is_measured_from_its_own_day():
     # A Saturday event next to the Computer Science building. There is no class
-    # on Saturday, so nothing says where the student would be, and the card has
-    # to admit that rather than quietly measuring from Monday.
+    # on Saturday, so nothing says where the student would be. The card has to
+    # not measure it from Monday, and it has to say so by leaving the walk off
+    # altogether rather than printing a sentence about a walk it could not work
+    # out, which showed up on every weekend event.
     ctx = _week_context(FRIDAY, 990)
     cfg = scoring.event_config(ctx)
     events = [{"id": "e", "name": "Hack night", "tags": ["ai"],
@@ -522,7 +524,7 @@ def test_event_walk_is_measured_from_its_own_day():
                "starts_minutes": 1080, "ends_minutes": 1200, "day_offset": 1}]
     out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 1, ctx)
     assert out[0]["walk_minutes"] is None
-    assert any("no class that day" in r for r in out[0]["reasons"]), out[0]["reasons"]
+    assert not any("walk" in r for r in out[0]["reasons"]), out[0]["reasons"]
 
 
 def test_a_day_with_no_classes_has_no_anchor():

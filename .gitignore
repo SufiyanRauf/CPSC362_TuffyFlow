@@ -4,10 +4,11 @@ dist/
 dist-ssr/
 *.local
 
-# holds the Firebase config
-.env
-.env.local
-.env.*.local
+# holds the Firebase config. The glob rather than the three names, because
+# Vite also reads .env.production and .env.development and those were not
+# covered.
+.env*
+!.env.example
 
 # Python
 __pycache__/
@@ -45,3 +46,7 @@ serviceAccountKey*.json
 # Which Firebase project you are pointed at. Made by `firebase use --add`,
 # and it is yours rather than the project's.
 .firebaserc
+
+# Local working notes. Never pushed: planning docs stay off GitHub.
+CHECKLIST.local.md
+PLAN.local.md

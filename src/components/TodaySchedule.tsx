@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useAsync } from '../lib/useAsync'
 import { getBuildings, getClassMeetings } from '../lib/campusData'
 import { campusNow } from '../lib/recommend'
-import { toMinutes } from '../lib/time'
+import { clockText, toMinutes } from '../lib/time'
 import { useMinuteTick } from '../lib/useMinuteTick'
 import { useDataVersion } from '../lib/useDataVersion'
 import Panel from './Panel'
@@ -40,8 +40,8 @@ function shape({ meetings, buildings }: Awaited<ReturnType<typeof todaysRows>>) 
       return {
         id: m.id,
         course: m.course_code,
-        from: m.start_time.slice(0, 5),
-        to: m.end_time.slice(0, 5),
+        from: clockText(m.start_time),
+        to: clockText(m.end_time),
         where: where.get(m.building_id) ?? 'Campus',
         status,
       }

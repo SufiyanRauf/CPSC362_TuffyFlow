@@ -116,7 +116,7 @@ if (firebaseAuth) {
   // Nothing bounds how long that first answer takes. Firebase reads its
   // stored session out of IndexedDB and will wait on a network that is never
   // going to reply, which on campus wifi behind a sign in page means a student
-  // reading "Checking whether you are signed in" with no way to reach View
+  // reading "Checking whether you're logged in" with no way to reach View
   // demo. After this the app gives up and shows the login screen. A session
   // that does turn up later still signs them in.
   const FIRST_ANSWER_MS = 6000
@@ -186,7 +186,7 @@ export type AuthResult =
   | { ok: true }
   | { ok: false; message: string }
 
-export const NO_PROJECT = 'Accounts are not switched on for this build. View demo to look around.'
+export const NO_PROJECT = 'Accounts are not available right now. View demo to look around.'
 
 // Firebase reports failures as a code on the error object. Matching the code
 // rather than the message is what stops this breaking the first time Google
@@ -200,26 +200,26 @@ function plainly(error: unknown) {
       // Firebase deliberately returns one code for all three now, so that a
       // stranger cannot find out which addresses have accounts. The wording
       // has to cover both without guessing.
-      return 'That email and password do not match an account.'
+      return "That email and password don't match an account."
     case 'auth/email-already-in-use':
       return 'There is already an account with that email. Log in instead.'
     case 'auth/weak-password':
-      return 'Passwords need at least six characters.'
+      return 'Passwords need at least 6 characters.'
     case 'auth/invalid-email':
-      return 'That does not look like an email address.'
+      return "That doesn't look like an email address."
     case 'auth/too-many-requests':
       return 'Too many tries. Give it a minute.'
     case 'auth/network-request-failed':
       return 'Could not reach the server. Check your connection and try again.'
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
-      return 'Google sign in was closed. Nothing was changed.'
+      return 'You closed the Google window, so nothing happened.'
     case 'auth/popup-blocked':
       return 'Your browser blocked the Google sign in window. Allow popups for this site and try again.'
     case 'auth/operation-not-allowed':
-      return 'That way of signing in is not switched on for this project yet.'
+      return 'That way of signing in is not available yet.'
     case 'auth/unauthorized-domain':
-      return 'This address is not on the project’s list of allowed domains.'
+      return 'Logging in is not set up for this web address. Use View demo for now.'
     case 'auth/api-key-not-valid.-please-pass-a-valid-api-key.':
     case 'auth/invalid-api-key':
     case 'auth/configuration-not-found':
@@ -228,12 +228,12 @@ function plainly(error: unknown) {
       // project that does not exist and the login screen printed
       // "Firebase: Error (auth/api-key-not-valid...)" at the student, which
       // is a sentence for whoever set the project up, not for them.
-      return 'Sign in is not set up correctly for this build. Use View demo for now.'
+      return 'Logging in is not working right now. Use View demo for now.'
     default:
       // Anything unrecognized. Firebase writes these for a developer reading
       // a console, so the code goes there and the person gets a sentence.
       if (code) console.warn('Tuffy Flow: unhandled Firebase auth code', code, error)
-      return 'That did not work. Try again, or use View demo.'
+      return "That didn't work. Try again, or use View demo."
   }
 }
 

@@ -135,7 +135,10 @@ export default function TopBar({ onOpenProfile, onSignOut }: TopBarProps) {
              when it is clicked, so closing from inside the panel would hand
              focus to an element that is about to unmount */
           onClick={(e) => { e.currentTarget.focus(); setOpen((shown) => !shown) }}
-          aria-label={`Account for ${name}`}
+          /* The panel below says in as many words that the demo is not an
+             account, so the button that opens it should not be calling itself
+             one either. */
+          aria-label={session.kind === 'demo' ? 'Sample student menu' : `Account for ${name}`}
           aria-expanded={open}
           aria-controls={open ? 'account-menu' : undefined}
           className="flex items-center gap-2.5 rounded-lg px-2 py-1 hover:bg-titan-50"
@@ -173,17 +176,22 @@ export default function TopBar({ onOpenProfile, onSignOut }: TopBarProps) {
             <button ref={firstItem} type="button" className={item}
                     onClick={() => choose(onOpenProfile)}>
               <UserIcon className="h-4 w-4 text-ink-faint" />
-              Profile and settings
+              {/* The screen it opens is called Profile and so is the nav item,
+                  and there is no settings screen anywhere in the app. */}
+              Profile
             </button>
             <button type="button" className={item + ' border-t border-rule'}
                     onClick={() => choose(onSignOut)}>
               <SignOutIcon className="h-4 w-4 text-ink-faint" />
-              {/* The demo is not an account, so signing out of it is not a
+              {/* The demo is not an account, so logging out of it is not a
                   thing it can do. Saying what it really does avoids the
-                  surprise of pressing Sign out and landing inside an account,
-                  which is what happens when this browser is signed in in
-                  another tab. */}
-              {session.kind === 'demo' ? 'Leave demo' : 'Sign out'}
+                  surprise of pressing Log out and landing inside an account,
+                  which is what happens when this browser is logged in in
+                  another tab.
+                  Log out rather than Sign out, because the login screen and the
+                  database errors both say log in and the app was using both
+                  words for the same pair of actions. */}
+              {session.kind === 'demo' ? 'Leave demo' : 'Log out'}
             </button>
           </div>
         )}

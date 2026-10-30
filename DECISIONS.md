@@ -5,7 +5,7 @@ Running notes on why things are the way they are. Mostly so we can answer
 
 ---
 
-**2026-09-20 — TypeScript, not JavaScript**
+**2026-09-20: TypeScript, not JavaScript**
 
 The README said JavaScript and the presentation said TypeScript. Went with
 TypeScript because that is what we presented, and because having the shape of
@@ -14,7 +14,7 @@ Costs us some time up front.
 
 ---
 
-**2026-09-20 — Vercel only, dropped GitHub Pages**
+**2026-09-20: Vercel only, dropped GitHub Pages**
 
 GitHub Pages only serves static files. Our scoring endpoint is a Python
 function, so it cannot run there at all. Vercel serves the React app and runs
@@ -22,7 +22,7 @@ the Python function from the same repo.
 
 ---
 
-**2026-09-20 — No router**
+**2026-09-20: No router**
 
 > Reversed on 9 October: there is a router now, in the URL hash. The entry
 > for it is further down.
@@ -36,7 +36,7 @@ If we ever want links people can share, we can revisit this.
 
 ---
 
-**2026-09-20 — One ranking engine, three configurations**
+**2026-09-20: One ranking engine, three configurations**
 
 Parking, study spots and events looked like three features. They are the same
 thing: throw out the candidates that are impossible, score the rest on a few
@@ -47,7 +47,7 @@ Less code, and the distance math and sorting only get written once.
 
 ---
 
-**2026-09-20 — Rule based scoring, not machine learning**
+**2026-09-20: Rule based scoring, not machine learning**
 
 We have no real usage data, so a model would be learning from numbers we made
 up. It also could not explain its own output, and every card in this app has to
@@ -56,7 +56,7 @@ answer here, not a worse one.
 
 ---
 
-**2026-09-20 — Every factor scaled to 0 to 1 before weighting**
+**2026-09-20: Every factor scaled to 0 to 1 before weighting**
 
 Walking minutes go up to about 25 and fullness goes up to 100. If we add the
 raw numbers, fullness decides basically everything no matter what weights we
@@ -68,7 +68,7 @@ list makes the top result read as 100% every single time.
 
 ---
 
-**2026-10-11 — Walks are measured from the right day now**
+**2026-10-11: Walks are measured from the right day now**
 
 Every distance in the app was measured from the building of your next class.
 That is correct for parking, because the next class is the whole reason you are
@@ -102,7 +102,7 @@ beyond the location.
 
 ---
 
-**2026-10-09 — Rebuilt the parking lots after finding the data was stale**
+**2026-10-09: Rebuilt the parking lots after finding the data was stale**
 
 Someone asked a simple question: does the Directions button go to the right
 place? Checking it properly turned up something worse than a bad link. CSUF
@@ -131,7 +131,7 @@ rather than `==`.
 
 ---
 
-**2026-09-20 — Permit type is a filter, not a scoring factor**
+**2026-09-20: Permit type is a filter, not a scoring factor**
 
 If it were a factor, an employee lot that happened to be empty and close could
 outrank every lot we are actually allowed to park in, and the app would tell a
@@ -140,7 +140,7 @@ removed before anything is scored.
 
 ---
 
-**2026-09-20 — The scoring service does not touch the database**
+**2026-09-20: The scoring service does not touch the database**
 
 The browser already read the rows, as the signed in student, with the database
 deciding what they are allowed to see. It sends those rows to the Python
@@ -156,7 +156,7 @@ the same person who asked.
 
 ---
 
-**2026-09-20 — Two TypeScript checks turned off**
+**2026-09-20: Two TypeScript checks turned off**
 
 `noUnusedLocals` and `noUnusedParameters` are off in tsconfig.app.json. They
 fail the build on half finished code that runs fine locally, which costs time
@@ -165,7 +165,7 @@ on.
 
 ---
 
-**2026-09-20 — Replaced the .gitignore**
+**2026-09-20: Replaced the .gitignore**
 
 The repo had the Unity template, presumably whatever GitHub suggested when it
 was created. It was ignoring Blender files and not ignoring `node_modules`,
@@ -176,7 +176,7 @@ thing in this project that really is a secret.
 
 ---
 
-**2026-09-20 — All data is seeded, and the UI has to say so**
+**2026-09-20: All data is seeded, and the UI has to say so**
 
 There is no public feed for CSUF parking occupancy. We are writing a typical
 fullness pattern by day and hour ourselves.
@@ -187,7 +187,7 @@ bare count like "23 spaces left". Those are numbers we typed into a file.
 
 ---
 
-**2026-09-20 — CSUF does publish live parking counts, and we are still seeding**
+**2026-09-20: CSUF does publish live parking counts, and we are still seeding**
 
 Found the campus parking availability board. It shows current free spaces for
 Nutwood, State College, Eastside North, Eastside South and S8/S10, with a
@@ -214,7 +214,7 @@ present.
 
 ---
 
-**2026-09-20 — How we are using AI**
+**2026-09-20: How we are using AI**
 
 Professor allows it. Our rule is that nobody merges code they cannot explain
 line by line.
@@ -226,7 +226,7 @@ own, because you cannot fake having read it.
 
 ---
 
-**2026-10-01 — Clubs come from TitanLink, not from us**
+**2026-10-01: Clubs come from TitanLink, not from us**
 
 > Partly superseded later the same day. Keeping only the Active ones was
 > the wrong call; the entry about the registration roster explains why, and
@@ -250,7 +250,7 @@ still looked about right.
 
 ---
 
-**2026-10-09 — We have a router after all, in the URL hash**
+**2026-10-09: We have a router after all, in the URL hash**
 
 Reversing the 20 September decision. That one was right at the time: one user,
 five screens, nothing to link to. Three things changed. There are six screens
@@ -266,7 +266,7 @@ while we were testing.
 
 ---
 
-**2026-10-09 — CSUF's own colors, and one font**
+**2026-10-09: CSUF's own colors, and one font**
 
 The interface was stock Tailwind grays, which looked like every other project.
 It uses the campus palette now, read off fullerton.edu: #00274c navy and #ff6800
@@ -283,7 +283,7 @@ sans, so a slow campus network costs a font swap and not a broken page.
 
 ---
 
-**2026-10-01 — The club list comes from the registration roster, not the directory**
+**2026-10-01: The club list comes from the registration roster, not the directory**
 
 Shipped 66 clubs and that was wrong. Student Life and Leadership say there are
 over 300, and Bhavy spotted immediately that most of his were missing.
@@ -313,7 +313,7 @@ anyone noticing.
 
 ---
 
-**2026-10-01 — Their categories and our tags are separate columns**
+**2026-10-01: Their categories and our tags are separate columns**
 
 TitanLink's categories are broad ("Technology", "Service"). Our matching needs
 narrower things like ai or cybersecurity. Rather than overwrite theirs, clubs
@@ -328,7 +328,7 @@ entirely, since in student org writing it nearly always means events.
 
 ---
 
-**2026-10-01 — Parking occupancy is calibrated against real readings**
+**2026-10-01: Parking occupancy is calibrated against real readings**
 
 The occupancy curve used to be a single time of day shape with a per lot offset
 derived from the length of the lot's name, which is to say no information at
@@ -354,7 +354,7 @@ screen.
 
 ---
 
-**2026-10-01 — The scorer reads the day of the class, not today**
+**2026-10-01: The scorer reads the day of the class, not today**
 
 The occupancy lookup matched on hour alone, so asking on a Friday evening about
 a Monday morning class read Friday's row. Worse, whichever day's row happened
@@ -370,7 +370,7 @@ most likely to click on a weekend.
 
 ---
 
-**2026-10-01 — Seed files run in a fixed order, and events check themselves**
+**2026-10-01: Seed files run in a fixed order, and events check themselves**
 
 Four seed files now instead of one, so the order matters: schema, seed,
 seed_clubs, seed_spots, seed_events. seed_demo_account.sql runs after those,
@@ -389,7 +389,7 @@ one that fails.
 
 ---
 
-**2026-10-23 — Sign in is Supabase, not Firebase**
+**2026-10-23: Sign in is Supabase, not Firebase**
 
 > Superseded the same day. The reasoning below is sound and the conclusion was
 > still reversed, for reasons worth reading: see "Firebase after all" further
@@ -423,7 +423,7 @@ one. The Firebase account is not needed at all.
 
 ---
 
-**2026-10-23 — Two sources, one set of function names**
+**2026-10-23: Two sources, one set of function names**
 
 campusData.ts used to be the sample campus and nothing else, with a comment
 promising that swapping in queries later would only change that file. It
@@ -462,7 +462,7 @@ happened on screen instead of failing in silence.
 
 ---
 
-**2026-10-23 — A new account is half empty, and we leave it that way**
+**2026-10-23: A new account is half empty, and we leave it that way**
 
 Signing up gets us an email, a password and whatever name the form or Google
 supplied. It does not get us a parking permit or a noise preference, and
@@ -485,7 +485,7 @@ returning nothing beats returning a confident number built on nothing.
 
 ---
 
-**2026-10-23 — The map draws circles, and it arrives late**
+**2026-10-23: The map draws circles, and it arrives late**
 
 Leaflet's default marker is a PNG the library fetches by a relative path, which
 a bundler moves, so the usual fix is importing the image files and rebuilding
@@ -516,7 +516,7 @@ caption underneath instead, where it is both visible and read out.
 
 ---
 
-**2026-10-23 — Proved the access rules with two accounts**
+**2026-10-23: Proved the access rules with two accounts**
 
 > About the Postgres design, which the project no longer uses. The work stands
 > and the findings were real; they are just findings about db/schema.sql now
@@ -553,7 +553,7 @@ a real query is still untested and stays untested until the project exists.
 
 ---
 
-**2026-10-23 — Row level security goes on beside each table, and the file checks itself**
+**2026-10-23: Row level security goes on beside each table, and the file checks itself**
 
 > Also about the Postgres design. The bug it describes was real and is worth
 > knowing about; the Firestore equivalent is in the Firebase entries below.
@@ -584,7 +584,7 @@ already knows how to complain about.
 
 ---
 
-**2026-10-23 — The app starts again when the person does**
+**2026-10-23: The app starts again when the person does**
 
 Firebase keeps auth state in step across every open tab, as Supabase did
 before it. A tab sitting on the dashboard can therefore be handed a different
@@ -608,7 +608,7 @@ cannot be forgotten by a screen added later.
 
 ---
 
-**2026-10-23 — Firebase after all**
+**2026-10-23: Firebase after all**
 
 Reversed the Supabase decision above, and the reversal is worth writing down
 properly, because the argument against Firebase was not wrong so much as
@@ -673,7 +673,7 @@ that can fail in a place a database used to handle on its own.
 
 ---
 
-**2026-10-23 — The sample campus moved into a file of its own**
+**2026-10-23: The sample campus moved into a file of its own**
 
 src/lib/campusRows.ts is new and holds every sample row, with no imports except
 types. Three things read it now: the demo, anyone running this without a
@@ -689,7 +689,7 @@ file, read by all three, cannot.
 
 ---
 
-**2026-10-23 — Nothing fetches on the clock any more**
+**2026-10-23: Nothing fetches on the clock any more**
 
 Firestore charges by the document read, which turned a habit that cost nothing
 on Postgres into a bill, and then into an outage.
@@ -723,7 +723,7 @@ recompute, not a reason to refetch.
 
 ---
 
-**2026-10-23 — A place can be shut on a day, not just at an hour**
+**2026-10-23: A place can be shut on a day, not just at an hour**
 
 The spots filter only ever looked at the clock. It read one opening time and
 one closing time, and those held the Monday to Thursday hours, so every day of
@@ -764,7 +764,7 @@ a Sunday.
 
 ---
 
-**2026-10-23 — What the reviews found in the Firebase work**
+**2026-10-23: What the reviews found in the Firebase work**
 
 Three independent reads of the migration, on the day it was written. Worth
 recording what they caught, because two of them were things no amount of
@@ -825,7 +825,7 @@ it green. A suite that cannot fail is worth nothing.
 They need Firebase's emulator, which is a Java program, so running them means
 having a JDK on the path. The README says how.
 
-**2026-10-27 — Events stopped having dates**
+**2026-10-27: Events stopped having dates**
 
 An event was a row with a starts_at on it, which is the obvious shape and the
 wrong one for a set of made up rows. The timestamp was right on the day the
@@ -857,7 +857,7 @@ change. We put both bugs back to check it could fail: a hard coded timezone
 offset broke three of the seven, and treating the day offset as hours broke
 four. It needs no emulator and no project, so it runs anywhere.
 
-**2026-10-28 — Reading the whole thing before the demo**
+**2026-10-28: Reading the whole thing before the demo**
 
 With the demo coming we read the whole codebase again rather than only the
 parts we had just changed, in five passes: the event dates, the access rules
@@ -901,7 +901,7 @@ rule in a sentence.
 Short notes so any of us can answer if we get asked about a file we did not
 write. Read before a presentation.
 
-**src/types.ts** — the shape of everything the dashboard renders. Eight table
+**src/types.ts**: the shape of everything the dashboard renders. Eight table
 types, one of which, the event, comes in a stored shape and a dated one, plus
 the view name, the permit kinds, the kinds of spot, the three categories a
 recommendation can belong to, the next class, a recommendation, the three lists
@@ -911,18 +911,18 @@ columns, underscores and all, so nothing has to be renamed between the sample
 rows and the real ones. Four of the profile fields are
 nullable because the column is, which is what a new account looks like.
 
-**src/lib/recommend.ts** — works out the next class, gathers everything the
+**src/lib/recommend.ts**: works out the next class, gathers everything the
 scorer needs and posts it to the Python function. The fiddly part is the clock.
 It reads campus local time through Intl rather than the laptop's own, because
 the arrival hour decides which occupancy row gets looked up.
 
-**db/seed_clubs.sql** — the 320 registered clubs, with a header recording where
+**db/seed_clubs.sql**: the 320 registered clubs, with a header recording where
 they came from and when.
 
-**db/seed_spots.sql** — Pollak Library floors and the campus dining locations,
+**db/seed_spots.sql**: Pollak Library floors and the campus dining locations,
 read off CSUF's own pages. Noise ratings and seat counts are ours.
 
-**src/App.tsx** — reads the screen from the URL hash, draws the sidebar and the
+**src/App.tsx**: reads the screen from the URL hash, draws the sidebar and the
 top bar around the content, and shows the right rail next to the dashboard and
 the parking screen. It also holds the gate: you are in if you are signed in or
 if you picked View demo, and otherwise it renders src/components/LoginView.tsx.
@@ -938,14 +938,14 @@ using the app, so a change of person throws the whole tree away and starts
 again. That is what stops two accounts being blended while the next set of
 rows is still in flight.
 
-**src/components/Sidebar.tsx** — six nav buttons in four groups. Three of the
+**src/components/Sidebar.tsx**: six nav buttons in four groups. Three of the
 groups carry a heading and the dashboard sits on its own above them, so
 the list says what the app is for instead of reading as six loose words. Takes
 the active view and a function to call when one is clicked, so it does not know
 or care what the views actually do. Real buttons, not clickable divs, so
 keyboard works. On a phone it becomes the bar across the bottom.
 
-**src/components/TopBar.tsx** — the date on the left, the signed-in name on the
+**src/components/TopBar.tsx**: the date on the left, the signed-in name on the
 right. Clicking the name opens a two-item popover: Profile and settings, and
 Sign out. It is written as a disclosure rather than with role="menu", because
 that role promises arrow-key navigation and a roving tabindex, and two buttons
@@ -953,7 +953,7 @@ do not need either. Escape closes it, a click outside closes it, and focus goes
 to the first item on open, and back to the name when you press Escape or pick
 one of the two.
 
-**src/components/LoginView.tsx** — the login card, and the only way in. View
+**src/components/LoginView.tsx**: the login card, and the only way in. View
 demo enters with the sample profile and needs no account. The other three are
 real: Google opens a popup, so the page is never left and the address bar is
 never touched, and Create an account and Log in are one form in two modes.
@@ -963,7 +963,7 @@ never got anywhere; anything unrecognized gets a plain sentence and the code
 goes to the console for whoever is debugging. With no project configured the three sign in paths say so and the
 demo still works.
 
-**src/components/ProfileView.tsx** — the only screen that writes. Name, major,
+**src/components/ProfileView.tsx**: the only screen that writes. Name, major,
 permit, noise preference, interests, goals and the weekly schedule are all
 editable, and
 saving bumps a version counter that every scored screen subscribes to, so they
@@ -972,13 +972,14 @@ demo has nowhere to put them, so they last as long as the tab, which is what
 the screen says. It also opens with a list of anything a new account has not
 filled in yet.
 
-**src/lib/campusData.ts** — the sample campus, shaped exactly like the database
-rows, and the one way in to any data at all. It started as src/data.ts with a
+**src/lib/campusData.ts**: the one way in to any data at all, and the thing that
+chooses between the sample campus and Firestore. The sample rows themselves live
+in campusRows.ts. It started as src/data.ts with a
 handful of values. Being async from the start is what paid off: the reads and
 writes at the bottom now choose between Firestore and the rows above them
 depending on who is signed in, and nothing that calls them changed.
 
-**src/lib/firestoreData.ts** — the real reads and writes. A student's own
+**src/lib/firestoreData.ts**: the real reads and writes. A student's own
 documents are reached by path rather than by filter: the profile is named after
 their account id and the schedule is a subcollection under it, so the rules
 check ownership by comparing, not by looking anything up. It is also where
@@ -986,143 +987,146 @@ Firestore's own answers get turned into sentences, and where a profile document
 is created the first time somebody signs in, because Firebase has no free way
 to do that when the account is made.
 
-**src/lib/campusRows.ts** — every sample row, and nothing else. No imports but
+**src/lib/campusRows.ts**: every sample row, and nothing else. No imports but
 types, so that the seed script can read it under Node. The demo, an unconfigured
 clone and a real project are all loaded from this one file.
 
-**src/lib/firebase.ts** — the app, the auth and the database, or null. Null is
+**src/lib/firebase.ts**: the app, the auth and the database, or null. Null is
 the ordinary state for anyone who has not made a project of their own, and
 everything that touches it checks first, which is what keeps the demo working
 with nothing behind it. All four config values have to be present: three and a
 blank one builds something that fails on the first request instead of saying it
 was never set up.
 
-**src/lib/dataVersion.ts** — a counter meaning "load that again". Every screen
+**src/lib/dataVersion.ts**: a counter meaning "load that again". Every screen
 passes it to its loader. It is its own file because both the data layer and
 the session need to ring it and neither can import the other.
 
-**src/lib/session.ts** — signed in, signed out, or the demo. A module store
+**src/lib/session.ts**: signed in, signed out, or the demo. A module store
 rather than a React context, so campusData.ts can ask who is signed in without
 being a component. Sign up, log in and Google sign in live here too, and they
 report failures back as sentences rather than throwing Firebase's own codes
 at the screen.
 
-**src/components/CampusMap.tsx** — the parking screen's map. Circle markers, no
+**src/components/CampusMap.tsx**: the parking screen's map. Circle markers, no
 image files, loaded only when that screen opens.
 
-**src/components/NextClassCard.tsx** — course code, time, building, and how
+**src/components/NextClassCard.tsx**: course code, time, building, and how
 long until it starts, plus the top lot when there is one. An evening or a
 weekend still has a next class, it is just days out, which is why it says
 "Monday" rather than a countdown. An empty schedule never reaches this card:
-the dashboard says "No classes on your schedule yet" instead.
+the dashboard shows an "Add your classes to get started" card with one button
+instead.
 
-**src/components/RecCard.tsx** — one card used for parking, spots and events.
+**src/components/RecCard.tsx**: one card used for parking, spots and events.
 What changes between them is the label at the top, the tint, the wording of the
 footer link, and which rows are worth showing: an arrive by time is a parking
 idea, and the walk reason is already printed above it. The percentage is text in a pill, not
 a bar. The bars on screen are a different measurement entirely: how full a
 structure usually is, on the parking list and in the right rail.
 
-**src/components/Dashboard.tsx** — the greeting, the next class card, the three
-recommendation cards in a row, and today's classes as a table. It also carries
+**src/components/Dashboard.tsx**: the greeting, the next class card, two
+recommendation cards in a row, and today's classes as a table. Parking used to be
+a third card there and moved into the next class card, because the same lot was
+being printed twice on one screen. It also carries
 the two empty states a new account meets: nothing ranked at all, and parking
 with no permit on file, which gets a card of its own rather than a gap.
 
-**src/components/ParkingView.tsx** — every lot the permit allows, ranked, with
+**src/components/ParkingView.tsx**: every lot the permit allows, ranked, with
 an arrive by time and a directions link each. The map is loaded here and only
 here, which is why the import is lazy. The empty state asks which of two
 things is missing and says only the one that applies.
 
-**src/components/SpotsView.tsx, ClubsView.tsx, EventsView.tsx** — the three
+**src/components/SpotsView.tsx, ClubsView.tsx, EventsView.tsx**: the three
 browse screens. Clubs is the only one that searches, and the search anchors to
 the start of a word, because matching anywhere in 320 records made short
 queries useless.
 
-**src/components/StructureFill.tsx and UpcomingEvents.tsx** — the two halves of
+**src/components/StructureFill.tsx and UpcomingEvents.tsx**: the two halves of
 the right rail, which only the dashboard and the parking screen show.
 RightRail.tsx is the box they sit in.
 
-**src/components/TodaySchedule.tsx** — today's classes as a table, with a
+**src/components/TodaySchedule.tsx**: today's classes as a table, with a
 status on each. It fetches the rows once and works the statuses out again on
 the clock, rather than fetching them again, which is the difference between
 costing nothing while a tab sits open and costing a day's quota.
 
 **src/components/Panel.tsx, Pill.tsx, PageHeader.tsx, SectionHeader.tsx,
-icons.tsx** — the small shared pieces. Panel is the one worth knowing: every
+icons.tsx**: the small shared pieces. Panel is the one worth knowing: every
 screen hands it a loading state and it decides between "Loading", an error
 box and the content, so no screen writes that out itself.
 
-**src/main.tsx and src/index.css** — the entry point, and the theme. There is
+**src/main.tsx and src/index.css**: the entry point, and the theme. There is
 no Tailwind config file: the palette is the @theme block in the stylesheet,
 and it deliberately switches the stock palettes off so that a stray slate-800
 generates nothing instead of quietly surviving a find and replace.
 
-**tests/test_scoring.py** — the ranking engine's tests, which are the ones
-with real logic to check. **tests/firestore_rules.test.mjs** — what the access
+**tests/test_scoring.py**: the ranking engine's tests, which are the ones
+with real logic to check. **tests/firestore_rules.test.mjs**: what the access
 rules actually allow, run against Firebase's emulator.
-**tests/event_dates.test.mjs** — the same event read at five points in the
+**tests/event_dates.test.mjs**: the same event read at five points in the
 future, including either side of the November clock change. Needs no emulator
 and no project.
 
-**src/lib/eventDates.ts** — the one place an event gets a date. Firestore
+**src/lib/eventDates.ts**: the one place an event gets a date. Firestore
 stores a day offset and a time of day rather than a timestamp, and this turns
 them into a start and an end when the row is read. The demo rows and the real
 ones both go through it, so the two cannot disagree.
 
-**data/parking_samples.csv** — the three readings off CSUF's live counts
-board, which the occupancy curve was fitted to. **docs/architecture.mmd** — the
+**data/parking_samples.csv**: the three readings off CSUF's live counts
+board, which the occupancy curve was fitted to. **docs/architecture.mmd**: the
 three recommenders drawn from the student's side, which GitHub renders.
 
-**src/lib/useWideScreen.ts** — whether there is room for the right rail. It
+**src/lib/useWideScreen.ts**: whether there is room for the right rail. It
 asks the browser rather than leaving it to the rail's own classes, because
 hiding something in CSS still mounts it, and the two panels in that rail were
 fetching about 127 documents on every phone that could not show them.
 
-**src/lib/time.ts, labels.ts, maps.ts** — the small shared ones: campus time
+**src/lib/time.ts, labels.ts, maps.ts**: the small shared ones: campus time
 and the weekday names, the words for a kind of spot and for a person, and the
 directions links. Each exists because two screens had drifted apart on the
 same thing.
 
-**src/lib/useAsync.ts, useHashRoute.ts, useMinuteTick.ts, useDataVersion.ts** —
+**src/lib/useAsync.ts, useHashRoute.ts, useMinuteTick.ts, useDataVersion.ts**:
 loading state, the screen in the URL, a clock that ticks, and the signal that
 says load it again. Every loader in the app takes the last two.
 
-**db/seed_demo_account.sql** — the demo student. Separate from the other seeds
+**db/seed_demo_account.sql**: the demo student. Separate from the other seeds
 because a profile belongs to a person and a person only exists once somebody
 has signed up.
 
-**firebase.json** — what tells the Firebase CLI where the rules are. Small,
+**firebase.json**: what tells the Firebase CLI where the rules are. Small,
 and the deploy command does nothing without it.
 
-**db/delete_account.mjs** — erases one student and their schedule. Firebase
+**db/delete_account.mjs**: erases one student and their schedule. Firebase
 cascades nothing, so this is the thing Postgres did for free.
 
-**db/firestore.rules** — the access rules, and the whole security model. The
+**db/firestore.rules**: the access rules, and the whole security model. The
 config ships in the browser bundle, so anyone can read it out and talk to the
 database directly; these run on Google's side and are the only thing that
 stops them. They also carry the validation that used to be check constraints.
 
-**db/seed_firestore.mjs** — loads the campus. Reads campusRows.ts, folds the
+**db/seed_firestore.mjs**: loads the campus. Reads campusRows.ts, folds the
 occupancy onto each lot, and writes in batches because Firestore takes 500 at a
 time and the club list alone is 320. Needs a service account key, which is the
 one real secret here and bypasses every rule above.
 
-**db/schema.sql** — the previous design, kept for reference. Eight tables, six
+**db/schema.sql**: the previous design, kept for reference. Eight tables, six
 for the campus and two for a student, with twelve row level security policies
 and a check at the end that refuses to pass if any of it did not run: without them anyone could read every row
 from the browser console, because the key our app ships with is public.
 
-**db/seed.sql and db/seed_events.sql** — the previous design, kept for
+**db/seed.sql and db/seed_events.sql**: the previous design, kept for
 reference: buildings, lots and the occupancy curve, then the events. Events
 were a file of their own because they were stored as dates and had to be put
 back before each demo. They hold a day offset now, worked out on read, so
 nothing expires and nothing has to be re-run.
 
-**api/recommend.py** — the request and response shapes, and the three calls into
+**api/recommend.py**: the request and response shapes, and the three calls into
 the ranking engine. The GET is still the health check we used to prove the
 Python half deploys. Pydantic bounds the numbers it accepts, because an
 occupancy of 150 used to sail through and score as if the lot were empty.
 
-**api/scoring.py** — the ranking engine itself: one rank function, configured
+**api/scoring.py**: the ranking engine itself: one rank function, configured
 three ways for parking, spots and events. Nothing in here touches the database
 or the network, which is why it is the one part with real tests.

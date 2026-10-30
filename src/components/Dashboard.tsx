@@ -9,7 +9,7 @@ import SectionHeader from './SectionHeader'
 import TodaySchedule from './TodaySchedule'
 import { ClockIcon, PinIcon } from './icons'
 import { useDataVersion } from '../lib/useDataVersion'
-import { useCampusHour } from '../lib/useMinuteTick'
+import { useCampusHour, useMinuteTick } from '../lib/useMinuteTick'
 
 type DashboardProps = {
   onOpen: (view: View) => void
@@ -22,12 +22,13 @@ const cardView: Record<RecCategory, View> = {
   event: 'events',
 }
 
-// minutes_until is whatever the gap was when findNextClass ran, and that only
-// runs once an hour, so a card drawn at 08:20 still read "Starts in 40 min" at
-// 11:00. The gap is worked out again here against the campus clock, off the
-// class start, which does not go stale. Floored at zero because a class can
-// start between two of those hourly fetches and counting past the start would
-// print a negative minute count.
+// minutes_until is whatever the gap was when findNextClass ran, so a card
+// drawn at 08:20 still read "Starts in 40 min" at 11:00. The gap is worked out
+// again here against the campus clock, off the class start, which does not go
+// stale. The fetch keys on the minute now, so this is mostly belt and braces,
+// but it is still what makes the countdown right in the moment before a
+// re-fetch has resolved. Floored at zero because a class can start between two
+// fetches and counting past the start would print a negative minute count.
 function untilStart(next: NextClass): NextClass {
   const gap = next.day_offset * 1440 + next.start_minutes - campusNow().minutes
   return { ...next, minutes_until: Math.max(0, gap) }
@@ -37,13 +38,29 @@ export default function Dashboard({ onOpen }: DashboardProps) {
   const version = useDataVersion()
   // The class and the ranking are both worked out against the clock, and the
   // data version only moves on a write or a sign in, so a tab left open
-  // counted down to a class that had already started. useCampusHour also
-  // re-renders this on the minute without changing value, which is what keeps
-  // the countdown on the class card current while the fetches stay hourly.
+  // counted down to a class that had already started.
+  //
+  // Two clocks, on purpose. The ranking keys on the hour because it is the
+  // expensive one: it reads the occupancy row for the hour and posts the lot
+  // of it to the scorer, and doing that sixty times as often buys nothing. The
+  // next class keys on the minute, because findNextClass only awaits
+  // getClassMeetings and getBuildings and both of those hand back a promise
+  // they are already holding, so re-running it costs no reads at all. On the
+  // hour it could be wrong for up to fifty-nine minutes at a stretch: a 09:30
+  // class left the hero reading "Starts in 0 min" until 10:00 while the table
+  // further down the same screen correctly said In class.
   const hour = useCampusHour()
+  const minute = useMinuteTick()
   const profile = useAsync(getProfile, [version])
-  const nextClass = useAsync(findNextClass, [version, hour])
-  const recs = useAsync(getRecommendations, [version, hour])
+  const nextClass = useAsync(findNextClass, [version, minute])
+  // On the minute, not the hour, same as the class above it. The ranking is
+  // keyed on which class is next, but a key only helps when something asks,
+  // and asking hourly meant the hero kept the previous class's lot for the
+  // rest of the hour: "Be at lot by 11:07 AM" under "Next class MATH 338,
+  // 2:00 PM". Asking every minute is free, because getRecommendations hands
+  // back the promise it is already holding whenever the key has not moved,
+  // and the key only moves when the class does.
+  const recs = useAsync(getRecommendations, [version, minute])
 
   // No name on a brand new account, and no greeting is better than greeting
   // somebody by the front half of their email address.
@@ -60,142 +77,157 @@ export default function Dashboard({ onOpen }: DashboardProps) {
   // Settled rather than ready: a scorer that failed has still finished, and
   // the card is worth showing with no lot on it.
   const hero = recs.state === 'loading' ? { state: 'loading' as const } : nextClass
-  // The course whose building has gone from the campus data, or null. The
-  // ranking is skipped rather than measured to a made up point in that case,
-  // so the parking slot below is empty for a reason that has nothing to do
-  // with the permit, and the parking screen reads the same sentinel. The
-  // course is carried rather than the building because the building is exactly
-  // what is missing: its name has already fallen back to the word Campus.
-  const strandedCourse = nextClass.state === 'ready' && nextClass.data
-    && nextClass.data.building_lat === 0
-    ? nextClass.data.course_code
-    : null
+  // findNextClass looks forward through the whole week, so a null means there
+  // is no class anywhere on the schedule, not just none left today. That one
+  // fact used to get stated three times down this screen: the hero said "No
+  // classes on your schedule yet", the ranking said "Nothing to rank yet. Add
+  // your classes", and the table at the bottom said "Nothing scheduled today".
+  // Three empty shelves and three different wordings for one thing somebody
+  // has not done yet. So when the schedule is genuinely empty the screen says
+  // it once, with the one button, and the two sections that can only repeat it
+  // stay off. Classes on Tuesday and Thursday looked at on a Wednesday is NOT
+  // this case, and all three sections still have something worth saying.
+  const noClasses = nextClass.state === 'ready' && nextClass.data === null
 
   return (
     <div className="flex flex-col gap-8">
       <div>
+        {/* Not "Welcome back". An account on its first visit has never been
+            here, and the very first line of the app was telling it otherwise.
+            Plain "Welcome" is true the first time and still true the
+            hundredth, which is the only thing one greeting has to do when it
+            has no way of knowing which visit this is. */}
         <h1 className="text-2xl font-semibold tracking-tight text-titan">
-          Welcome back{firstName && `, ${firstName}`}
+          Welcome{firstName && `, ${firstName}`}
         </h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          Where to park, where to work, and what is on between your classes today.
+        {/* max-w-2xl because PageHeader caps every other screen's subtitle at
+            the same width. This one cannot use PageHeader: the title is a
+            greeting with a name in it, not a plain string. */}
+        <p className="mt-1 max-w-2xl text-sm text-ink-soft">
+          Where to park, where to work, and what's happening between your classes.
         </p>
       </div>
 
       <Panel source={hero}>
         {(next) =>
           next ? (
-            <NextClassCard nextClass={untilStart(next)} lot={topLot} />
+            <NextClassCard
+              nextClass={untilStart(next)}
+              lot={topLot}
+              onOpenProfile={() => onOpen('profile')}
+              rankingReady={recs.state === 'ready'}
+            />
           ) : (
-            <div className="rounded-xl border border-rule bg-paper px-6 py-6 text-ink-soft">
-              No classes on your schedule yet.
+            <div className="rounded-xl border border-rule bg-paper px-6 py-6">
+              <h2 className="text-lg font-semibold text-titan">Add your classes to get started</h2>
+              <p className="mt-1.5 max-w-2xl text-sm text-ink-soft">
+                Tuffy Flow works off your weekly schedule. Once it knows where you have
+                to be, it can tell you where to park, how early to leave, and where to
+                work near your next class.
+              </p>
+              <button
+                type="button"
+                onClick={() => onOpen('profile')}
+                className="mt-4 min-h-11 rounded-lg bg-titan px-4 text-sm font-medium text-white hover:bg-titan-700"
+              >
+                Add your classes
+              </button>
             </div>
           )
         }
       </Panel>
 
-      <section>
-        <SectionHeader
-          icon={<PinIcon className="h-4 w-4" />}
-          title="Where to go next"
-          note="Top pick in each category, scored against your schedule and interests."
-        />
-        <Panel source={recs}>
-          {(data) => data.parking.length + data.spots.length + data.events.length === 0 ? (
-            // All three empty is what an account with no classes looks like,
-            // and also what a Sunday evening looks like on an account that has
-            // classes but no permit on file, with every spot shut and nothing
-            // coming up. Telling the second one to go and add the classes it
-            // already has is the wrong answer, so the schedule decides which
-            // sentence runs: only a loaded, genuinely empty one gets the
-            // button, and the permit gets named otherwise because it is the
-            // usual reason a day scores nothing.
-            nextClass.state === 'ready' && nextClass.data === null ? (
+      {/* Both of these can only restate the card above when the schedule is
+          empty: a ranking with nothing to show, and a table of nothing. So
+          they stay off until there is a schedule to talk about. */}
+      {!noClasses && (
+        <>
+        <section>
+          {/* No "right now" in the note any more. These are ranked for the
+              next class, and on a Friday evening the next class is Monday,
+              which the hero says out loud forty pixels above this. The nouns
+              went too: the middle card is whatever scored highest out of the
+              spots and the scorer does not filter on kind, so it can be headed
+              Food or Meet up under a note that promised a study spot. What is
+              true either way is what the ranking is reading, so that is what
+              it says. */}
+          <SectionHeader
+            icon={<PinIcon className="h-4 w-4" />}
+            title="Where to go next"
+            note="Picked for your next class and your interests."
+          />
+          <Panel source={recs}>
+            {(data) => data.spots.length + data.events.length === 0 ? (
+              // Parking is out of this sum on purpose. The lot answer lives on
+              // the hero now, so counting it here would call the whole row
+              // empty every time the permit was missing, which is the most
+              // common thing a new account has going on.
+              //
+              // An empty schedule cannot reach this either, because the whole
+              // section is behind noClasses. What is left is the account with
+              // classes on file that still scored no spot and no event: a
+              // Sunday evening with everywhere shut and nothing coming up.
+              // Telling somebody to add the classes they already have was the
+              // wrong answer, so the permit gets named instead, hedged because
+              // it is the usual reason rather than the only one. The button is
+              // the same one the hero offers when there is no lot to show, so
+              // the two dead ends do not hand out two different amounts of
+              // help for one cause.
               <div className="rounded-xl border border-rule bg-paper px-5 py-6 text-sm text-ink-soft">
-                <p>Nothing to rank yet. Add your classes and this fills in.</p>
+                <p>
+                  Nothing to show for today. If your profile does not say which permit you
+                  hold, that is usually why.
+                </p>
                 <button
                   type="button"
                   onClick={() => onOpen('profile')}
-                  className="mt-3 min-h-11 rounded-lg bg-titan px-4 text-sm font-medium text-white hover:bg-titan-700"
+                  className="mt-3 min-h-11 rounded-lg border border-titan px-4 text-sm font-medium
+                             text-titan hover:bg-titan hover:text-white"
                 >
-                  Add your classes
+                  Set your permit
                 </button>
               </div>
             ) : (
-              <div className="rounded-xl border border-rule bg-paper px-5 py-6 text-sm text-ink-soft">
-                <p>
-                  Nothing scored for today. If your profile does not say which permit you
-                  hold, that is usually why.
-                </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Parking used to have a slot here and it was printing the
+                    hero's lot a second time: same name, same walk, same
+                    arrive-by time, and a sentence about how full it usually is
+                    that was byte for byte the one in the hero. The hero keeps
+                    that answer, because it is the copy with the Directions
+                    link, with the arrive-by time at a size a driver can
+                    actually read, and with the day on it. This card
+                    only ever showed a bare clock time with nothing saying
+                    which day it was for, so on a Friday evening it read as
+                    this morning. The Parking item in the sidebar is still one
+                    press away on every screen width, so nothing has been shut
+                    off here. */}
+                {[
+                  { slot: 'spots', rec: data.spots[0] },
+                  { slot: 'events', rec: data.events[0] },
+                ].map(({ slot, rec }) =>
+                  rec ? (
+                    <RecCard
+                      key={slot}
+                      rec={rec}
+                      onOpen={() => onOpen(cardView[rec.category])}
+                    />
+                  ) : null,
+                )}
               </div>
-            )
-          ) : (
-            <div className="grid gap-4 md:grid-cols-3">
-              {/* One slot per category, in the order the sidebar and the
-                  footnotes read: parking, spots, events. The slots carry the
-                  order so the parking placeholder can sit in the slot it
-                  belongs to. Appending it after the scored cards put it third,
-                  which is backwards, and it was the common case rather than
-                  the rare one. */}
-              {[
-                { slot: 'parking', rec: data.parking[0] },
-                { slot: 'spots', rec: data.spots[0] },
-                { slot: 'events', rec: data.events[0] },
-              ].map(({ slot, rec }) =>
-                rec ? (
-                  <RecCard
-                    key={slot}
-                    rec={rec}
-                    onOpen={() => onOpen(cardView[rec.category])}
-                  />
-                ) : slot === 'parking' ? (
-                  // A card for the gap, rather than a gap. An account with
-                  // classes but no permit on file has nothing to put in the
-                  // parking slot, which left two cards and an empty third and
-                  // nothing on the screen saying why. It is also the most
-                  // common thing a new account sees, not an edge case. An
-                  // empty spots or events slot has no sentence like this one
-                  // to offer, so it still closes up.
-                  <div
-                    key={slot}
-                    className="rounded-xl border border-dashed border-rule-strong bg-paper px-5 py-5"
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-faint">
-                      Parking
-                    </p>
-                    <p className="mt-2 text-sm text-ink-soft">
-                      {strandedCourse
-                        ? `Nothing here because we do not have a location for the building ${strandedCourse} is in, so there is nowhere to measure the walk to.`
-                        : 'Nothing here until your profile says which permit you hold. Lots take some permits and not others.'}
-                    </p>
-                    {/* No button on the missing building, because the profile
-                        is not where that gets fixed. */}
-                    {!strandedCourse && (
-                      <button
-                        type="button"
-                        onClick={() => onOpen('profile')}
-                        className="mt-3 min-h-11 rounded-lg border border-titan px-4 text-sm font-medium
-                                   text-titan hover:bg-titan hover:text-white"
-                      >
-                        Set your permit
-                      </button>
-                    )}
-                  </div>
-                ) : null,
-              )}
-            </div>
-          )}
-        </Panel>
-      </section>
+            )}
+          </Panel>
+        </section>
 
-      <section>
-        <SectionHeader
-          icon={<ClockIcon className="h-4 w-4" />}
-          title="Today's schedule"
-          action={{ label: 'Full week', onClick: () => onOpen('profile') }}
-        />
-        <TodaySchedule />
-      </section>
+        <section>
+          <SectionHeader
+            icon={<ClockIcon className="h-4 w-4" />}
+            title="Today's schedule"
+            action={{ label: 'Full week', onClick: () => onOpen('profile') }}
+          />
+          <TodaySchedule />
+        </section>
+        </>
+      )}
     </div>
   )
 }

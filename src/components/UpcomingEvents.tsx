@@ -9,12 +9,12 @@ import { CAMPUS_TZ, campusDate } from '../lib/time'
 // Reads the scored events, not the raw list. The raw list still contains the
 // ones that clash with a class, so the rail was offering something the events
 // screen then refused to show.
-// 24-hour, like the class and arrive-by times on the rest of the dashboard,
+// AM/PM, like the class and arrive-by times on the rest of the dashboard,
 // which sits next to this rail at wide widths. Both are built once instead of
 // per event, because the formatter is the expensive part and neither depends
 // on anything but the date it is handed.
 const EVENT_TIME = new Intl.DateTimeFormat('en-US', {
-  timeZone: CAMPUS_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  timeZone: CAMPUS_TZ, hour: 'numeric', minute: '2-digit', hour12: true,
 })
 
 const EVENT_DAY = new Intl.DateTimeFormat('en-US', {
@@ -28,6 +28,13 @@ async function upcoming() {
   const byId = new Map(events.map((e) => [e.id, e]))
   const where = new Map(buildings.map((b) => [b.id, b.name]))
   const today = campusDate(new Date())
+  // Counted off today's date rather than by adding 24 hours, because on the
+  // morning the clocks go back a naive +24h still lands on today and the word
+  // Tomorrow disappears for an hour. Noon UTC is the small hours here, so it
+  // never lands on the wrong date. Same helper shape as the events screen,
+  // which is where this has to agree with.
+  const [y, m, d] = today.split('-').map(Number)
+  const tomorrow = campusDate(new Date(Date.UTC(y, m - 1, d + 1, 12)))
 
   return recs.events
     .map((r) => byId.get(r.id))
@@ -36,7 +43,8 @@ async function upcoming() {
     .slice(0, 5)
     .map((e) => {
       const start = new Date(e.starts_at)
-      const isToday = campusDate(start) === today
+      const stamp = campusDate(start)
+      const isToday = stamp === today
       const time = EVENT_TIME.format(start)
       const day = EVENT_DAY.format(start)
       return {
@@ -46,7 +54,7 @@ async function upcoming() {
         where: where.get(e.building_id) ?? 'Campus',
         // The stripe going orange is the only other cue, and "Tue" alone does
         // not say whether that is today or next week. "Today" costs no width.
-        when: `${isToday ? 'Today' : day}, ${time}`,
+        when: `${isToday ? 'Today' : stamp === tomorrow ? 'Tomorrow' : day}, ${time}`,
         isToday,
       }
     })
@@ -75,7 +83,11 @@ export default function UpcomingEvents() {
             >
               <div className="flex items-start justify-between gap-2">
                 <h3 className="text-sm font-medium leading-snug text-titan">{e.title}</h3>
-                <span className="shrink-0 whitespace-nowrap rounded bg-titan-50 px-1.5 py-0.5 text-[0.65rem] font-semibold text-titan">
+                {/* This badge is the only thing in the rail saying when, so it
+                    was the wrong place to be the smallest text on the screen.
+                    rounded-md rather than rounded, which is what every other
+                    badge and pill in the app uses. */}
+                <span className="shrink-0 whitespace-nowrap rounded-md bg-titan-50 px-1.5 py-0.5 text-[0.7rem] font-semibold text-titan">
                   {e.when}
                 </span>
               </div>

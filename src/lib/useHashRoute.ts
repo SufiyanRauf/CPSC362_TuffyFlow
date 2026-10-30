@@ -46,6 +46,18 @@ export function useHashRoute(): [View, (next: View) => void] {
   function go(next: View) {
     window.location.hash = `/${next}`
     window.scrollTo(0, 0)
+    // Every button inside the content area unmounts itself by navigating:
+    // "Set your permit", "Add your classes", "Full week", "All events", a
+    // card's "All lots". Tabbed to one of those and pressed it, and focus
+    // landed back on the body, so the next Tab started over at "Skip to
+    // content" and I had to walk the whole nav again to get into the screen I
+    // had just asked for. The target already exists for the skip link, and
+    // App.tsx hands focus to it on sign in for this same reason.
+    //
+    // The sidebar buttons do survive a nav, so this takes focus off one of
+    // them too. That is the better of the two: the next Tab then goes into the
+    // new screen rather than further down a nav the student is done with.
+    document.getElementById('content')?.focus()
   }
 
   return [view, go]

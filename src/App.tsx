@@ -19,15 +19,6 @@ export default function App() {
   const session = useSession()
   const inside = session.kind === 'demo' || session.kind === 'account'
 
-  // React unmounts whichever side had focus, which drops it on the body. Hand
-  // it across instead, both ways: in to the content, which already takes focus
-  // for the skip link, and back out to the button that gets you in again.
-  //
-  // It compares against the last value rather than counting renders, because a
-  // first-paint flag got burned by StrictMode's second run of the effect. And
-  // it ignores the step out of "loading", which is not a move anybody made: on
-  // an ordinary reload of a signed in account that step would jump focus into
-  // the middle of the page before they had touched anything.
   // Up here with the other hooks, because the two returns below are
   // conditional and a hook underneath them runs on some renders and not
   // others, which React counts and refuses.
@@ -37,6 +28,15 @@ export default function App() {
   // panels they could not see.
   const wide = useWideScreen()
 
+  // React unmounts whichever side had focus, which drops it on the body. Hand
+  // it across instead, both ways: in to the content, which already takes focus
+  // for the skip link, and back out to the button that gets you in again.
+  //
+  // It compares against the last value rather than counting renders, because a
+  // first-paint flag got burned by StrictMode's second run of the effect. And
+  // it ignores the step out of "loading", which is not a move anybody made: on
+  // an ordinary reload of a signed in account that step would jump focus into
+  // the middle of the page before they had touched anything.
   const was = useRef(session.kind)
   useEffect(() => {
     const before = was.current
@@ -56,17 +56,20 @@ export default function App() {
             as the page; marked as a status it would be a region created with
             its text already in it, which is the case that does not reliably
             get announced. */}
-        <p className="text-sm text-titan-200">Checking whether you are signed in…</p>
+        <p className="text-sm text-titan-200">Checking whether you're logged in…</p>
       </main>
     )
   }
 
   if (!inside) return <LoginView />
 
-  // the rail is how full each structure usually is, plus what is coming up,
-  // which belongs beside the dashboard and the lots and would just be clutter
-  // on the other four
-  const withRail = wide && (view === 'home' || view === 'parking')
+  // Home only. On the parking screen the rail printed fullness for six named
+  // structures beside a list that prints fullness for the same structures with
+  // a bar, a walk time and an arrive-by, and the rail is not permit filtered,
+  // so it could offer a structure the list had correctly ruled out. The
+  // parking screen is the authority for lots; the rail answers "how busy is
+  // campus" next to the dashboard.
+  const withRail = wide && view === 'home'
 
   return (
     // Keyed on who is using the app, so that changing who means starting
@@ -89,7 +92,7 @@ export default function App() {
       <button
         type="button"
         onClick={() => document.getElementById('content')?.focus()}
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-30
+        className="skip-link sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-30
                    focus:rounded-md focus:bg-titan focus:px-3 focus:py-2 focus:text-sm focus:text-white"
       >
         Skip to content

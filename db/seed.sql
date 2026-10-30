@@ -70,7 +70,7 @@ insert into parking_lots (name, lat, lng, permits, total_spaces) values
   -- inside a structure
   -- CSUF marks this one hourly but gives it no code and no coordinate, so the
   -- point is ours, read off satellite imagery.
-  ('Hourly | Student Union Way',      33.881858, -117.889334, array['visitor'],                       null)
+  ('Student Union Way (hourly)',      33.881858, -117.889334, array['visitor'],                       null)
 on conflict (name) do nothing;
 
 -- ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ with demand(name, weekday_pts, weekend_pts) as (values
     ('R1', -5, 45),
     ('R2', -5, 45),
     -- A small lot that fills before the structures do.
-    ('Hourly | Student Union Way', 5, -30)
+    ('Student Union Way (hourly)', 5, -30)
 )
 insert into lot_availability (lot_id, day_of_week, hour, typical_pct_full)
 select

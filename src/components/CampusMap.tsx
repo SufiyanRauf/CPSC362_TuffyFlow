@@ -98,8 +98,12 @@ export default function CampusMap({ points, caption }: { points: MapPoint[]; cap
                 key={point.id}
                 center={[point.lat, point.lng]}
                 radius={tone.radius}
+                // weight 3 rather than 2 because the pale blue fill on the
+                // non-picks is close enough to the map tiles that from the back
+                // of a room the circle stopped being a circle. The navy outline
+                // carries the shape instead, and the colors stay as they are.
                 pathOptions={{
-                  color: tone.color, fillColor: tone.fill, fillOpacity: 0.9, weight: 2,
+                  color: tone.color, fillColor: tone.fill, fillOpacity: 0.9, weight: 3,
                 }}
               >
                 <Tooltip>{point.label}</Tooltip>
@@ -109,8 +113,11 @@ export default function CampusMap({ points, caption }: { points: MapPoint[]; cap
         </MapContainer>
       </div>
       {/* Outside the hidden part, so the credit is read as well as seen.
-          OpenStreetMap asks for the link, not just the words. */}
-      <figcaption className="border-t border-rule bg-paper px-4 py-2 text-xs text-ink-faint">
+          OpenStreetMap asks for the link, not just the words.
+          ink-soft rather than ink-faint: this line is also the key to what the
+          marker colors mean, and faint on paper is 4.8:1, which made the one
+          thing explaining the graphic the hardest text on the screen to read. */}
+      <figcaption className="border-t border-rule bg-paper px-4 py-2 text-xs text-ink-soft">
         {caption} Map data from{' '}
         <a
           href="https://www.openstreetmap.org/copyright"

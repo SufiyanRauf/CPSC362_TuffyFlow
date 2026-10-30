@@ -5,11 +5,15 @@ import type { ReactNode } from 'react'
 // dependency for a dozen shapes.
 export type IconProps = { className?: string }
 
+// The viewBox is 20 wide and most of these render at h-4 w-4, so whatever
+// strokeWidth says gets scaled down to about four fifths of it. 1.6 came out as
+// 1.28px on screen, which holds up on a laptop and vanishes on the projector in
+// the lab, so it is 1.8 instead. Nothing about the layout changes.
 function Svg({ children, className = 'h-4 w-4' }: { children: ReactNode; className?: string }) {
   return (
     <svg
       viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"
-      strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
       className={`inline-block shrink-0 ${className}`}
     >
       {children}

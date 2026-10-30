@@ -97,4 +97,14 @@ h1[tabindex="-1"]:focus {
   .sidebar :focus-visible {
     outline-color: var(--color-flame);
   }
+
+  /* The skip link is a sibling of the nav rather than inside it, so the flip
+     above never reached it, but once it shows itself it is positioned over the
+     navy rail and has a navy background of its own. flame-ink on navy is
+     2.3:1, which is the worst ring in the app on the one control that only
+     exists for a keyboard. Same flip, same reason, separate selector because
+     it is not in the nav. */
+  .skip-link:focus-visible {
+    outline-color: var(--color-flame);
+  }
 }

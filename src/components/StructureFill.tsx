@@ -1,7 +1,7 @@
 import { useAsync } from '../lib/useAsync'
 import { getAvailabilityAround, getParkingLots } from '../lib/campusData'
 import { campusNow } from '../lib/recommend'
-import { BUSY_PERCENT } from '../lib/time'
+import { BUSY_PERCENT, clockText } from '../lib/time'
 import { useCampusHour } from '../lib/useMinuteTick'
 import { useDataVersion } from '../lib/useDataVersion'
 import Panel from './Panel'
@@ -62,8 +62,12 @@ export default function StructureFill() {
       {({ hour, counting, lots }) => (
         <>
           <p className="text-xs text-ink-faint">
-            What these usually look like around {String(hour).padStart(2, '0')}:00
-            {counting ? '.' : ', the nearest hour the board counts.'}
+            {/* clockText, not a hand-built string. This read "around 18:00"
+                while the hero a few inches away read "6:00 PM", and because it
+                is concatenated rather than formatted it has no Intl options in
+                it, so a sweep looking for those misses it entirely. */}
+            What these usually look like around {clockText(`${String(hour).padStart(2, '0')}:00`)}
+            {counting ? '.' : ', the nearest hour CSUF counts.'}
           </p>
           <ul className="mt-3 flex flex-col gap-3">
             {lots.map((l) => (
