@@ -346,7 +346,7 @@ def main():
 
     w('# Test cases')
     w('')
-    w('TuffyFlow, a campus companion for California State University, Fullerton.')
+    w('Tuffy Flow, a campus companion for California State University, Fullerton.')
     w('')
     w('| | |')
     w('|---|---|')

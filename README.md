@@ -1,6 +1,6 @@
-# TuffyFlow
+# Tuffy Flow
 
-TuffyFlow is a campus companion web application designed for students at California State University, Fullerton. The goal of the project is to help students make better decisions throughout their campus day by providing personalized recommendations for parking, campus study spaces, clubs, and events.
+Tuffy Flow is a campus companion web application designed for students at California State University, Fullerton. The goal of the project is to help students make better decisions throughout their campus day by providing personalized recommendations for parking, campus study spaces, clubs, and events.
 
 Live app: https://tuffyflow.vercel.app
 
@@ -46,7 +46,7 @@ Students often need to use multiple resources to answer simple questions such as
 * Where can I study between classes?
 * Which clubs or campus events match my interests?
 
-TuffyFlow aims to bring these decisions into one application.
+Tuffy Flow aims to bring these decisions into one application.
 
 Instead of only displaying information, the application uses a student's schedule, interests, preferences, and campus locations to provide personalized recommendations.
 
@@ -56,7 +56,7 @@ Instead of only displaying information, the application uses a student's schedul
 
 ### Parking Recommendation
 
-TuffyFlow helps students identify a suitable parking location based on factors such as:
+Tuffy Flow helps students identify a suitable parking location based on factors such as:
 
 * Typical availability for that lot at the hour they would arrive
 * Class location
@@ -154,7 +154,7 @@ Mermaid file, which GitHub renders on its own.
 
 ## Recommendation System
 
-TuffyFlow uses a rule based scoring system rather than machine learning. With no real usage history to learn from, a model would be learning from data we invented, and it could not explain its own output. Every recommendation in this app has to be able to say why it was chosen.
+Tuffy Flow uses a rule based scoring system rather than machine learning. With no real usage history to learn from, a model would be learning from data we invented, and it could not explain its own output. Every recommendation in this app has to be able to say why it was chosen.
 
 All three recommenders are the same algorithm with different inputs, so the project implements **one ranking engine** and configures it three ways:
 
@@ -612,7 +612,7 @@ Semester: Fall 2026
 
 ## Disclaimer
 
-TuffyFlow is an academic project and is not an official California State University, Fullerton application.
+Tuffy Flow is an academic project and is not an official California State University, Fullerton application.
 
 Parking occupancy patterns, class schedules, and all events are sample data we
 created. Building and lot details, club records, and library and dining

@@ -1,10 +1,10 @@
-Generated from README.md on 2026-10-30. Edit the markdown, not this file:
+Generated from README.md on 2026-10-31. Edit the markdown, not this file:
     python3 tools/md_to_txt.py README.md README.txt
 
-TuffyFlow
-=========
+Tuffy Flow
+==========
 
-TuffyFlow is a campus companion web application designed for students at California
+Tuffy Flow is a campus companion web application designed for students at California
 State University, Fullerton. The goal of the project is to help students make better
 decisions throughout their campus day by providing personalized recommendations for
 parking, campus study spaces, clubs, and events.
@@ -53,7 +53,7 @@ Students often need to use multiple resources to answer simple questions such as
 * Where can I study between classes?
 * Which clubs or campus events match my interests?
 
-TuffyFlow aims to bring these decisions into one application.
+Tuffy Flow aims to bring these decisions into one application.
 
 Instead of only displaying information, the application uses a student's schedule,
 interests, preferences, and campus locations to provide personalized recommendations.
@@ -66,7 +66,7 @@ Core Features
 Parking Recommendation
 ......................
 
-TuffyFlow helps students identify a suitable parking location based on factors such as:
+Tuffy Flow helps students identify a suitable parking location based on factors such as:
 
 * Typical availability for that lot at the hour they would arrive
 * Class location
@@ -163,7 +163,7 @@ GitHub renders on its own.
 Recommendation System
 ---------------------
 
-TuffyFlow uses a rule based scoring system rather than machine learning. With no real
+Tuffy Flow uses a rule based scoring system rather than machine learning. With no real
 usage history to learn from, a model would be learning from data we invented, and it
 could not explain its own output. Every recommendation in this app has to be able to say
 why it was chosen.
@@ -626,7 +626,7 @@ University, Fullerton Professor: Mehdi Peiravi Semester: Fall 2026
 Disclaimer
 ----------
 
-TuffyFlow is an academic project and is not an official California State University,
+Tuffy Flow is an academic project and is not an official California State University,
 Fullerton application.
 
 Parking occupancy patterns, class schedules, and all events are sample data we created.
