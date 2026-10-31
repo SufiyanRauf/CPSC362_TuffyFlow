@@ -50,3 +50,4 @@ serviceAccountKey*.json
 # *.local above does not match *.local.md, which is how the checklist nearly
 # got committed. The glob covers any future one.
 *.local.md
+.firebase.generated.json

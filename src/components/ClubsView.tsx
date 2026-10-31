@@ -2,6 +2,7 @@ import { tagText } from '../lib/labels'
 import { useEffect, useRef, useState } from 'react'
 import { useAsync } from '../lib/useAsync'
 import { getClubs, getProfile } from '../lib/campusData'
+import { clubRanking } from '../lib/clubRanking'
 import type { Club } from '../types'
 import Panel from './Panel'
 import PageHeader from './PageHeader'
@@ -130,41 +131,26 @@ export default function ClubsView() {
     ? new Set([...source.data.profile.interests, ...source.data.profile.career_goals])
     : new Set<string>()
 
-  // the interests the whole list contains, with how many carry each one. It
-  // counts across every club rather than the filtered set, so a search and an
-  // interest together can still come back empty. The count is there to show
-  // which interests are worth picking, not to promise a result.
-  const counts = new Map<string, number>()
-  if (clubs.state === 'ready') {
-    for (const club of clubs.data) {
-      for (const t of club.tags) counts.set(t, (counts.get(t) ?? 0) + 1)
-    }
-  }
+  // The whole list, before any filtering. Empty while it loads, which gives
+  // the ranking below an empty counts map and the status line a total of
+  // nothing to report.
+  const all = clubs.state === 'ready' ? clubs.data : []
+
+  // Counts, the badge order, whether anything can match at all and the
+  // comparator all come from one place, because they all read the same counts
+  // map and that map is what makes them worth testing. counts covers every
+  // club rather than the filtered set, so a search and an interest together
+  // can still come back empty: the count shows which interests are worth
+  // picking, it does not promise a result.
+  const { counts, bySignal, canMatch, compare } = clubRanking(all, mine)
   const interests = [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  // Whether any club in the list carries any interest this student has. The
-  // tag vocabulary is closed at 29, so a student who typed something outside
-  // it, or who has not filled the profile in at all, shares a tag with nothing
-  // and every sort below collapses to the alphabet. counts already covers all
-  // 320 clubs, so this is a lookup per interest and nothing more. Two pieces
-  // of copy read it: the header, which otherwise promises an order it is not
-  // giving, and the empty state, which otherwise blames the filters.
-  const canMatch = [...mine].some((t) => counts.has(t))
-  // A tag on one club out of 320 is worth 320 times a tag on all of them.
-  // counts already covers every club, so this costs nothing extra.
-  const weigh = (shared: string[]) =>
-    shared.reduce((n, t) => n + 1 / (counts.get(t) ?? 1), 0)
-  // Rarest first, so the badge leads with the tag that actually explains why
-  // this club is here. Named in tag order it read "matches career" on nearly
-  // every card, which is true and tells a student nothing.
-  const bySignal = (shared: string[]) =>
-    [...shared].sort((a, b) => (counts.get(a) ?? 0) - (counts.get(b) ?? 0))
 
   const filtered = query !== '' || tags.length > 0 || onlyMatches
 
-  // The sorting and filtering moved up here out of the panel below, because
-  // the status line has to sit outside the panel to survive the list emptying,
-  // and it needs the counts. The panel still decides what is drawn.
-  const all = clubs.state === 'ready' ? clubs.data : []
+  // The sorting and filtering sit out here rather than inside the panel
+  // below, because the status line has to survive the list emptying and it
+  // needs the counts. The panel still decides what is drawn.
+  //
   // built once per render, not once per club: every keystroke used to compile
   // 320 of these
   const pattern = searchPattern(query)
@@ -173,17 +159,9 @@ export default function ClubsView() {
     .filter((c) => pattern === null || matches(c.club, pattern))
     .filter((c) => tags.length === 0 || tags.some((t) => c.club.tags.includes(t)))
     .filter((c) => !onlyMatches || c.shared.length > 0)
-    // Counting shared tags treats every tag as equally informative, and they
-    // are nowhere near it: "career" is on 105 of the 320 clubs and "ai" is on
-    // one. Sorting by count put the American Choral Directors Association
-    // first and the French Club fourth for a student whose interests are ai,
-    // software engineering, data science and music, because each of those
-    // clubs happened to share two common tags. Weighting each shared tag by
-    // how rare it is puts Data Science and Machine Learning first, which is
-    // the answer a person would give. One rare tag outranking three common
-    // ones is the point, not a side effect: one "robotics" says far more about
-    // a student than three of social, career and service.
-    .sort((a, b) => weigh(b.shared) - weigh(a.shared) || a.club.name.localeCompare(b.club.name))
+    // Rarity weighted, not a count of shared tags. clubRanking says why, and
+    // club_ranking.test.mjs pins the case that forced it.
+    .sort(compare)
   const pages = Math.max(1, Math.ceil(scored.length / perPage))
   // Derived rather than corrected in an effect: a search that shrinks the list
   // can leave page on a number that no longer exists, and clamping here means

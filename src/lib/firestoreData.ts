@@ -437,7 +437,7 @@ export async function saveProfile(userId: string, next: Profile) {
 // Two codes that differ only in punctuation or case land on the same id, so
 // anything comparing codes has to agree with that or the duplicate guard has a
 // hole in it.
-function sameCourse(a: string, b: string) {
+export function sameCourse(a: string, b: string) {
   const flat = (v: string) => v.replace(/[^A-Za-z0-9]+/g, '-').toUpperCase()
   return flat(a) === flat(b)
 }

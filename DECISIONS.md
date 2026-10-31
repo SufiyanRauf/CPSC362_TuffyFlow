@@ -372,13 +372,17 @@ entirely, since in student org writing it nearly always means events.
 
 The occupancy curve used to be a single time of day shape with a per lot offset
 derived from the length of the lot's name, which is to say no information at
-all. Took readings off the campus parking board on a Sunday and on a Thursday
-and set the per lot numbers from those. Four readings are in data/parking_samples.csv.
-> Superseded 2026-10-30: a fourth reading, on a Friday, gave Friday its own
-> shape. See the entry for that date. Two of them set the per lot
-numbers and the curve reproduces those to within a point. The third was taken
-after the curve was fitted and never used to fit it, which makes it the only
-real check we have.
+all. Took readings off the campus parking board and set the per lot numbers
+from those. Four readings are in data/parking_samples.csv: one on a Sunday,
+two on a Thursday and one on a Friday. Three of them set the per lot numbers,
+the Sunday, the first Thursday and the Friday, and the curve reproduces all
+three exactly. The second Thursday timestamp was taken after the curve was
+fitted and never used to fit it, which makes it the only real check we have,
+and every lot came out within three points.
+
+> This entry originally covered the Sunday and the Thursday only. The Friday
+> reading came later, on 2026-10-30, and gave Friday its own shape. See the
+> entry for that date.
 
 The useful surprise was that the weekday and weekend shapes are not the same
 curve scaled down. On a Thursday afternoon Eastside is at 88 percent because
@@ -388,8 +392,8 @@ which is beside the stadium and the gym. Our first attempt applied the Thursday
 numbers to the weekend too and had Eastside at 54 percent on a Sunday against
 a real 0.5. The seed carries three columns now.
 
-Worth saying plainly: two readings is not much. One timestamp per day, only the
-counted facilities, and only a Sunday on the weekend side, so Saturday is an
+Worth saying plainly: four readings is not much. Three days, only the counted
+facilities, and only a Sunday on the weekend side, so Saturday is an
 assumption. The employee, resident and hourly lots are not on that board at all
 and their numbers are guesses. The README says so and so does the parking
 screen.
@@ -1184,3 +1188,96 @@ occupancy of 150 used to sail through and score as if the lot were empty.
 **api/scoring.py**: the ranking engine itself: one rank function, configured
 three ways for parking, spots and events. Nothing in here touches the database
 or the network, which is why it is the part with the most tests.
+
+**src/lib/clubRanking.ts**: how the club list gets its order. The tag counts
+across all 320 clubs, the rarity weighting, the badge order and the comparator
+the screen sorts with. It was three closures inside ClubsView until the test
+suite needed to reach it, and `node --test` can import a .ts from here but not
+a .tsx component.
+
+**tests/club_ranking.test.mjs**: seven cases over the above, including the real
+case that forced the rarity weighting, so the choral society cannot climb back
+above the software engineering clubs without a failure.
+
+**tools/gen_test_cases.py**: writes TEST_CASES.md. Reads the test files for the
+names, the fixtures and the assertions, runs all six suites for the pass
+column, and refuses to write anything if a suite will not run, so the document
+cannot claim a pass nobody saw.
+
+**tools/md_to_txt.py**: writes README.txt and TEST_CASES.txt, which are the
+plain text copies the professor asked for. Headings get underlines, code gets
+indented, a table too wide for the page becomes one labelled block per row, and
+the output is checked for anything outside plain ASCII before it is written.
+
+**TEST_CASES.md** and **TEST_CASES.txt**: every automated test by id, with what
+it sets up, what it asserts and whether it passed. Generated, not maintained.
+
+**README.txt**: the plain text copy of README.md. Generated, not maintained.
+
+**package.json**: the front end's dependencies and the scripts. `dev`, `build`
+and `typecheck`, plus `seed` and the four test commands.
+
+**vite.config.ts**, **tsconfig.json**, **tsconfig.app.json**,
+**tsconfig.node.json**: the build. The app config turns on
+`allowImportingTsExtensions` with `noEmit`, which is what lets a test import
+`../src/lib/time.ts` by its real name and still satisfy tsc, Vite and bare
+Node at once.
+
+**vercel.json**: routes `/api/*` at the Python functions and everything else at
+the single page app, so a deep link reloads instead of 404ing.
+
+**.env.example**: the five Firebase values, with no real ones in it. Copy to
+`.env` and fill in. All five are public by design; the rules are what keeps the
+data safe, not the keys.
+
+**firebase.json**: points `firebase deploy --only firestore:rules` at
+db/firestore.rules, and sets the port the emulator runs the rules tests on.
+
+**DECISIONS.md**: this file.
+
+**index.html**: the page Vite builds from, and the only one. It carries the
+title, the Google Fonts link and the single `<div id="root">` the app mounts
+into. A deep link never reaches it directly in production; vercel.json rewrites
+everything that is not `/api/*` back to it, which is what makes a reload on
+`#/clubs` work instead of 404ing.
+
+**package-lock.json**: the exact dependency versions. Committed on purpose, so
+Vercel and the three of us build from the same tree rather than whatever
+resolves on the day.
+
+**.gitignore**: what stays off the repository. `node_modules`, `dist`, `.venv`,
+`.env` and the Firebase scratch files, plus `*.local.md`, which is how our own
+working notes stay out of a graded submission.
+
+**src/main.tsx**: four lines. Mounts the app into the root div and nothing
+else. No router setup, because routing is a hash read in `useHashRoute`.
+
+**src/index.css**: the whole theme, in Tailwind v4's `@theme` block. There is
+no tailwind.config.js by design. The stock palettes are switched off with
+`--color-slate-*: initial` and friends, so a class naming a colour we have not
+declared emits no CSS at all rather than quietly rendering some default grey.
+That is deliberate, and it is the one thing to know before editing a class name
+here.
+
+**src/components/RightRail.tsx**: the column beside the dashboard. It is the
+same three recommendation lists the main screens show, trimmed to the top of
+each, and it reads the same ranking rather than a second copy of it.
+
+**src/components/UpcomingEvents.tsx**: the events card on the dashboard. It
+formats its own dates with Intl rather than through `time.ts`, because an event
+needs a weekday and a date and not just a clock time.
+
+**src/components/StructureFill.tsx**: the little bar showing how full a parking
+structure usually is at the hour you would arrive.
+
+**README.md**: the front door. What the app does, how to run it, how to connect
+a Firebase project, and what is done and still to do. `README.txt` is generated
+from it.
+
+**db/README.md**: the data layer on its own terms, including the move from
+Postgres to Firestore and what survived it.
+
+**db/seed.sql** and **db/seed_events.sql**: the Postgres seed, kept from before
+the move. They are not what the app reads now, which is `campusRows.ts` and
+Firestore, but they are the record of the original schema and the row counts
+quoted in this file.

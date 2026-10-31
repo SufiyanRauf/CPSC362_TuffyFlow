@@ -96,8 +96,13 @@ function held<T>(into: Held, key: string, what: string, load: () => Promise<T>):
     // drops its SDK import: keeping a rejected promise means one bad read, off
     // campus wifi or a refused rule, keeps failing for the life of the page
     // even after the network comes back.
+    // Only if the key has not moved on since. Without that check a rejection
+    // arriving late, from the previous account or the previous data version,
+    // evicted the read that had already replaced it, and the next panel to
+    // ask paid for the whole collection again. recommend.ts guards its own
+    // cache the same way.
     pending = load().catch((e: unknown) => {
-      into.reads.delete(what)
+      if (into.key === key) into.reads.delete(what)
       throw e
     })
     into.reads.set(what, pending)
@@ -231,12 +236,15 @@ export async function addClassMeeting(meeting: Omit<ClassMeeting, 'id' | 'profil
     // passing that, which is a change to a signature every caller shares.
     await live.addClassMeeting(id, meeting)
   } else {
-    // The same check the database makes, so the demo cannot reach a state a
-    // real account could not. Without it the same course at the same time on
+    // Literally the same check the database makes, sharing its function rather
+    // than restating it. Comparing the code raw here looked the same and was
+    // not: the account path collapses punctuation when it builds the document
+    // id, so "CPSC-362" and "CPSC 362" are one class signed in and were two in
+    // the demo. Without any check at all the same course at the same time on
     // the same day lists twice, and the two rows differ only by an id nobody
     // can see.
     const already = classMeetings.some(
-      (m) => m.course_code === meeting.course_code
+      (m) => live.sameCourse(m.course_code, meeting.course_code)
         && m.day_of_week === meeting.day_of_week
         && m.start_time === meeting.start_time,
     )

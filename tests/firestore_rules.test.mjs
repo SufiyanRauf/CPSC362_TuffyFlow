@@ -66,13 +66,19 @@ const aClass = (over = {}) => ({
 
 let env
 
+// 8080 is what firebase.json starts the emulator on, so `npm run test:rules`
+// needs nothing set. It is read from the environment as well because an
+// emulator left running from an earlier session holds 8080, and then the only
+// way to run these is to start one somewhere else and point this at it.
+const PORT = Number(process.env.FIRESTORE_EMULATOR_PORT) || 8080
+
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: 'tuffyflow-rules',
     firestore: {
       rules: readFileSync(new URL('../db/firestore.rules', import.meta.url), 'utf8'),
       host: '127.0.0.1',
-      port: 8080,
+      port: PORT,
     },
   })
   // The campus is seeded the way the real seed does it, with the Admin SDK,
@@ -160,7 +166,7 @@ describe('one student against another', () => {
   // Jordan already has a profile, so every write in the test above is an
   // update and it is the update rule that refuses them. That left the create
   // rule's own ownership check unexercised: changing it to plain signedIn()
-  // kept all thirty one tests green, and it would have let anybody claim a
+  // kept every one of these tests green, and it would have let anybody claim a
   // profile at the uid of somebody who had not signed in yet, with a name of
   // their choosing. This needs a uid with nothing at it.
   it('cannot create a profile at somebody else’s uid', async () => {

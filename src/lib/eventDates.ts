@@ -69,12 +69,18 @@ export function eventWindow(event: StoredEvent, now: Date = new Date()) {
   day.setUTCDate(day.getUTCDate() + event.day_offset)
   const date = day.toISOString().slice(0, 10)
 
-  // Twice, and the second time is not redundant. The first offset is read at
-  // midday, which on the two days a year the clocks move is the wrong side of
-  // the change for anything scheduled before 3am: the hour that does not
-  // exist in March would step backwards, and midnight would land on the
-  // previous day. Reading the offset again at the instant we just built, and
-  // rebuilding if it disagrees, puts both back.
+  // Twice, and the second time is not redundant. The first read asks what the
+  // offset is at 12:00 UTC on that date, which is four or five in the morning
+  // on campus depending on the season. That is deliberately past the 2am
+  // switch, so on the two days a year the clocks move it gives the offset for
+  // most of the day rather than the one the day started on. It is still a
+  // guess: an event scheduled before the switch wants the other offset. So we
+  // build the time with the guess, ask what the offset actually is at that
+  // instant, and rebuild if the two disagree.
+  //
+  // What that cannot do is invent an hour that does not exist. An event at
+  // 02:30 on the March morning comes out at 03:30, which is the only honest
+  // answer, and tests/event_dates.test.mjs pins it.
   const guess = offsetAt(new Date(`${date}T12:00:00Z`))
   let starts = new Date(`${date}T${event.at}:00${guess}`)
   const actual = offsetAt(starts)

@@ -5,7 +5,7 @@ error handler as plain functions. That covers the arithmetic, and it cannot see
 the wiring: whether the handler is registered on the app, whether the route is
 mounted at the path Vercel forwards, whether a body that fails validation comes
 back as a reason or as an empty 500. Deleting the exception_handler decorator
-left every one of those 73 tests passing while a real request carrying infinity
+left every one of those tests passing while a real request carrying infinity
 turned into a 500, which is the failure the handler exists to stop.
 
 So these go in over HTTP.

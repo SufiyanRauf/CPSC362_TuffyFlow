@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { clockRange, clockText, toMinutes } from '../src/lib/time.ts'
 
-test('clockText', () => {
+test('clockText prints midnight and noon as 12, not 0', () => {
   assert.equal(clockText('00:00'), '12:00 AM')
   assert.equal(clockText('00:15'), '12:15 AM')
   assert.equal(clockText('09:00'), '9:00 AM')

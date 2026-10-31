@@ -1155,3 +1155,134 @@ def test_the_published_hours_line_up_with_what_the_app_can_offer():
     assert inside == [], (
         "These are open when the library around them is shut: %s" % inside
     )
+
+
+# The five below came out of a mutation run: each one is a boundary the suite
+# could not see. Widening either comparison on the clash window from < to <=,
+# replacing its day check with True, dropping the hour from the fullness join,
+# moving the open/shut comparison off its endpoints, or halving or doubling the
+# plausible-walk ceiling all left the suite green.
+
+
+def _clash_context(day=1, classes=None, now=400):
+    # Early in the morning on purpose. The clash filter is only reached by an
+    # event that has not started yet, so a later clock would drop the events
+    # below for the wrong reason and the test would prove nothing.
+    return {
+        "profile": {"interests": ["ai"], "career_goals": [],
+                    "permit_type": "student", "noise_pref": 2},
+        "dest_lat": CS_LAT, "dest_lng": CS_LNG, "dest_name": "CS",
+        "now_minutes": now, "day_of_week": day,
+        "class_meetings": classes if classes is not None else [],
+    }
+
+
+def test_an_event_butting_against_a_class_is_not_a_clash():
+    # The window is half open on purpose: an event starting the minute a class
+    # ends does not overlap it, and neither does one ending the minute a class
+    # starts. Widening either comparison to <= throws away the two slots a
+    # student is most likely to use, and nothing in the suite noticed.
+    ctx = _clash_context(classes=[{"day_of_week": 1, "start": 600, "end": 900}])
+    cfg = scoring.event_config(ctx)
+
+    after = [{"id": "after", "name": "Starts as class ends", "tags": ["ai"],
+              "lat": CS_LAT, "lng": CS_LNG,
+              "starts_minutes": 900, "ends_minutes": 960, "day_offset": 0}]
+    assert len(scoring.rank(after, cfg["filters"], cfg["factors"],
+                            cfg["weights"], 5, ctx)) == 1
+
+    before = [{"id": "before", "name": "Ends as class starts", "tags": ["ai"],
+               "lat": CS_LAT, "lng": CS_LNG,
+               "starts_minutes": 540, "ends_minutes": 600, "day_offset": 0}]
+    assert len(scoring.rank(before, cfg["filters"], cfg["factors"],
+                            cfg["weights"], 5, ctx)) == 1
+
+    # and one minute of genuine overlap at each end still goes
+    over = [{"id": "over", "name": "One minute over", "tags": ["ai"],
+             "lat": CS_LAT, "lng": CS_LNG,
+             "starts_minutes": 899, "ends_minutes": 960, "day_offset": 0}]
+    assert scoring.rank(over, cfg["filters"], cfg["factors"],
+                        cfg["weights"], 5, ctx) == []
+
+
+def test_a_class_on_another_day_does_not_block_an_event():
+    # The day comparison was only ever tested in the direction that blocks.
+    # Replacing it with True left the suite green, which means nothing proved
+    # a Monday class does not swallow a Saturday event. It is the same clock
+    # window on both, so the day is the only thing keeping the event alive.
+    monday_class = [{"day_of_week": 1, "start": 890, "end": 970}]
+    ctx = _clash_context(classes=monday_class)
+    cfg = scoring.event_config(ctx)
+    saturday = [{"id": "sat", "name": "Saturday, same hours", "tags": ["ai"],
+                 "lat": CS_LAT, "lng": CS_LNG,
+                 "starts_minutes": 900, "ends_minutes": 990, "day_offset": 5}]
+    assert len(scoring.rank(saturday, cfg["filters"], cfg["factors"],
+                            cfg["weights"], 5, ctx)) == 1
+
+
+def test_lot_fullness_reads_the_hour_you_are_arriving():
+    # Every other fixture in this file uses hour 10 for both the row and the
+    # arrival, so deleting the hour from the join changed nothing. Two rows for
+    # the same lot on the same day, far apart, and only the arrival hour can
+    # pick between them.
+    rows = [
+        {"lot_id": "near-empty", "day_of_week": 1, "hour": 9, "typical_pct_full": 5},
+        {"lot_id": "near-empty", "day_of_week": 1, "hour": 10, "typical_pct_full": 95},
+    ]
+    quiet = _parking_context(hour=9, rows=rows)
+    busy = _parking_context(hour=10, rows=rows)
+
+    assert scoring.lot_fullness({"id": "near-empty"}, quiet) == (5, True)
+    assert scoring.lot_fullness({"id": "near-empty"}, busy) == (95, True)
+
+    # and it reaches the card, not just the helper
+    cfg = scoring.parking_config(busy)
+    out = scoring.rank([LOTS[0]], cfg["filters"], cfg["factors"], cfg["weights"], 1, busy)
+    assert "usually about 95% full when you would arrive" in out[0]["reasons"], out[0]
+
+    quiet_out = scoring.rank([LOTS[0]], cfg["filters"], cfg["factors"],
+                             cfg["weights"], 1, quiet)
+    assert "usually about 5% full when you would arrive" in quiet_out[0]["reasons"], quiet_out[0]
+
+
+def test_somewhere_is_open_on_its_opening_and_closing_minute():
+    # SC-71 pins both endpoints, but only on the branch for hours that wrap
+    # past midnight, which nothing on this campus uses. The straight branch
+    # every real spot takes was unpinned: opens <= at <= closes could become
+    # opens < at < closes and stay green.
+    def offered(at):
+        ctx = _spots_context(now_minutes=at)
+        cfg = scoring.spot_config(ctx)
+        spots = [{"id": "s", "name": "Ten to three", "lat": CS_LAT, "lng": CS_LNG,
+                  "noise_level": 1, "has_outlets": True,
+                  "opens_at": "10:00", "closes_at": "15:00", "closed_today": False}]
+        return scoring.rank(spots, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx) != []
+
+    assert offered(600) is True        # 10:00, the minute it opens
+    assert offered(900) is True        # 15:00, the minute it closes
+    assert offered(599) is False       # 09:59
+    assert offered(901) is False       # 15:01
+
+
+def test_a_walk_of_an_hour_is_offered_and_anything_longer_is_not():
+    # MAX_PLAUSIBLE_WALK_MINUTES could be moved to 30 or to 120 without a
+    # single failure, so the filter that stops a mistyped coordinate reaching
+    # a card was free to drift. Both lots below sit due east of the
+    # destination, so the distance is only the longitude.
+    hour_away = {"id": "hour", "name": "An hour away", "lat": CS_LAT,
+                 "lng": CS_LNG + 0.0396, "permits": ["student"]}
+    further = {"id": "further", "name": "Further still", "lat": CS_LAT,
+               "lng": CS_LNG + 0.0403, "permits": ["student"]}
+
+    # spelled out, so a change to the walking speed or the detour factor shows
+    # up here as a failure rather than silently moving what is being tested
+    assert scoring.walk_minutes(
+        scoring.haversine(hour_away["lat"], hour_away["lng"], CS_LAT, CS_LNG)) == 60
+    assert scoring.walk_minutes(
+        scoring.haversine(further["lat"], further["lng"], CS_LAT, CS_LNG)) == 61
+
+    ctx = _parking_context()
+    cfg = scoring.parking_config(ctx)
+    out = scoring.rank([hour_away, further], cfg["filters"], cfg["factors"],
+                       cfg["weights"], 5, ctx)
+    assert [r["item"]["id"] for r in out] == ["hour"], out
