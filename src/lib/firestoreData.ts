@@ -77,6 +77,7 @@ function demandRows<T>(what: string, rows: T[]) {
 // it again to swap it out, and two copies of a sentence drift.
 const RULES_REFUSED
   = 'The database would not allow that. Check that db/firestore.rules has been published.'
+const OFFLINE = 'Could not reach the server. Check your connection and try again.'
 
 function readable(error: unknown): string {
   const code = (error as { code?: string })?.code ?? ''
@@ -84,7 +85,7 @@ function readable(error: unknown): string {
     return RULES_REFUSED
   }
   if (code === 'unavailable' || code === 'deadline-exceeded') {
-    return 'Could not reach the server. Check your connection and try again.'
+    return OFFLINE
   }
   if (code === 'unauthenticated') {
     return 'You have been logged out. Log in again.'
@@ -101,7 +102,7 @@ function readable(error: unknown): string {
   const m = message.toLowerCase()
   if (m.includes('failed to fetch') || m.includes('load failed')
       || m.includes('networkerror') || m.includes('fetch failed')) {
-    return 'Could not reach the server. Check your connection and try again.'
+    return OFFLINE
   }
   return message
 }
@@ -165,6 +166,19 @@ async function readAll<T>(name: string): Promise<T[]> {
   try {
     const { fs, db } = await connect()
     const snapshot = await fs.getDocs(fs.collection(db, name))
+    // A query and a single document behave differently offline, and the
+    // difference is the whole reason this check is here. getDoc rejects with
+    // "unavailable", which is why getOrCreateProfile already reports a dead
+    // network correctly. getDocs does not: it falls back to the cache and
+    // resolves, and the cache is empty on every page load because nothing
+    // here turns on persistence. So a dropped connection came back as an
+    // empty collection, and the screens said "Nothing to show." as a fact.
+    // Worse, the promise resolved, and the holds in this file and in
+    // campusData only drop on a rejection, so the empty answer was kept for
+    // the life of the page and the panels could not retry out of it.
+    if (snapshot.metadata.fromCache) {
+      throw new Error(OFFLINE)
+    }
     return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as T)
   } catch (e) {
     throw new Error(readable(e))
@@ -343,7 +357,7 @@ export async function getOrCreateProfile(
       // a paid plan, so the first look creates it instead. The rules allow a
       // person to create their own and nobody else's.
       const fresh = emptyProfileFields(fullName)
-      await fs.setDoc(ref, fresh)
+      await acknowledged(fs.setDoc(ref, fresh))
       return { id: userId, ...fresh }
     }
 
@@ -363,7 +377,7 @@ export async function getOrCreateProfile(
     // once, for accounts made the long way round.
     if (stored.full_name == null && fullName) {
       try {
-        await fs.updateDoc(ref, { full_name: fullName })
+        await acknowledged(fs.updateDoc(ref, { full_name: fullName }))
         stored.full_name = fullName
       } catch {
         // not worth failing the whole screen over: the name is still on the
@@ -393,6 +407,13 @@ export async function getClassMeetings(userId: string): Promise<ClassMeeting[]> 
     const snapshot = await fs.getDocs(
       fs.collection(db, 'profiles', userId, 'class_meetings'),
     )
+    // Same reason as readAll: a query resolves from the cache offline instead
+    // of rejecting, so a dropped connection used to render an empty week as a
+    // fact. It also feeds addClassMeeting's duplicate guard, which would
+    // otherwise compare against a cache that does not have the class yet.
+    if (snapshot.metadata.fromCache) {
+      throw new Error(OFFLINE)
+    }
     const rows = snapshot.docs.map((d) => ({
       id: d.id, profile_id: userId, ...d.data(),
     }) as ClassMeeting)
@@ -408,6 +429,37 @@ export async function getClassMeetings(userId: string): Promise<ClassMeeting[]> 
 // Writes
 // ---------------------------------------------------------------------------
 
+// A write resolves when the server acknowledges it. Offline, Firestore queues
+// it and the promise simply never settles, so the Save button sat on
+// "Saving..." for as long as the screen was open, with no error and no way to
+// tell whether anything had happened. session.ts bounds the auth first answer
+// for the same reason and with the same shape.
+//
+// Giving up here does not cancel the write: it stays queued and still applies
+// when the connection comes back. That is safe to tell a student to retry,
+// because all three writers below are idempotent. saveProfile replaces the
+// whole document, a class meeting's id is derived from its own fields, and a
+// delete of an already deleted document is not an error.
+// Deliberately longer than the SDK's own ONLINE_STATE_TIMEOUT_MS of 10s. At
+// 8s this fired first, so the app announced "could not reach the server" while
+// Firestore still believed it was online and was still trying, and a write
+// that landed a second later left an error on screen next to saved data.
+const WRITE_ACK_MS = 12000
+
+async function acknowledged<T>(write: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      write,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(OFFLINE)), WRITE_ACK_MS)
+      }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
 export async function saveProfile(userId: string, next: Profile) {
   try {
     const { fs, db } = await connect()
@@ -421,14 +473,14 @@ export async function saveProfile(userId: string, next: Profile) {
     // every save that account ever makes again. Writing all six outright puts
     // a drifted document back instead of being blocked by it, and it cannot
     // fail with "not found" on a document the app is about to replace.
-    await fs.setDoc(fs.doc(db, 'profiles', userId), {
+    await acknowledged(fs.setDoc(fs.doc(db, 'profiles', userId), {
       full_name: next.full_name,
       major: next.major,
       interests: next.interests,
       career_goals: next.career_goals,
       permit_type: next.permit_type,
       noise_pref: next.noise_pref,
-    })
+    }))
   } catch (e) {
     throw new Error(readable(e))
   }
@@ -477,10 +529,10 @@ export async function addClassMeeting(
     // Postgres, so a second click writes the same document rather than a
     // second one. The check above is what produces a sentence; this is what
     // makes a duplicate impossible rather than unlikely.
-    await fs.setDoc(
+    await acknowledged(fs.setDoc(
       fs.doc(db, 'profiles', userId, 'class_meetings', meetingId(meeting)),
       meeting,
-    )
+    ))
   } catch (e) {
     throw new Error(readable(e))
   }
@@ -489,7 +541,8 @@ export async function addClassMeeting(
 export async function removeClassMeeting(userId: string, id: string) {
   try {
     const { fs, db } = await connect()
-    await fs.deleteDoc(fs.doc(db, 'profiles', userId, 'class_meetings', id))
+    await acknowledged(
+      fs.deleteDoc(fs.doc(db, 'profiles', userId, 'class_meetings', id)))
   } catch (e) {
     throw new Error(readable(e))
   }

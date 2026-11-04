@@ -172,9 +172,11 @@ on.
 The occupancy model had one weekday shape, fitted to the Thursday readings, and
 it reproduces those exactly. A Friday reading off the board at 11:51 showed it
 was 81 points wrong: it said Eastside North was 99 percent full when the board
-said 18, and the order of the lots inverts, with Eastside North the busiest
-structure on a Thursday and the emptiest on a Friday. Far fewer classes run
-here on a Friday. So the seed carries three shapes now, not two, and Friday
+said 18, and the order of the lots inverts: Eastside North is the busiest
+structure at 13:57 on the Thursday, and the emptiest on the Friday. Far fewer
+classes run
+here on a Friday. So the seed carried three shapes from here rather than two,
+and a fourth followed on 2026-11-03 when evenings got their own. Friday
 lands exactly on its reading.
 
 Honest limit: Friday rests on one reading at one hour, so its midday level is
@@ -183,6 +185,128 @@ measured and the rest of its day is not. The parking footnote says so.
 This is also why `src/lib/campusRows.ts` no longer mirrors `db/seed.sql`: that
 file is the previous Postgres design, nothing runs it, and it has no Friday
 branch.
+
+---
+
+**2026-11-03: Weekday evenings get their own parking curve**
+
+The same thing happened again, at the other end of the day. Every reading the
+model was fitted to is a midday one: 13:11 and 13:57 on a Thursday, 11:51 on a
+Friday, 12:23 on a Sunday. Nothing measured an evening, and the README said so.
+
+A Tuesday reading at 18:14 showed the weekday curve treats 18:00 as the tail of
+the midday hump and has the campus nearly emptied by then. It predicted 5, 1,
+41, 43 and 20 percent for the five counted facilities; the board said 42.3,
+51.8, 54.0, 1.5 and 53.8. Mean error 35 points.
+
+Eastside South is the part that matters. It is the fullest structure of the
+weekday afternoon, 88 percent at 13:11, and the curve carried that forward and
+called it the fullest at 18:00 too. The board had it at 1.5 percent: twenty
+cars in 1341 spaces, the emptiest thing on campus. A base that is 35 points low
+can be shifted; an ordering that inverts cannot, which is exactly the argument
+Friday settled. So evening carries its own per lot offsets, and Monday to
+Thursday from 17:00 uses them.
+
+A second Tuesday reading at 18:46, taken after the curve had been fitted to the
+18:14 one, was the check that it is not just repeating its own input: every lot
+came back within 4.2 points of that first fit. The fit is now centred on the
+pair rather than on either one. Four lots emptied across the half hour, which
+is the direction the evening decay assumes.
+
+**Eastside South is deliberately left out of the evening, and that is the part
+worth reading.** Both readings put it at 1.49 percent, twenty cars in 1341
+spaces, and it is the only facility that did not change at all between them:
+190 cars left campus in those 32 minutes and none of them left Eastside South.
+At the same moment 1016 drivers were sitting in Eastside North with 864 spaces
+free, next door to a structure that was all but empty and a shorter walk to the
+academic core. Nobody queues for the fuller one. So the board was not recording
+low evening demand. It was recording a structure that was not taking cars.
+
+Writing that in as a demand offset is what the first version of this change
+did, and it made the app rank Eastside South the best evening parking on campus
+four days a week, at one to four percent full, with the shortest leave-by
+buffer of any lot. That is advice to drive to a gate that may be shut. There is
+no evening row for it now, so lot_fullness falls back to the stand-in and the
+card says "no typical reading for that hour", which is the truth. One evening
+reading taken on a day it is plainly open would settle it.
+
+Against the 3 point per lot bar the Thursday pair set, every lot in all six
+readings is now within 2.72 points, and that worst case is the pre-existing
+Thursday 13:57 one rather than anything the evening added. The four earlier
+readings are untouched, because the evening branch only applies from 17:00 on
+Monday to Thursday.
+
+Honest limit, and it is a real one: both evening readings are the same hour, so
+18:00 is the only measured level. 19:00 to 21:00 is an assumed decay, and a
+uniform one, which the readings argue against, since Eastside North drained
+about four times faster than S8 and S10 over the same half hour. 17:00 is a
+blend of the afternoon and evening levels rather than a reading. Only a Tuesday
+was sampled, so Monday, Wednesday and Thursday inherit a Tuesday. Friday
+evening deliberately keeps the Friday shape, because the single Friday reading
+is a midday one and says nothing about a Friday night. The parking footnote on
+the screen says the evening rests on two readings half an hour apart.
+
+---
+
+**2026-11-03: App Check, and why it is reCAPTCHA Enterprise**
+
+The scoring endpoint has no sign in of its own and the Firestore rules let any
+signed in account read the whole campus, so the thing neither of those stops is
+a script with a free account hammering either one. App Check is the answer to
+that: the database can tell which requests actually came from this app.
+
+Chose reCAPTCHA Enterprise over the classic v3 provider. Classic works and was
+what went in first, but the Firebase console marks it deprecated, and a project
+nobody is going to maintain after this term should not be built on something
+with an end date. Rejected doing nothing, which was tempting because the free
+plan stops serving rather than billing, so the worst case is a dead app rather
+than a bill; dead on the morning it is being marked is bad enough.
+
+It is optional on purpose. `src/lib/firebase.ts` returns early when there is no
+site key, so a clone with no key of its own still runs. That is the difference
+between a grader being able to start the app and not.
+
+Sequenced monitoring before enforcement deliberately. Turning enforcement on
+first would have locked out the demo account and every clone at once, with no
+way to see which requests were failing. Monitoring shows the traffic for a few
+days and enforcement follows. The enforcement switch is still off, and that is
+the one thing left on the README's list rather than an oversight.
+
+Registered debug tokens are the sharp edge here: one is a permanent bypass for
+anyone holding the UUID, and it gets printed to the browser console. Short
+lived ones, deleted before enforcement goes live.
+
+---
+
+**2026-11-03: Three changes to the scorer that came out of the review round**
+
+Each has its reasoning in the code; recording them here because a code comment
+is not where a decision log is read from.
+
+The walk plausibility filter now runs on spots and events, not just parking.
+The old comment argued they did not need it because their coordinates come
+from a building the browser looked up. True of our own screens, and not true
+of the endpoint, which anything on the internet can post to. The first attempt
+at this was wrong in an instructive way: it measured the candidate against the
+parking destination for all three, and spots and events print a walk measured
+from the class instead, so it let a bad spot through and dropped a good one.
+It measures the leg the card prints now.
+
+An event with no tags is scored at a stand in rather than having its tag weight
+shared out. Redistributing meant a tagless event was judged only on walk and
+soon, which are near maximal for almost every event, so it beat events that
+actually matched the student. Parking already handled an unknown this way; the
+two are consistent now. It is a trade rather than a straight win: it fixes the
+top of the list and costs a little at the tail, where an event matching one of
+its three topics now sits below one with no topics at all.
+
+Reads and writes now say when the network is gone. A Firestore query resolves
+from an empty cache offline instead of rejecting, so a dropped connection used
+to render an empty week as a fact, and a write never settles at all, so Save
+sat on "Saving..." forever. Both are bounded and both report now. The write
+bound is 12 seconds, deliberately longer than Firestore's own 10 second offline
+heuristic, so the app does not announce a failure while the SDK still thinks it
+is online.
 
 ---
 
@@ -373,7 +497,7 @@ entirely, since in student org writing it nearly always means events.
 The occupancy curve used to be a single time of day shape with a per lot offset
 derived from the length of the lot's name, which is to say no information at
 all. Took readings off the campus parking board and set the per lot numbers
-from those. Four readings are in data/parking_samples.csv: one on a Sunday,
+from those. Six readings are in data/parking_samples.csv: one on a Sunday,
 two on a Thursday and one on a Friday. Three of them set the per lot numbers,
 the Sunday, the first Thursday and the Friday, and the curve reproduces all
 three exactly. The second Thursday timestamp was taken after the curve was
@@ -390,9 +514,10 @@ it is nearest the academic buildings while State College sits at 43. On the
 Sunday reading every structure was at or under 4 percent except S8 and S10 at 59,
 which is beside the stadium and the gym. Our first attempt applied the Thursday
 numbers to the weekend too and had Eastside at 54 percent on a Sunday against
-a real 0.5. The seed carries three columns now.
+a real 0.5. The seed carried three columns from here, and a fourth from
+2026-11-03, when weekday evenings got their own.
 
-Worth saying plainly: four readings is not much. Three days, only the counted
+Worth saying plainly: six readings is not much. Four days, only the counted
 facilities, and only a Sunday on the weekend side, so Saturday is an
 assumption. The employee, resident and hourly lots are not on that board at all
 and their numbers are guesses. The README says so and so does the parking
@@ -681,6 +806,8 @@ every look at the parking screen would have been 1,344 reads for twelve lots'
 worth of numbers. It is folded onto the lot document now, day then hour then
 percentage. Checked the fold both ways: 1,344 rows in, 1,344 cells out, and a
 spot read back the same figure it went in as.
+
+(1,344 is the Postgres shape, and it is what db/seed.sql still produces. The live grid in src/lib/campusRows.ts is 1,324, because Eastside South carries no evening figure and so writes no row for 17:00 to 21:00 on Monday to Thursday. The 2026-11-03 entry says why.)
 
 Joins do not exist, so a building's name is copied onto every spot and a club's
 name onto every event. That is ordinary for a document database and it means
@@ -1131,7 +1258,7 @@ bare one breaks both and nothing else notices.
 **src/vite-env.d.ts**: the types for import.meta.env, so the Firebase config
 reads are checked rather than any.
 
-**data/parking_samples.csv**: the four readings off CSUF's live counts
+**data/parking_samples.csv**: the six readings off CSUF's live counts
 board, which the occupancy curve was fitted to. **docs/architecture.mmd**: the
 three recommenders drawn from the student's side, which GitHub renders.
 
@@ -1199,8 +1326,10 @@ a .tsx component.
 case that forced the rarity weighting, so the choral society cannot climb back
 above the software engineering clubs without a failure.
 
+**tests/parking_curve.test.mjs**: five cases over the occupancy curve, which had none at all while it was the only data the parking screen shows. Two of them read the board readings out of data/parking_samples.csv and check the curve against them, so adding a reading there tests the model without touching the test. The other three pin the shape of the seed: the 1 to 99 bounds, Eastside South having no evening row, and Friday keeping its own curve rather than the weekday evening one.
+
 **tools/gen_test_cases.py**: writes TEST_CASES.md. Reads the test files for the
-names, the fixtures and the assertions, runs all six suites for the pass
+names, the fixtures and the assertions, runs all seven suites for the pass
 column, and refuses to write anything if a suite will not run, so the document
 cannot claim a pass nobody saw.
 

@@ -22,6 +22,17 @@ WORST_WALK_MINUTES = 20
 MAX_PLAUSIBLE_WALK_MINUTES = 60
 
 UNKNOWN_FULLNESS = 50
+# An event that lists no topics of its own. Scored at the midpoint rather than
+# left out, for the same reason an hour with no parking reading is: a weight
+# that is dropped gets shared out among the others, so the candidate we know
+# nothing about ends up judged only on the factors it happens to do well on.
+# For events that meant walk and soon, which are near maximal for almost
+# every event, so a tagless event inherited whatever those two said and beat
+# events that genuinely matched the student. It was not a floor: the score
+# tracked the other factors all the way from about 6 percent to 100, and 100
+# is the number that matters, because it came up in the one case the student
+# actually reads, an event today beside their class. See the EVENT_WEIGHTS note.
+UNKNOWN_TAG_MATCH = 0.5
 BASE_PARKING_BUFFER_MINUTES = 10
 
 # How far either side of a class we are willing to claim it still says where
@@ -249,6 +260,29 @@ def lot_fullness(lot, context):
 # on every call the app makes. The inner functions take it as an argument
 # rather than reading the enclosing name because the signature belongs to
 # rank(), which has no idea which config built them.
+def walk_is_plausible_to(candidate, lat, lng):
+    """Reject a candidate whose coordinates cannot be walked to from `lat,lng`.
+
+    Given 0, 0 the scoring measured the walk anyway and offered the row with
+    "203903 min walk" on the card, which is a 141 day walk presented as a plan.
+    Filtered rather than scored, the way a lot whose permit does not match is:
+    a walk nobody will ever take is not a worse recommendation, it is not a
+    recommendation.
+
+    The point to measure from is a parameter because the three categories do
+    not share one. Parking walks to the destination building; a study spot and
+    an event are both measured from where the student already is that day,
+    which is what anchor_for works out. A first attempt at this filter used
+    the destination for all three. It let a spot at 0, 0 through whenever the
+    destination was also junk, because that pair happens to be a short walk,
+    while dropping a spot next door to the class whenever the destination was
+    junk and the spot was real. It has to be the same leg the walk factor
+    prints, or the filter and the card contradict each other.
+    """
+    metres = haversine(candidate["lat"], candidate["lng"], lat, lng)
+    return walk_minutes(metres) <= MAX_PLAUSIBLE_WALK_MINUTES
+
+
 def parking_config(context):
     def permit_allows(lot, ctx):
         # None until the profile screen is filled in, and None matches nothing
@@ -258,21 +292,8 @@ def parking_config(context):
         permit = ctx["profile"].get("permit_type")
         return permit is not None and permit in lot["permits"]
 
-    def walk_is_plausible(lot, ctx):
-        # A lot whose coordinates are wrong is not a lot anybody can park in.
-        # Given 0, 0 the scoring measured the walk anyway and offered the lot
-        # second with "203903 min walk" on the card, which is a 141 day walk
-        # presented as a plan. The browser already refuses to rank parking at
-        # all when the destination building has gone missing, for the same
-        # reason, and this is the other end of the same line.
-        #
-        # Filtered rather than scored, the way a lot whose permit does not
-        # match is: a walk nobody will ever take is not a worse recommendation,
-        # it is not a recommendation. Study spots and events do not need the
-        # same guard, because their coordinates come from a building the
-        # browser looked up and it drops the row when that lookup fails.
-        metres = haversine(lot["lat"], lot["lng"], ctx["dest_lat"], ctx["dest_lng"])
-        return walk_minutes(metres) <= MAX_PLAUSIBLE_WALK_MINUTES
+    def walk_to_dest_is_plausible(lot, ctx):
+        return walk_is_plausible_to(lot, ctx["dest_lat"], ctx["dest_lng"])
 
     def walk_factor(lot, ctx):
         metres = haversine(lot["lat"], lot["lng"], ctx["dest_lat"], ctx["dest_lng"])
@@ -292,7 +313,7 @@ def parking_config(context):
         return value, "usually about %d%% full when you would arrive" % pct
 
     return {
-        "filters": [permit_allows, walk_is_plausible],
+        "filters": [permit_allows, walk_to_dest_is_plausible],
         "factors": {"walk": walk_factor, "fullness": fullness_factor},
         "weights": PARKING_WEIGHTS,
     }
@@ -343,10 +364,23 @@ def spot_config(context):
             return at >= opens or at <= closes
         return opens <= at <= closes
 
+    def spot_anchor(ctx):
+        return anchor_for(ctx, ctx.get("day_of_week", 0), ctx["now_minutes"])
+
+    def walk_is_plausible(spot, ctx):
+        # From the anchor, because that is the leg walk_factor below prints.
+        # With no anchor the factor declines to judge the walk at all and the
+        # card leaves walking out, so there is no number here to be wrong and
+        # nothing to filter on.
+        anchor = spot_anchor(ctx)
+        if anchor is None:
+            return True
+        return walk_is_plausible_to(spot, anchor[0], anchor[1])
+
     def walk_factor(spot, ctx):
         # measured from where you are today, not from your next class, which
         # may be on another day entirely
-        anchor = anchor_for(ctx, ctx.get("day_of_week", 0), ctx["now_minutes"])
+        anchor = spot_anchor(ctx)
         if anchor is None:
             # Quiet for the same reason as the event walk factor: no walk
             # minutes is the honest answer and the card leaves walking out.
@@ -376,7 +410,7 @@ def spot_config(context):
 
     known_preference = context["profile"].get("noise_pref") is not None
     return {
-        "filters": [is_open],
+        "filters": [is_open, walk_is_plausible],
         "factors": {"walk": walk_factor, "noise": noise_factor, "outlets": outlets_factor},
         "weights": SPOT_WEIGHTS if known_preference else SPOT_WEIGHTS_NO_NOISE,
     }
@@ -423,8 +457,16 @@ def event_config(context):
         # score zero against a weight of 0.6, so every event on a new account's
         # first visit read 30 percent, the same as an event that is actively
         # wrong for them. See the note on EVENT_WEIGHTS.
-        if not mine or not theirs:
+        # Two different situations, and they must not share an answer. A new
+        # account has no interests and no career goals, so there is genuinely
+        # nothing to judge and the weight should be shared out. An event with
+        # no tags is not that: we know what the student wants, the event just
+        # did not say what it is about, and dropping the weight there promoted
+        # it above events that matched. That one is scored at the stand-in.
+        if not mine:
             return NOTHING_TO_JUDGE, ""
+        if not theirs:
+            return UNKNOWN_TAG_MATCH, "no topics listed for this one"
         shared = mine & theirs
         # No overlap is a real answer, unlike the two cases above: we know what
         # the student wants, we know what the event is about, and they do not
@@ -436,12 +478,24 @@ def event_config(context):
         value = len(shared) / len(theirs)
         return min(1.0, value), "matches " + " and ".join(sorted(shared))
 
+    def event_anchor(event, ctx):
+        day = (ctx.get("day_of_week", 0) + event.get("day_offset", 0)) % 7
+        return anchor_for(ctx, day, event["starts_minutes"])
+
+    def walk_is_plausible(event, ctx):
+        # Same leg the factor prints, and the same silence when there is no
+        # anchor: a weekend event has no class to be measured from, the card
+        # does not mention walking, so there is nothing to call implausible.
+        anchor = event_anchor(event, ctx)
+        if anchor is None:
+            return True
+        return walk_is_plausible_to(event, anchor[0], anchor[1])
+
     def walk_factor(event, ctx):
         # from wherever you will be on the event's own day. "9 min away" used to
         # mean nine minutes from your next class, so a Saturday event was
         # measured from a Monday lecture.
-        day = (ctx.get("day_of_week", 0) + event.get("day_offset", 0)) % 7
-        anchor = anchor_for(ctx, day, event["starts_minutes"])
+        anchor = event_anchor(event, ctx)
         if anchor is None:
             # No reason sentence. This used to say "no class that day to
             # measure a walk from", which turned up on every weekend event and
@@ -477,7 +531,7 @@ def event_config(context):
         return normalize(days, 0, 9), label
 
     return {
-        "filters": [not_started, no_class_clash],
+        "filters": [not_started, no_class_clash, walk_is_plausible],
         "factors": {"tags": tag_factor, "walk": walk_factor, "soon": soon_factor},
         "weights": EVENT_WEIGHTS,
     }

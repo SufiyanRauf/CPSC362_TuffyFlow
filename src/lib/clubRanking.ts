@@ -37,7 +37,8 @@ export function clubRanking(clubs: Club[], mine: Set<string>) {
     [...shared].sort((a, b) => (counts.get(a) ?? 0) - (counts.get(b) ?? 0))
 
   // Whether any club in the list carries any interest this student has. The
-  // tag vocabulary is closed at 29, so a student who typed something outside
+  // club tag vocabulary is closed at 29 of the 33 the app knows, the other
+  // four being carried only by events, so a student who typed something outside
   // it, or who has not filled the profile in at all, shares a tag with nothing
   // and the sort below collapses to the alphabet. Two pieces of copy read it:
   // the header, which otherwise promises an order it is not giving, and the

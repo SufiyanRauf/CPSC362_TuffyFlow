@@ -22,6 +22,7 @@ document that claims a pass it did not see.
 import ast
 import os
 import re
+import platform
 import subprocess
 import sys
 import tempfile
@@ -39,8 +40,11 @@ SUITES = [
     dict(prefix='SC', title='Ranking engine', file='tests/test_scoring.py',
          kind='py', command='.venv/bin/python -m pytest tests/test_scoring.py',
          covers='Parking, Campus spots, Events',
-         note='Pure functions over dicts. No web framework and no database, '
-              'so these run in about half a second.'),
+         note='Mostly pure functions over dicts, so the whole file runs in '
+              'about half a second. A dozen of them do reach for the request '
+              'models in api/recommend.py, because the bounds on a field are '
+              'worth checking where they are declared, and one shells out to '
+              'Node to read the real campus rows. No database either way.'),
     dict(prefix='API', title='Scoring endpoint', file='tests/test_api.py',
          kind='py', command='.venv/bin/python -m pytest tests/test_api.py',
          covers='Parking, Campus spots and Events, through the HTTP layer',
@@ -53,26 +57,255 @@ SUITES = [
          note='Run against Firebase\'s Firestore emulator on this machine. '
               'Nothing in this suite touches the real project. Needs '
               'firebase-tools and a JDK on the path, and a passing run '
-              'prints a wall of red PERMISSION_DENIED lines, because every '
-              'case here is a refusal that is supposed to happen.'),
+              'prints a wall of red PERMISSION_DENIED lines, because most of '
+              'these cases are refusals that are supposed to happen. Seven '
+              'are the other way round, checking that the owner is still let '
+              'through, because a rule that refuses everybody passes every '
+              'refusal test there is.'),
     dict(prefix='DATE', title='Event dating', file='tests/event_dates.test.mjs',
          kind='node', command='npm run test:dates',
-         covers='Club and event matching',
+         covers='Event dates and times',
          note='The daylight saving arithmetic, which is the part of the '
               'event screen that has no second chance to be right.'),
     dict(prefix='CLK', title='Clock formatting', file='tests/clock_text.test.mjs',
          kind='node', command='npm run test:dates',
          covers='The screens that read a stored time through src/lib/time.ts',
-         note='time.ts turns a stored time into something a student reads, and '
-              'six screens go through it, so one broken branch here is wrong on '
-              'all six at once. The two event screens format their own dates '
-              'with Intl directly and are covered by Event dating instead.'),
+         note='time.ts turns a stored time into something a student reads, '
+              'and five screens call these functions, so one broken branch '
+              'here is wrong on all five at once. Three more files import '
+              'time.ts for the campus timezone alone and are untouched by it; '
+              'the two event screens format their own dates with Intl and are '
+              'covered by Event dating instead.'),
+    dict(prefix='PARK', title='Parking occupancy curve',
+         file='tests/parking_curve.test.mjs',
+         kind='node', command='npm run test:parking',
+         covers='Parking',
+         note='The occupancy figures the parking screen shows. The first two '
+              'read the board readings out of data/parking_samples.csv, so '
+              'adding a reading there is enough to check the curve against '
+              'it; the other three pin the shape of the seed itself, and '
+              'those do carry numbers written into the test.'),
     dict(prefix='CLUB', title='Club ranking', file='tests/club_ranking.test.mjs',
          kind='node', command='npm run test:clubs',
          covers='Club matching',
          note='The order the club list comes out in, which is the whole '
               'point of that screen and the one thing on it worth testing.'),
 ]
+
+
+# The numbered requirements, and how each one is traced to the cases that
+# check it. The course asks for these to be numbered and traced to the
+# features, with non functional ones for response time, the security model and
+# what happens with no data.
+#
+# Three things keep this honest, and all three are refusals rather than
+# comments, because a traceability matrix is the easiest document in a project
+# to make look complete:
+#
+#   a requirement that matches no case        stops the script
+#   a rule, or a word in one, that matches    stops the script
+#     nothing
+#   a case that matches no requirement and    stops the script
+#     is not named in SHARED below
+#
+# The middle one is the one worth having. An earlier version had eight rule
+# words that had never matched anything -- two of them were written against the
+# wrong suite, one could not match because humanise() turns "stand_in" into
+# "stand in", and one requirement's whole HTTP rule was dead -- and the matrix
+# looked perfectly healthy throughout, because the requirements were being
+# carried by their other rules.
+#
+# A rule is (suite prefix, words that must appear in the Precondition, words of
+# which one must appear in the test name, names this rule must not claim).
+# None means "do not care". Matching is on whole words, because "anchor" inside
+# "anchors" traced two normalize tests to the weekly schedule.
+REQUIREMENTS = [
+    dict(id='FR-1',
+         text='A student can record and change a profile holding their name, '
+              'major, interests, career goals, permit type and noise '
+              'preference, and can delete it.',
+         rules=[('SEC', 'own profile', None, None)]),
+    dict(id='FR-2',
+         text='A student can add a class to a weekly schedule, read the '
+              'schedule back, and remove a class from it.',
+         rules=[('SEC', 'own schedule', None, None)]),
+    dict(id='FR-3',
+         text='The app offers parking lots for the class the student is '
+              'heading to, ordered by how far the walk is and how full the lot '
+              'usually is at that hour, and says when to leave.',
+         rules=[('SC', None,
+                 ('lot', 'parking', 'permit', 'fullness', 'arrive', 'offered'),
+                 ('at nowhere is dropped', 'is refused')),
+                ('API', None, ('parking',), None)]),
+    dict(id='FR-4',
+         text='The app offers campus study spots that are open at the time the '
+              'student is looking, measured from where they already are that '
+              'day, and ordered by walk, noise and power.',
+         rules=[('SC', None, ('spot', 'spots', 'noise', 'open', 'shut', 'hours'),
+                 ('at nowhere is dropped', 'bounds still bite')),
+                ('SC', None, ('somewhere',), None)]),
+    dict(id='FR-5',
+         text='The app offers campus events that match what the student is '
+              'interested in, are still to come, and do not clash with a class '
+              'that day.',
+         rules=[('SC', None,
+                 ('event', 'events', 'tag', 'tags', 'clash', 'sooner'), None),
+                ('API', None, ('event',), None),
+                ('DATE', None, None, None)]),
+    dict(id='FR-6',
+         text='The app orders registered clubs by how well they match the '
+              'interests the student entered, putting a rarely shared interest '
+              'above a common one.',
+         rules=[('CLUB', None, None, None)]),
+    dict(id='FR-7',
+         text='The campus data is readable to a student who has signed in, and '
+              'to nobody else.',
+         rules=[('SEC', 'logged out', None, None),
+                ('SEC', 'anonymous', None, None),
+                ('SEC', 'signed in student', None, None)]),
+    dict(id='FR-8',
+         text='Every recommendation is measured from the class the student is '
+              'next heading to, or was last at, rather than from a fixed point '
+              'on campus.',
+         rules=[('SC', None, ('anchor', 'class'), None)]),
+    dict(id='NFR-1',
+         text='A student can read and write their own profile and schedule and '
+              'nobody else\'s, and no signed in student can change the campus '
+              'data.',
+         rules=[('SEC', 'against another', None, None),
+                ('SEC', 'logged out', None, None),
+                ('SEC', 'signed in student', None, None)]),
+    dict(id='NFR-2',
+         text='Every value the app stores is bounded and type checked by the '
+              'database rules themselves, so a client that skips the screen '
+              'still cannot write a bad one.',
+         rules=[('SEC', None, ('refuses', 'cannot', 'only'), None)]),
+    dict(id='NFR-3',
+         text='A malformed request to the scoring endpoint is refused with a '
+              '422 that names the field and never repeats the value it '
+              'rejected, and a well formed one never produces a server error.',
+         rules=[('API', None, None, None),
+                ('SC', None,
+                 ('refused', 'infinity', 'bounds', 'model'), None)]),
+    dict(id='NFR-4',
+         text='Every time and date the student reads is campus time, and stays '
+              'correct across daylight saving and the turn of the year.',
+         rules=[('DATE', None, None, None), ('CLK', None, None, None)]),
+    dict(id='NFR-5',
+         text='The occupancy figures reproduce the board readings they were '
+              'fitted to, and where there is no reading for an hour the app '
+              'says so rather than presenting a guess as a measurement.',
+         rules=[('PARK', None, None, None),
+                ('SC', None, ('availability',), None)]),
+    dict(id='NFR-6',
+         text='Ranking a whole campus of candidates costs well under a second, '
+              'and the cost grows with the number of candidates rather than '
+              'faster.',
+         rules=[('SC', None, ('ranked', 'cost'), None)]),
+    dict(id='NFR-7',
+         text='With no profile, no schedule, or nothing left after filtering, '
+              'every screen says so plainly instead of failing or inventing a '
+              'recommendation.',
+         rules=[('API', None, ('empty', 'nothing'), None),
+                ('SC', None, ('empty', 'nothing', 'never knew'), None)]),
+]
+
+# Cases that are not evidence for any one requirement: the geometry,
+# normalisation and ranking mechanics that all three recommenders sit on. Every
+# other case has to match a requirement or the script stops, so this list is a
+# decision rather than a leftover. Matched on the whole printed name.
+SHARED = [
+    'Haversine matches real campus distance',
+    'Haversine catches missing radians conversion',
+    'Walk minutes is a sensible campus walk',
+    'Normalize lower is better',
+    'Normalize clamps outside the anchors',
+    'Normalize handles equal anchors',
+    'Normalize scores not a number as zero rather than a full mark',
+    'Rank is stable when everything ties',
+    'Rank handles nothing to rank and honours top n',
+    'Scores are not all near 100 on a bad day',
+    'Match percent is a whole number 0 to 100',
+    'Haversine survives two points on opposite sides of the planet',
+    'Weight tables each add up to one',
+    'The weight tables keep the order they were designed with',
+    'A factor that returns not a number scores zero not a perfect match',
+    'The walk reason does not repeat the number',
+    'The neutral walk stand in sits at the midpoint',
+]
+
+
+def requirements_for(prefix, case):
+    """Which requirements a case traces to, by the rules above."""
+    setup = (case.get('setup') or '').lower()
+    checks = (case.get('checks') or '').lower()
+    out = []
+    for req in REQUIREMENTS:
+        for rule in req['rules']:
+            if rule_matches(rule, prefix, setup, checks):
+                out.append(req['id'])
+                break
+    return out
+
+
+def rule_matches(rule, prefix, setup, checks):
+    want_prefix, want_setup, want_words, forbid = rule
+    if want_prefix != prefix:
+        return False
+    if want_setup is not None and want_setup not in setup:
+        return False
+    if forbid is not None and any(f in checks for f in forbid):
+        return False
+    if want_words is None:
+        return True
+    # Whole words, not substrings. Matching on substrings traced two normalize
+    # tests ("clamps outside the anchors") to the weekly schedule, because
+    # "anchor" sits inside "anchors". A trace that is wrong is worse than a
+    # case with no trace at all.
+    return any(re.search(r'\b%s\b' % re.escape(w), checks) for w in want_words)
+
+
+# Which of the four features each requirement serves. The course asks for the
+# requirements to be traced to the features, not only to the cases, so this is
+# the other half of that trace. Every requirement has to appear exactly once.
+FEATURES = [
+    ('Parking', ['FR-3', 'NFR-5']),
+    ('Campus study spots', ['FR-4']),
+    ('Clubs', ['FR-6']),
+    ('Events', ['FR-5']),
+    ('All four, and what they rest on',
+     ['FR-1', 'FR-2', 'FR-7', 'FR-8',
+      'NFR-1', 'NFR-2', 'NFR-3', 'NFR-4', 'NFR-6', 'NFR-7']),
+]
+
+
+def platform_line():
+    return '%s %s (%s)' % (platform.system(), platform.release(), platform.machine())
+
+
+def node_version():
+    try:
+        out = subprocess.run(['node', '--version'], capture_output=True, text=True)
+        return out.stdout.strip() or 'not found'
+    except OSError:
+        return 'not found'
+
+
+def ids_range(ids):
+    """A list of case ids, collapsed to runs so the cell stays readable."""
+    if not ids:
+        return '--'
+    runs, start, prev = [], ids[0], ids[0]
+    for cur in ids[1:]:
+        pre, num = cur.rsplit('-', 1)
+        ppre, pnum = prev.rsplit('-', 1)
+        if pre == ppre and int(num) == int(pnum) + 1:
+            prev = cur
+            continue
+        runs.append((start, prev))
+        start = prev = cur
+    runs.append((start, prev))
+    return ', '.join(a if a == b else '%s to %s' % (a, b) for a, b in runs)
 
 
 def humanise(name):
@@ -199,11 +432,16 @@ def node_cases(path):
                     k += 1
                     continue
                 text = body[k].strip()
-                depth = balance(text)
-                while depth > 0 and k + 1 < len(body):
+                # Deliberately not called depth: that name belongs to the
+                # describe nesting tracked by the outer loop, and reusing it
+                # here left the tracker holding this counter's leftover zero,
+                # which dropped the describe subject from every test after the
+                # first one in a block.
+                open_brackets = balance(text)
+                while open_brackets > 0 and k + 1 < len(body):
                     k += 1
                     text += ' ' + body[k].strip()
-                    depth += balance(body[k])
+                    open_brackets += balance(body[k])
                 if text.startswith('await '):
                     text = text[6:]
                 expected.append(re.sub(r'\s+', ' ', text).rstrip(',;'))
@@ -323,10 +561,43 @@ def main():
     suites = []
     total = 0
     failures = 0
+    skipped = 0
 
     for suite in SUITES:
         cases = (py_cases if suite['kind'] == 'py' else node_cases)(suite['file'])
         results = run(suite)
+        # Every test the run reported has to be one the parser also found.
+        # Without this the two halves can disagree silently: a test written in
+        # a shape the parser does not recognise still runs, still fails, and
+        # still lands in the report, but it never becomes a row, so the count
+        # below never sees it and the front page keeps saying all passing. The
+        # returncode tripwire in run() does not catch that case either, because
+        # the report does contain a failure, just not one of ours.
+        missed = sorted(name for name in results if name not in {c['key'] for c in cases})
+        if missed:
+            raise SystemExit(
+                '%s: the run reported %d test(s) the parser never found, so '
+                'they would be left out of the document and their result would '
+                'go unreported: %s'
+                % (suite['title'], len(missed), ', '.join(missed[:5])))
+        # And the other direction. The check above makes the two name SETS
+        # equal; it does not make them the same size. Two functions with the
+        # same name in one file are one test to the runner and two cases to the
+        # parser, because the parser reads the source and Python keeps only the
+        # last definition. Both rows then take the single result, so the one
+        # that never ran is printed as a Pass with its assertions beside it,
+        # and the total is inflated by one. junit() already refuses duplicates
+        # on its side of the comparison; this is the same refusal on ours.
+        seen = {}
+        for case in cases:
+            seen[case['key']] = seen.get(case['key'], 0) + 1
+        twice = sorted(k for k, n in seen.items() if n > 1)
+        if twice:
+            raise SystemExit(
+                '%s: %s defined more than once. Only the last one runs, so the '
+                'others would be printed with a result they never earned: %s'
+                % (suite['title'], 'a test is' if len(twice) == 1 else 'tests are',
+                   ', '.join(twice[:5])))
         rows = []
         for n, case in enumerate(cases, start=1):
             verdict = results.get(case['key'], '')
@@ -334,12 +605,100 @@ def main():
                 raise SystemExit(
                     '%s: the run did not report "%s". The document would be '
                     'guessing at its result.' % (suite['title'], case['key']))
-            if verdict != 'Pass':
+            if verdict == 'Fail':
                 failures += 1
+            elif verdict != 'Pass':
+                # Skipped is neither. junit() deliberately keeps it out of Pass
+                # so the row is honest; counting it here as a failure made the
+                # front page say "1 failing" when nothing had failed. It is
+                # counted on its own and named in the summary line.
+                skipped += 1
             rows.append(dict(id='%s-%02d' % (suite['prefix'], n), **case,
+                             requirements=requirements_for(suite['prefix'], case),
                              result=verdict))
         total += len(rows)
         suites.append(dict(suite, rows=rows))
+
+    # Trace both ways. Forwards gives the matrix; backwards tells us whether a
+    # requirement is only claimed rather than checked.
+    covering = {req['id']: [] for req in REQUIREMENTS}
+    unmapped = []
+    for s in suites:
+        for r in s['rows']:
+            if r['requirements']:
+                for rid in r['requirements']:
+                    covering[rid].append(r['id'])
+            else:
+                unmapped.append(r['id'])
+    listed = [rid for _, ids in FEATURES for rid in ids]
+    known = {req['id'] for req in REQUIREMENTS}
+    missing = sorted(known - set(listed))
+    twice_listed = sorted({r for r in listed if listed.count(r) > 1})
+    unknown = sorted(set(listed) - known)
+    if missing or twice_listed or unknown:
+        raise SystemExit(
+            'the feature table and the requirements disagree. missing: %s; '
+            'listed twice: %s; not a requirement: %s'
+            % (missing or 'none', twice_listed or 'none', unknown or 'none'))
+
+    bare = [rid for rid, ids in covering.items() if not ids]
+    if bare:
+        raise SystemExit(
+            'nothing checks %s. A requirement with no case behind it is the '
+            'kind of thing this document exists to make impossible, so fix the '
+            'rule or drop the requirement rather than shipping an empty row.'
+            % ', '.join(bare))
+
+    # A rule, or a single word inside one, that never matches anything. This is
+    # the check that matters most, because a dead word is invisible: the
+    # requirement still shows a healthy count from its other rules while one of
+    # the things it claims to cover is quietly unchecked. An earlier version
+    # carried eight of these at once.
+    pool = {}
+    for s_ in suites:
+        pool.setdefault(s_['prefix'], []).extend(s_['rows'])
+    dead = []
+    for req in REQUIREMENTS:
+        for rule in req['rules']:
+            prefix, setup, words, forbid = rule
+            rows = pool.get(prefix, [])
+            if not rows:
+                dead.append('%s: no suite %s' % (req['id'], prefix))
+                continue
+            def fires(w):
+                return any(rule_matches((prefix, setup, (w,) if w else None, forbid),
+                                        prefix,
+                                        (r.get('setup') or '').lower(),
+                                        (r.get('checks') or '').lower())
+                           for r in rows)
+            if words is None:
+                if not fires(None):
+                    dead.append('%s: rule (%s, %r) matches nothing'
+                                % (req['id'], prefix, setup))
+            else:
+                for w in words:
+                    if not fires(w):
+                        dead.append('%s: %s word %r matches nothing'
+                                    % (req['id'], prefix, w))
+    if dead:
+        raise SystemExit(
+            'these tracing rules never match anything, so a requirement is '
+            'claiming coverage it has not got:\n  ' + '\n  '.join(dead))
+
+    # And every case has to be claimed by something, or named as shared. A case
+    # that is neither is a test nobody decided about.
+    stray = [r['id'] for s_ in suites for r in s_['rows']
+             if not r['requirements'] and r['checks'] not in SHARED]
+    if stray:
+        raise SystemExit(
+            '%d case(s) trace to no requirement and are not in SHARED, so '
+            'nobody has decided what they are for: %s'
+            % (len(stray), ', '.join(stray[:12])))
+    unused_shared = [n for n in SHARED
+                     if not any(r['checks'] == n for s_ in suites for r in s_['rows'])]
+    if unused_shared:
+        raise SystemExit('SHARED names a case that does not exist: %s'
+                         % ', '.join(unused_shared))
 
     out = []
     w = out.append
@@ -354,13 +713,28 @@ def main():
     w('| University | California State University, Fullerton |')
     w('| Professor | Mehdi Peiravi |')
     w('| Semester | Fall 2026 |')
+    w('| Team | Sufiyan Rauf, Bhavy Patel, Phillip Bryan |')
+    w('| Contact | sufiyan24@csu.fullerton.edu |')
     w('| Generated | %s |' % today)
+    w('')
+    w('### The machine these were run on')
+    w('')
+    w('| | |')
+    w('|---|---|')
+    w('| Operating system | %s |' % platform_line())
+    w('| Python | %s, in the project\'s own `.venv` |'
+      % platform.python_version())
+    w('| Node | %s |' % node_version())
+    w('| Java | only for the rules suite, which runs the Firestore emulator |')
     w('')
     w('Every case below is a real automated test in this repository. The table is')
     w('generated by `tools/gen_test_cases.py`, which reads the test files for the')
-    w('names and the expected results and runs all six suites for the pass or fail')
+    w('names and the expected results and runs all %d suites for the pass or fail'
+      % len(suites))
     w('column, so re-running it is what keeps this document from drifting. It')
-    w('refuses to write the file if a suite will not run.')
+    w('refuses to write the file if a suite will not run, if a test runs that it')
+    w('could not find in the source, if the same test name is defined twice, or')
+    w('if any requirement below is left with nothing checking it.')
     w('')
     w('**%d cases, %s, run on %s.**'
       % (total, 'all passing' if not failures else '%d failing' % failures, today))
@@ -371,6 +745,58 @@ def main():
         w('| %s | %d | %s | `%s` |'
           % (s['title'], len(s['rows']), s['covers'], s['command']))
     w('')
+    w('## The four features, and the requirements behind them')
+    w('')
+    w('The requirements below are numbered so each case can say which one it is')
+    w('there for. This table is the other half of that: which of the four')
+    w('features each requirement belongs to. A requirement that is missing from')
+    w('here, or listed twice, stops the script.')
+    w('')
+    w('| Feature | Requirements | Cases |')
+    w('|---|---|---|')
+    for feature, ids in FEATURES:
+        n = len({c for rid in ids for c in covering[rid]})
+        w('| %s | %s | %d |' % (feature, ', '.join(ids), n))
+    w('')
+    w('## What is not tested, and why')
+    w('')
+    w('Worth saying plainly, because "%d cases, all passing" invites the reader')
+    w('to assume more than it should. There are no automated tests for the')
+    w('React screens, the sign in flow or the map. The logic those screens')
+    w('depend on was deliberately moved out of them, into `src/lib` and `api/`,')
+    w('so that it could be tested without a browser harness, and that is what')
+    w('the cases below cover. What is left in the components is layout and')
+    w('wiring, and it is checked by hand.')
+    w('')
+    w('Two consequences are worth naming rather than leaving for a reader to')
+    w('find. FR-1 and FR-2 are proved at the database rather than at the')
+    w('screen: the evidence is that the rules accept a good write and refuse a')
+    w('bad one, not that the form submits. And the demo mode, which lets')
+    w('somebody try the app with no account, reads bundled rows instead of')
+    w('Firestore, so no security rules case can reach it; it is checked by hand')
+    w('too.')
+    w('')
+    w('## Requirements')
+    w('')
+    w('Numbered so that every case can say which one it is there for, and traced')
+    w('in both directions: the Cases column is built by matching the rules in')
+    w('`tools/gen_test_cases.py` against the tests that actually ran, and a')
+    w('requirement that ends up with no cases stops the script rather than')
+    w('appearing here with an empty row.')
+    w('')
+    w('| Requirement | What it means | Cases | Count |')
+    w('|---|---|---|---|')
+    for req in REQUIREMENTS:
+        ids = covering[req['id']]
+        w('| %s | %s | %s | %d |'
+          % (req['id'], req['text'], ids_range(ids), len(ids)))
+    w('')
+    if unmapped:
+        w('%d of the %d cases trace to no requirement on their own. They are the'
+          % (len(unmapped), total))
+        w('shared arithmetic every feature sits on, which is worth testing and is')
+        w('not worth claiming as a requirement: %s.' % ids_range(unmapped))
+        w('')
     w('Set the Python ones up first, which the read me also covers:')
     w('')
     w('```')
@@ -390,18 +816,59 @@ def main():
         w('File: `%s`  ' % s['file'])
         w('Command: `%s`' % s['command'])
         w('')
-        w('| ID | Precondition | What it checks | Expected result | Result |')
-        w('|---|---|---|---|---|')
+        w('| ID | Traces to | Precondition | What it checks | Expected result '
+          '| Result |')
+        w('|---|---|---|---|---|---|')
         for r in s['rows']:
-            w('| %s | %s | %s | %s | %s |'
-              % (r['id'], cell('`%s`' % r['setup'] if r['setup'] else ''),
+            w('| %s | %s | %s | %s | %s | %s |'
+              % (r['id'], ', '.join(r['requirements']) or '--',
+                 cell('`%s`' % r['setup'] if r['setup'] else ''),
                  cell(r['checks']), expected_cell(r['expected']), r['result']))
         w('')
 
+    # Markdown tables only render when the delimiter row has exactly as many
+    # cells as the header above it. Adding the "Traces to" column and not
+    # widening the delimiter turned all seven case tables into paragraphs of
+    # raw pipes on GitHub, which is the one place the professor is most likely
+    # to open this. The text copies were fine throughout, which is exactly why
+    # nothing noticed. Every other integrity check in this file exists because
+    # of a mistake that got as far as the document; so does this one.
+    for i, line in enumerate(out):
+        if not line.startswith('|') or i + 1 >= len(out):
+            continue
+        below = out[i + 1]
+        if not re.fullmatch(r'\|(?:\s*-{3,}\s*\|)+', below):
+            continue
+        head, rule = line.count('|'), below.count('|')
+        if head != rule:
+            raise SystemExit(
+                'the table at line %d has %d header cells and %d in its '
+                'delimiter, so it will not render as a table at all:\n  %s\n  %s'
+                % (i + 1, head - 1, rule - 1, line[:90], below))
+
     with open(os.path.join(ROOT, 'TEST_CASES.md'), 'w', encoding='utf-8') as f:
         f.write('\n'.join(out).rstrip() + '\n')
-    print('TEST_CASES.md: %d cases across %d suites, %d failing'
-          % (total, len(suites), failures))
+    print('TEST_CASES.md: %d cases across %d suites, %d failing, %d skipped'
+          % (total, len(suites), failures, skipped))
+
+    # The plain text copies are the other half of what gets handed in, and
+    # nothing used to regenerate them. Leaving that to whoever remembered the
+    # second command meant TEST_CASES.txt could keep an older date and older
+    # verdicts while the markdown beside it was current, and the professor
+    # reads whichever file he opens. One command writes both now.
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    import md_to_txt
+    for name in ('TEST_CASES', 'README'):
+        src = os.path.join(ROOT, name + '.md')
+        dest = os.path.join(ROOT, name + '.txt')
+        with open(src, encoding='utf-8') as f:
+            text = md_to_txt.convert(f.read(), name + '.md')
+        bad = sorted({c for c in text if ord(c) > 126})
+        if bad:
+            raise SystemExit('%s is not plain ascii: %r' % (dest, bad))
+        with open(dest, 'w', encoding='ascii', newline='\n') as f:
+            f.write(text)
+        print('%s.txt: %d lines' % (name, text.count('\n')))
 
 
 if __name__ == '__main__':

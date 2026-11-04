@@ -190,6 +190,14 @@ export default function ClubsView() {
   const listRef = useRef<HTMLUListElement>(null)
   // Skips the first render, so arriving on the screen does not scroll.
   const landed = useRef(false)
+  // Set only by goToPage, so the handoff below runs for a page the student
+  // chose and not for a page number that moved on its own. Every filter
+  // control resets the page itself, the search box included, so typing on
+  // page 2 moved it to 1 as a side effect; the effect then took focus off the
+  // search box after the first keystroke and the rest of the query went
+  // nowhere. It also undid the focus reset() deliberately hands to the search
+  // box, which is the thing the long comment further down is about.
+  const paged = useRef(false)
 
   // In an effect rather than in the click handler. Scrolling straight after
   // setPage ran against the list React had not re-rendered yet, so it measured
@@ -200,6 +208,8 @@ export default function ClubsView() {
       landed.current = true
       return
     }
+    if (!paged.current) return
+    paged.current = false
     const list = listRef.current
     if (!list) return
     list.scrollIntoView({ block: 'start' })
@@ -214,6 +224,7 @@ export default function ClubsView() {
     // control that disables itself under the cursor, so the handler has to be
     // the thing that refuses.
     if (next < 1 || next > pages || next === onPage) return
+    paged.current = true
     setPage(next)
   }
   // Reset used to hand focus to that same count line, and it is sr-only, so it

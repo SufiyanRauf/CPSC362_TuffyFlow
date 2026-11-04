@@ -121,33 +121,77 @@ const parkingLots: ParkingLot[] = [
 // the Thursday readings in data/parking_samples.csv, and it fits those to
 // within a point. It was 81 points wrong on a Friday: at 11:51 on 30 Oct it
 // claimed Eastside North was 99 percent full when the board said 18. The order
-// of the lots inverts too, Eastside North being the busiest structure on a
-// Thursday and the emptiest on a Friday, so this is not a base that can be
-// shifted. Far fewer classes run here on Fridays.
+// of the lots inverts too, Eastside North being the busiest structure at 13:57
+// on the Thursday and the emptiest on the Friday, so this is not a base that
+// can be shifted. (The hour matters: at 13:11 Eastside South is ahead. See the
+// note further down, and the CSV header, which owns up to the same slip.)
+// Far fewer classes run here on Fridays.
 //
-// Honest limit: friday rests on one reading, at one hour. The level at midday
-// is measured, the shape of the rest of the day is not.
-const LOT_DEMAND: Record<string, { weekday: number; weekend: number; friday: number }> = {
+// Eastside South is deliberately absent from the evening, and that is the most
+// important line in this block. Both Tuesday readings put it at 1.49 percent,
+// twenty cars in 1341 spaces, and it is the only facility that did not change
+// at all between them: 190 cars left campus in those 32 minutes and none of
+// them left Eastside South. At the same moment 1016 drivers were parked in
+// Eastside North with 864 spaces free, while the adjacent structure, a shorter
+// walk to the academic core, stood all but empty. Nobody queues for the fuller
+// one. Those twenty cars are parked and left, not evening arrivals, so what
+// the board recorded is a structure that was not taking cars, not demand.
+//
+// Writing it in as an offset would have made the app rank it the best evening
+// parking on campus four days a week, at one to four percent full and with the
+// shortest leave-by buffer of any lot, which is advice to drive to a gate that
+// may be shut. An absent row is the honest alternative: lot_fullness falls back
+// to UNKNOWN_FULLNESS and the card says "no typical reading for that hour",
+// which is exactly what we have. A second evening reading on a day it is
+// plainly open is what would fix this properly.
+//
+// Evenings are their own shape too, for the same reason Fridays are. The
+// weekday curve treats 18:00 as the tail of the midday hump and had the campus
+// nearly emptied by then. The Tuesday 3 Nov 2026 18:14 reading says otherwise:
+// four of the five counted facilities sat between 42 and 54 percent, against a
+// curve predicting 5, 1, 41 and 20. Across all five the mean error was 35
+// points; across those four alone it was 34. And Eastside
+// South inverts outright. It is the fullest structure on the board at 13:11,
+// 87.92 against Eastside North's 85.69, and the curve called it the fullest at
+// 18:00 as well, at 43. (Naming the hour on purpose: at 13:57 North is ahead,
+// 88.40 to 87.92, and saying "the fullest on a Thursday" without the hour is
+// the error the CSV header already owns up to twice.)
+// The board had it at 1.5 percent, twenty cars in 1341 spaces. So this is not
+// a base that can be shifted either, and evening carries its own offsets.
+//
+// Honest limit. Friday rests on one reading at one hour. Evening rests on two,
+// 32 minutes apart, so both are the same hour and neither is held out of the
+// fit; the levels here are centred on the pair and every lot lands within 2.2
+// points of both, not within half a point of either. The decay across 19:00 to
+// 21:00 is an assumption, and it is a uniform one, which the readings argue
+// against: over those 32 minutes Eastside North drained about four times
+// faster than S8 and S10, and this shape cannot express that. 17:00 is a blend
+// of the afternoon and evening levels rather than a measurement. Only a
+// Tuesday was sampled, so the rest of Monday to Thursday inherits it.
+const LOT_DEMAND: Record<
+  string,
+  { weekday: number; weekend: number; friday: number; evening: number | null }
+> = {
   // Measured, from data/parking_samples.csv.
-  "Nutwood Parking Structure":       { weekday: -24, weekend:  -1, friday: -9 },
-  "State College Parking Structure": { weekday: -31, weekend:   1, friday: -22 },
-  "Eastside North Parking Structure": { weekday: 12, weekend:  -3, friday: -37 },
-  "Eastside South Parking Structure": { weekday: 14, weekend:  -1, friday: -19 },
+  "Nutwood Parking Structure":       { weekday: -24, weekend:  -1, friday: -9, evening:  -9 },
+  "State College Parking Structure": { weekday: -31, weekend:   1, friday: -22, evening:   0 },
+  "Eastside North Parking Structure": { weekday: 12, weekend:  -3, friday: -37, evening:   2 },
+  "Eastside South Parking Structure": { weekday: 14, weekend:  -1, friday: -19, evening: null },
   // The board reports these two as one row, so the pair's reading is the best
   // we have for either of them on its own.
-  "S8":                { weekday:  -9, weekend:  56, friday: -14 },
-  "S10":                             { weekday:  -9, weekend:  56, friday: -14 },
+  "S8":                { weekday:  -9, weekend:  56, friday: -14, evening:   3 },
+  "S10":                             { weekday:  -9, weekend:  56, friday: -14, evening:   3 },
   // Guesses from here down. None of these are on the board. Employee lots are
   // small and fill early, then empty out at the weekend when nobody is at work.
-  "E1":               { weekday: -10, weekend:   0, friday: -20 },
-  "E3":             { weekday: -13, weekend:   0, friday: -23 },
-  "E6":                              { weekday: -18, weekend:   0, friday: -28 },
+  "E1":               { weekday: -10, weekend:   0, friday: -20, evening: -35 },
+  "E3":             { weekday: -13, weekend:   0, friday: -23, evening: -38 },
+  "E6":                              { weekday: -18, weekend:   0, friday: -28, evening: -42 },
   // Resident lots are the other way round: the cars belong to people who live
   // there, so they stay put at the weekend instead of going home.
-  "R1":          { weekday:  -5, weekend:  45, friday: -15 },
-  "R2":                              { weekday:  -5, weekend:  45, friday: -15 },
+  "R1":          { weekday:  -5, weekend:  45, friday: -15, evening:  25 },
+  "R2":                              { weekday:  -5, weekend:  45, friday: -15, evening:  25 },
   // A small lot that fills before the structures do.
-  "Student Union Way (hourly)":      { weekday:   5, weekend: -30, friday: -5 },
+  "Student Union Way (hourly)":      { weekday:   5, weekend: -30, friday: -5, evening: -20 },
 }
 function buildAvailability(): LotAvailability[] {
   const rows: LotAvailability[] = []
@@ -160,21 +204,45 @@ function buildAvailability(): LotAvailability[] {
         // the one Friday reading we have sits about forty points under what
         // the weekday curve predicted for the same hour.
         const friday = day === 5
+        // Monday to Thursday from 17:00. Measured at 18:00 and nowhere else,
+        // so the level there is the anchor and the rest is a decay: the campus
+        // is still half full at six and winds down from seven. Friday keeps
+        // its own shape all day, because the one Friday reading is a midday
+        // one and there is nothing to say a Friday evening looks like this.
+        const evening = !weekend && !friday && hour >= 17
+        const eveningBase: Record<number, number> = {
+          17: 52, 18: 50, 19: 40, 20: 30, 21: 22,
+        }
+        const afternoon = (h: number) => (h < 8 ? 20 : 92 - Math.abs(h - 11) * 9)
         const base = weekend
           ? 1 + Math.max(0, 3 - Math.abs(hour - 13))
           : friday
             ? hour < 8 ? 10 : hour > 18 ? 12 : 55 - Math.abs(hour - 11) * 5
-            : hour < 8 ? 20 : hour > 18 ? 25 : 92 - Math.abs(hour - 11) * 9
+            : evening
+              ? eveningBase[hour]
+              : afternoon(hour)
         const offset = weekend
           ? demand?.weekend ?? 0
-          : friday ? demand?.friday ?? 0 : demand?.weekday ?? 0
+          : friday
+            ? demand?.friday ?? 0
+            : evening ? demand?.evening : demand?.weekday ?? 0
+        // An absent evening offset means we have no honest figure for this lot
+        // at this hour, so no row is written and the scorer says so.
+        if (offset === null || offset === undefined) continue
+        // 17:00 is a handoff, not a measurement, and switching base and offsets
+        // together made it a step: State College jumped 36 points and the
+        // resident lots 35, in one hour, on no evidence. Averaging the two
+        // branches there spreads the change over 16:00 to 18:00 instead.
+        const level = evening && hour === 17
+          ? (afternoon(16) + (demand?.weekday ?? 0) + eveningBase[18] + offset) / 2
+          : base + offset
         rows.push({
           lot_id: lot.id, day_of_week: day, hour,
           // floor 1, ceiling 99: never claim a lot is literally empty or full.
           // A floor of 2 would miss the real 0.48 on Eastside North at the
           // weekend by more than a point. Early and late the offsets exceed the
           // base so the lots converge, which is right, they really are empty.
-          typical_pct_full: Math.max(1, Math.min(99, base + offset)),
+          typical_pct_full: Math.round(Math.max(1, Math.min(99, level))),
         })
       }
     }
@@ -347,7 +415,7 @@ const clubs: Club[] = [
   { id: 'club-135401', titanlink_id: "135401", name: "Flying Samaritans", summary: "Flying Samaritans at CSUF is a sub-chapter of the larger Palomar Chapter of the Flying Samaritans organization that intends to aid in the provision of free medical and vision care to the citizens of Mexico who lack health care.", website_key: "flyingsams", categories: ["Service", "Special Interest", "Career Planning", "College of Health and Human Development", "College of Natural Science and Mathematics", "Health & Wellness", "Social", "Sustainability"], tags: ["career", "health-wellness", "service", "social"] },
   { id: 'club-135468', titanlink_id: "135468", name: "French Club", summary: "The purpose of this organization is to promote learning, community, and improved understanding and performance of: French language, French culture, and the CSUF French program(s).", website_key: "frenchclub", categories: ["Political/Social Action", "Special Interest", "Recreation", "Career Planning", "College of Communications", "College of Humanities & Social Sciences", "Music"], tags: ["career", "cultural", "music", "political-social-action", "recreation"] },
   { id: 'club-382853', titanlink_id: "382853", name: "Full Out", summary: "A dance club that offers free classes twice a week to all experience levels. The club is student run and driven offering opportunities to teach, choreograph, and perform. Full Out will be a safe place for students and an all inclusive dance community.", website_key: "fullout", categories: ["Special Interest", "College of Health and Human Development", "Dance", "Social"], tags: ["dance", "social"] },
-  { id: 'club-132739', titanlink_id: "132739", name: "Fullerton Christian Students", summary: "Fullerton Christian Students is an organization for anyone interested in knowing about the Christian faith. According to the exhortation in 1 Cor 14:26 all believers have a portion of Christ and we encourage everyone to share their portion of", website_key: "fullertoncs", categories: ["Faith"], tags: ["faith"] },
+  { id: 'club-132739', titanlink_id: "132739", name: "Fullerton Christian Students", summary: "Fullerton Christian Students is an organization for anyone interested in knowing about the Christian faith. According to the exhortation in 1 Cor 14:26 all believers have a portion of Christ and we encourage everyone to share their portion of Christ with one another.", website_key: "fullertoncs", categories: ["Faith"], tags: ["faith"] },
   { id: 'club-297233', titanlink_id: "297233", name: "Fullerton Fashion Association", summary: "Fullerton Fashion Association is a collective of like-minded students driven by a passion for fashion. Established in 2019, we provide an outlet for creatives who seek to create a community, learn, showcase, and connect in the field of fashion.", website_key: "ffa", categories: ["Special Interest", "Recreation", "LGBTQ+", "Social"], tags: ["lgbtq", "recreation", "social"] },
   { id: 'club-136285', titanlink_id: "136285", name: "Fullerton Foam Fighters Club", summary: "This club designed to introduce students to the sport of foam fighting. We simulate a medieval style combat through the use of foam weapons. This organization seeks to encourage the personal growth of students through aerobic and team-building exercises.", website_key: "fullertonfoamfighters", categories: ["Special Interest", "Recreation"], tags: ["recreation", "sport"] },
   { id: 'club-138103', titanlink_id: "138103", name: "Fullerton Motor Group", summary: "Fullerton Motor Group is a place for car enthusiasts, advocates, and people with general interests in automotive technologies to discuss, educate, and help others with automotive interests.", website_key: "fullertonmotorgroup", categories: ["Special Interest", "Sport", "Recreation", "Outdoors", "Social", "Technology"], tags: ["outdoors", "recreation", "social", "sport", "technology"] },
@@ -397,7 +465,7 @@ const clubs: Club[] = [
   { id: 'club-134892', titanlink_id: "134892", name: "Lambda Theta Phi Latin Fraternity Inc.", summary: "Lambda Theta Phi was founded December 1st, 1975. \"Chivalry Above Self.\" Gamma Eta was founded May 18th 2003. The first Latino greek organization in the nation. The fraternity's colors are brown and white.", website_key: "fullertonlambdas", categories: ["Cultural", "Fraternity & Sorority", "Service", "Special Interest"], tags: ["cultural", "greek-life", "service", "social"] },
   { id: 'club-132736', titanlink_id: "132736", name: "Latino Business Student Association", summary: "We, the Latino Business Student Association (LBSA), are more than a club, we are a familia. Our organization revolves around professional development, networking, and community service. Our goal is to help our members become community leaders.", website_key: "lbsa", categories: ["Cultural", "Service", "Career Planning", "College of Business and Economics", "Social"], tags: ["business", "career", "cultural", "leadership", "service", "social"] },
   { id: 'club-132939', titanlink_id: "132939", name: "Latino Journalists of CSUF", summary: "We are a California State University, Fullerton organization dedicated to promoting diversity in the news media. We prepare our members professionally through workshops, panels, and networking opportunities.", website_key: "latinojournalistsofcsuf", categories: ["College of Communications"], tags: ["career"] },
-  { id: 'club-135850', titanlink_id: "135850", name: "Latino Medical Student Association Pre-medical Society", summary: "Founded to represent, support, educate and unify Latino(a) Pre-Medical Students. LMSA-PLUS is a network of pre-medical & pre-health students and organizations providing a space for pre-meds to come together and share our projects, ideas, and", website_key: "lmsa-plus", categories: ["Service", "Special Interest", "College of Health and Human Development", "College of Natural Science and Mathematics"], tags: ["health-wellness", "service"] },
+  { id: 'club-135850', titanlink_id: "135850", name: "Latino Medical Student Association Pre-medical Society", summary: "Founded to represent, support, educate and unify Latino(a) Pre-Medical Students. LMSA-PLUS is a network of pre-medical & pre-health students and organizations providing a space for pre-meds to come together and share projects, ideas and resources.", website_key: "lmsa-plus", categories: ["Service", "Special Interest", "College of Health and Human Development", "College of Natural Science and Mathematics"], tags: ["health-wellness", "service"] },
   { id: 'club-135665', titanlink_id: "135665", name: "Latinx Student Psychological Association", summary: "The Latinx Student Psychological Association (LSPA) strives to empower the Latinx community and provide graduate-level resources to all students across campus.", website_key: "lspa", categories: ["Cultural", "Special Interest", "College of Humanities & Social Sciences"], tags: ["cultural"] },
   { id: 'club-372868', titanlink_id: "372868", name: "Latter-Day Saint Student Association at CSUF", summary: "This club promotes fellowship and learning through Christ, through the Church of Jesus Christ of Latter-Day Saints and Institute of Religion, commonly known as LDS or Mormon.", website_key: "ldssacsuf", categories: ["Faith"], tags: ["faith"] },
   { id: 'club-224555', titanlink_id: "224555", name: "Lebanese Student Association", summary: "To promote the interests of the Lebanese students at California State University, Fullerton (CSUF). As well as to acquaint the California State University, Fullerton community with Lebanon and the Lebanese people, as well as to promote their culture.", website_key: "lebanesestudentassociation", categories: ["Cultural", "Special Interest"], tags: ["cultural"] },
@@ -423,7 +491,7 @@ const clubs: Club[] = [
   { id: 'club-404012', titanlink_id: "404012", name: "Muslim Tech Collaborative", summary: "The Muslim Tech Collaborative (MTC) at CSUF is dedicated to building a vibrant professional and supportive community for Muslims in technology. Our mission is to showcase our values and talents by leveraging skills to drive impactful change.", website_key: "muslimtechcollaborative", categories: ["Cultural", "Faith", "College of Engineering and Computer Science", "College of Business and Economics"], tags: ["cultural", "faith", "technology"] },
   { id: 'club-159164', titanlink_id: "159164", name: "National Association for Music Education", summary: "An organization that works towards professional development and advocacy in music. Our chapter at CSU Fullerton provides opportunities for future and current music educators to connect with professionals in the field and refine their skills.", website_key: "nafme", categories: ["Service", "Special Interest", "College of Education", "College of the Arts", "Music", "Social"], tags: ["career", "music", "political-social-action", "service", "social"] },
   { id: 'club-402720', titanlink_id: "402720", name: "National Marrow Donor Program", summary: "NMDP CSUF is an organization geared towards building the stem cell/bone marrow donor registry to help save the lives of blood cancer patients. Join us and learn how you can help save a life!", website_key: "nmdpcsuf", categories: ["Service", "College of Health and Human Development", "College of Natural Science and Mathematics", "Social"], tags: ["service", "social"] },
-  { id: 'club-404632', titanlink_id: "404632", name: "National Organization of Black Chemists and Chemical Engineers", summary: "The purpose of this student chapter shall be consistent with the objectives NOBCChE. The objectives of NOBCChE, as established in the Certificate of Incorporation, are: to further the application of chemistry, chemical engineering and", website_key: "nobcche", categories: ["Cultural", "College of Natural Science and Mathematics"], tags: ["cultural", "engineering"] },
+  { id: 'club-404632', titanlink_id: "404632", name: "National Organization of Black Chemists and Chemical Engineers", summary: "The purpose of this student chapter shall be consistent with the objectives NOBCChE. The objectives of NOBCChE, as established in the Certificate of Incorporation, are: to further the application of chemistry and chemical engineering for the benefit of its members.", website_key: "nobcche", categories: ["Cultural", "College of Natural Science and Mathematics"], tags: ["cultural", "engineering"] },
   { id: 'club-133035', titanlink_id: "133035", name: "National Society of Black Engineers; California State University, Fullerton Chapter", summary: "The National Society of Black Engineers is a non-profit student run organization. Our mission is to increase the number of culturally responsible black engineers who excel academically, succeed professionally, and positively impact the community.", website_key: "nsbecsuf", categories: ["Cultural", "College of Engineering and Computer Science"], tags: ["cultural", "engineering"] },
   { id: 'club-136129', titanlink_id: "136129", name: "National Student Speech Language and Hearing Association", summary: "The National Student Speech Language Hearing Association (NSSLHA) is a pre-professional organization for students interested in furthering their study of communication sciences and disorders and audiology.", website_key: "nsslha", categories: ["College of Communications"], tags: ["social"] },
   { id: 'club-132998', titanlink_id: "132998", name: "Natural Sciences and Mathematics Inter-Club Council", summary: "NSM-ICC is a student-lead council comprised of representatives from clubs in the College of Natural Sciences and Mathematics. Our goal is to help students make connections, form collaborations, and build a community within the college and across campus.", website_key: "nsmicc", categories: ["Umbrella (Council)", "College of Natural Science and Mathematics"], tags: ["leadership"] },
@@ -486,7 +554,7 @@ const clubs: Club[] = [
   { id: 'club-137481', titanlink_id: "137481", name: "Society of Manufacturing Engineers", summary: "SME is an organization for individuals, students, educators and companies involved in all facets of manufacturing. SME will attempt to bring advanced manufacturing methods to campus and better prepare students leaving CSUF for the industry.", website_key: "sme", categories: ["College of Engineering and Computer Science"], tags: ["career", "engineering"] },
   { id: 'club-138169', titanlink_id: "138169", name: "Society of Women Engineers", summary: "We are an organization that supports diversity in engineering and technology, through outreach, volunteering and community service.", website_key: "swe", categories: ["Political/Social Action", "Service", "College of Engineering and Computer Science", "Technology"], tags: ["engineering", "political-social-action", "service", "technology"] },
   { id: 'club-135495', titanlink_id: "135495", name: "Sociology Department Student Association", summary: "Sociology Department Student Association (SDSA) is dedicated to applying Sociology in the community and providing valuable opportunities to students through workshops, community service, and networking opportunities with the faculty at CSUF.", website_key: "alphakappadelta", categories: ["Honor Society", "Political/Social Action", "Service", "College of Humanities & Social Sciences", "Social"], tags: ["career", "political-social-action", "service", "social"] },
-  { id: 'club-134814', titanlink_id: "134814", name: "Soon Movement / KCCC", summary: "Soon Movement (KCCC) at CSUF is one of several campus ministries all across America committed to helping to fulfill the Great Commission as stated in Matthew 28:18-20: \"All authority has been given to me. Therefore go and make disciples", website_key: "kccc", categories: ["Faith"], tags: ["faith"] },
+  { id: 'club-134814', titanlink_id: "134814", name: "Soon Movement / KCCC", summary: "Soon Movement (KCCC) at CSUF is one of several campus ministries all across America committed to helping to fulfill the Great Commission as stated in Matthew 28:18-20, going out to make disciples", website_key: "kccc", categories: ["Faith"], tags: ["faith"] },
   { id: 'club-129836', titanlink_id: "129836", name: "Sports Club Inter-Club Council", summary: "The mission of the Club Sports program is to provide high-quality, structured, competitive, and fun activities that offer participants the opportunity to experience physical, social, and emotional growth in a safe and fun learning environment.", website_key: "clubsports", categories: ["Umbrella (Council)", "Sport"], tags: ["leadership", "sport"] },
   { id: 'club-181118', titanlink_id: "181118", name: "Student Academy of Audiology at California State University, Fullerton", summary: "The mission of the Student Academy of Audiology Chapter at CSUF is to advance the rights, interests, and welfare of students interested in pursuing a career in audiology.", website_key: "saaatcsuf", categories: ["Special Interest", "College of Communications", "Health & Wellness", "Technology"], tags: ["career", "health-wellness", "technology"] },
   { id: 'club-135118', titanlink_id: "135118", name: "Student Alumni Ambassadors", summary: "SAA is a student led club that aims to help their peers get connected to alumni and CSUF as a whole. It's a great way to get involved on campus, learn how to network, meet alumni, develop leadership skills, and much more! We are open to ALL students!", website_key: "saa", categories: ["Service", "Special Interest", "Career Planning", "Social"], tags: ["career", "leadership", "service", "social"] },
@@ -524,7 +592,7 @@ const clubs: Club[] = [
   { id: 'club-414921', titanlink_id: "414921", name: "Titan Graduate Student Advisory Group", summary: "The Herd is dedicated to representing the collective voice of graduate students within the College of Business and Economics at Cal State Fullerton.", website_key: "theherd", categories: ["College of Business and Economics"], tags: ["business"] },
   { id: 'club-136238', titanlink_id: "136238", name: "Titan Ice Hockey", summary: "Titan Ice Hockey competes in the ACHA Division II against other universities all over the United States. We try to compete at the highest level possible to build the reputation for Cal State Fullerton and for hockey on the West Coast.", website_key: "titanicehockey", categories: ["Sport"], tags: ["recreation", "sport"] },
   { id: 'club-403554', titanlink_id: "403554", name: "Titan Investment Banking Club", summary: "Our mission is to prepare students for the rigors of investment banking or other high-finance careers through technical workshops, networking events, internship opportunities, Superday (interview) preparation, and general guidance.", website_key: "tibc", categories: ["Career Planning", "College of Business and Economics"], tags: ["business", "career"] },
-  { id: 'club-382111', titanlink_id: "382111", name: "Titan Powerlifting Club", summary: "Please look below at our organization description", website_key: "titanpowerliftingclub", categories: ["Sport"], tags: ["recreation", "sport"] },
+  { id: 'club-382111', titanlink_id: "382111", name: "Titan Powerlifting Club", summary: "A new competitive sports club at Cal State Fullerton, building a social environment where people of all backgrounds train together and get each other stronger.", website_key: "titanpowerliftingclub", categories: ["Sport"], tags: ["recreation", "sport"] },
   { id: 'club-430732', titanlink_id: "430732", name: "Titan Product Management Club", summary: "Titan Product Management Club is a student organization dedicated to developing the next generation of product leaders through hands-on workshops, industry speaker events, and a community of driven peers passionate about building innovative products.", website_key: "titan-product-management-club", categories: ["College of Engineering and Computer Science", "College of Business and Economics", "Technology"], tags: ["career", "leadership", "technology"] },
   { id: 'club-132479', titanlink_id: "132479", name: "Titan Racing", summary: "The purpose of this organization is to provide engineering opportunities for students at CSU Fullerton and to build an SAE approved mini baja for competition.", website_key: "titanracing", categories: ["Special Interest", "Career Planning", "College of Engineering and Computer Science", "Technology"], tags: ["career", "engineering", "technology"] },
   { id: 'club-132862', titanlink_id: "132862", name: "Titan Radio Street Team", summary: "Titan Radio serves as a laboratory environment for use by CSUF students, staff, and faculty in support of their classes and in pursuit of a career in the radio industry by showcasing the talents of CSUF students and their eclectic tastes in programming.", website_key: "titanradio", categories: ["Special Interest", "Recreation", "College of Communications", "Music"], tags: ["career", "music", "recreation"] },

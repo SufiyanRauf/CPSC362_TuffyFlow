@@ -38,6 +38,11 @@ ASCII_FOLD = {
     '·': '-', '•': '*',
 }
 
+# Levels past three get the same rule as three rather than a KeyError. The
+# heading matcher below accepts all six because the paragraph guard already
+# excludes all six: when it accepted only three, an h4 matched neither branch
+# and reached paragraph([]) with nothing in it, which raised IndexError and
+# took the whole conversion down.
 UNDERLINE = {1: '=', 2: '-', 3: '.'}
 
 
@@ -60,9 +65,23 @@ def inline(text):
         return label if label == target else '%s (%s)' % (label, target)
 
     text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', link, text)
+
+    # Code spans are held back before the emphasis markers are stripped. In a
+    # document whose evidence column is Python, `Spot(**_a_spot(...))` is a
+    # keyword expansion, not bold: taking the stars out produced a different
+    # call that would not even validate, and said so in the copy that gets
+    # handed in while the markdown beside it stayed right.
+    spans = []
+
+    def hold(m):
+        spans.append(m.group(1))
+        return '\x00%d\x00' % (len(spans) - 1)
+
+    text = re.sub(r'`([^`]*)`', hold, text)
     text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
     text = re.sub(r'(?<![\w*])\*([^*\n]+)\*(?![\w*])', r'\1', text)
     text = text.replace('`', '')
+    text = re.sub(r'\x00(\d+)\x00', lambda m: spans[int(m.group(1))], text)
     return fold(text)
 
 
@@ -166,13 +185,13 @@ def convert(source, name):
             continue
 
         # heading
-        head = re.fullmatch(r'(#{1,3}) +(.*)', line)
+        head = re.fullmatch(r'(#{1,6}) +(.*)', line)
         if head:
             level, text = len(head.group(1)), inline(head.group(2)).strip()
             if out and out[-1] != '':
                 out.append('')
             out.append(text)
-            out.append(UNDERLINE[level] * len(text))
+            out.append(UNDERLINE.get(level, '.') * len(text))
             out.append('')
             i += 1
             continue
@@ -228,9 +247,18 @@ def convert(source, name):
     text = '\n'.join(out)
     text = re.sub(r'\n{3,}', '\n\n', text).strip('\n')
 
-    header = ('Generated from %s on %s. Edit the markdown, not this file:\n'
-              '    python3 tools/md_to_txt.py %s %s\n'
-              % (name, date.today().isoformat(), name, name[:-3] + '.txt'))
+    # TEST_CASES.md is itself generated, so telling a reader to edit it would
+    # send them somewhere their change is overwritten on the next run.
+    stamp = 'Generated from %s on %s.' % (name, date.today().isoformat())
+    if name.startswith('TEST_CASES'):
+        how = ('%s\nBoth this file and %s are generated. The source is the\n'
+               'test files themselves, read and run by:\n'
+               '    python3 tools/gen_test_cases.py\n' % (stamp, name))
+    else:
+        how = ('%s Edit the markdown, not this file:\n'
+               '    python3 tools/md_to_txt.py %s %s\n'
+               % (stamp, name, name[:-3] + '.txt'))
+    header = how
     return header + '\n' + text + '\n'
 
 

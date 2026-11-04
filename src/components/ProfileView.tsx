@@ -163,7 +163,7 @@ function TagField({ label, field, tags, onChange, hintId }: {
     say(
       tag === typed
         ? `${tag} added to ${field}.`
-        : `${typed} added to ${field} as ${tagText(tag)}, which is the word the clubs use.`,
+        : `${typed} added to ${field} as ${tagText(tag)}, which is the word the data uses.`,
       false,
     )
   }
@@ -226,6 +226,18 @@ function TagField({ label, field, tags, onChange, hintId }: {
 function Details({ saved }: { saved: Profile }) {
   const session = useSession()
   const key = draftKey(saved.id)
+  // Both places that end a draft go through this. Discarding used to leave the
+  // draft in storage, so the edits came back the next time the screen mounted,
+  // with "Restored what you had typed" under a button that had just said it
+  // discarded them.
+  const forgetDraft = () => {
+    try {
+      sessionStorage.removeItem(key)
+    } catch {
+      // the storage that can refuse a write can refuse a delete, and a
+      // leftover draft that matches what loaded is never restored anyway
+    }
+  }
   // Read once, on the first render, because the answer decides both what the
   // fields start as and whether the line under the button says anything. A
   // draft that matches what loaded is nothing to restore and nothing to
@@ -254,11 +266,11 @@ function Details({ saved }: { saved: Profile }) {
   // typing back. Parked on every change rather than on the way out, because no
   // single event covers a hash change, a Back and a closed tab between them.
   //
-  // It only writes. Clearing it here was wrong: Discard puts the form back to
-  // what loaded, so this fired with nothing dirty and threw away the draft
-  // that exists to protect those edits, with no way back. Only a save that
-  // went through clears it now, which is the one point where the typing is
-  // somewhere safer than sessionStorage.
+  // It only writes. Clearing it here was wrong: it would fire with nothing
+  // dirty and throw away a draft that exists to protect edits the student has
+  // not saved. Removing the draft is a deliberate act, so the two places that
+  // mean it say so by calling forgetDraft: a save that went through, and
+  // Discard, whose whole promise is that the edits are gone.
   useEffect(() => {
     try {
       if (dirty) sessionStorage.setItem(key, JSON.stringify(form))
@@ -289,14 +301,8 @@ function Details({ saved }: { saved: Profile }) {
     try {
       await saveProfile(form)
       setFailed(false)
-      // The one point where the typing is somewhere better than sessionStorage,
-      // so this is the only place the draft comes off.
-      try {
-        sessionStorage.removeItem(key)
-      } catch {
-        // same storage that can refuse a write can refuse a delete, and a
-        // leftover draft that matches what loaded is never restored anyway
-      }
+      // the typing is now somewhere better than sessionStorage
+      forgetDraft()
       // Only an account was written to. The demo's profile is a module
       // variable in campusData.ts, so telling someone it was saved was a
       // promise the app cannot keep past the next reload. Neither line talks
@@ -462,7 +468,7 @@ function Details({ saved }: { saved: Profile }) {
             it is instant and total. Pushed to the other end of the row, and it
             says what it discards. */}
         {dirty && !busy && (
-          <button type="button" onClick={() => { setForm(saved); setNote('') }}
+          <button type="button" onClick={() => { setForm(saved); setNote(''); forgetDraft() }}
                   className="ml-auto min-h-11 px-2 text-sm font-medium text-titan hover:underline">
             Discard changes
           </button>

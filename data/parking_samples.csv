@@ -5,9 +5,11 @@
 # Campus: 800 N. State College Blvd, Fullerton CA 92831.
 # Take a few at different times and days. Weekday mornings matter most.
 #
-# The Sunday reading is worth keeping: four structures sit under 4 percent but
-# S8 and S10 is at 59, which is the opposite of the weekday order and is why the
-# seed carries separate weekday and weekend numbers.
+# The Sunday reading is worth keeping: three structures sit under 2 percent and
+# State College is at 4, but S8 and S10 is at 59, which is the opposite of the
+# weekday order and is why the seed carries separate weekday and weekend
+# numbers. (This said "four structures sit under 4 percent" until the figures
+# were recomputed from the rows: State College is 4.01, so it is just over.)
 #
 # The 13:57 Thursday reading was taken after the curve was already fitted to the
 # 13:11 one. Every lot came out within 3 points, which is the only real check
@@ -20,9 +22,28 @@
 # The Friday reading changed the model. The curve had one weekday shape, fitted
 # to the Thursday readings, and it fits those to within a point. Friday is not
 # that shape at all: at 11:51 Eastside North was 18 percent full where the
-# Thursday curve predicted 99, and the order of the lots inverts, with Eastside
-# North the busiest structure on Thursday and the emptiest on Friday. Fridays
-# carry far fewer classes here, so Friday now has its own numbers.
+# Thursday curve predicted 99, and the order of the lots inverts, with the two
+# Eastside structures the fullest on Thursday and Eastside North the emptiest
+# on Friday. Fridays carry far fewer classes here, so Friday now has its own
+# numbers. (This used to say Eastside North was the busiest on Thursday. It is
+# at 13:57, 88.40 against South's 87.92, but at 13:11 South leads 87.92 to
+# 85.69, so naming one of them without naming the hour was wrong.)
+# The two Tuesday readings are the first taken in the evening, and the first on
+# a Tuesday. The 18:46 one was taken after the evening curve had been fitted to
+# the 18:14 one, so it is the same kind of check the 13:57 Thursday reading is:
+# every lot came back within 4.2 points, mean 2.2, before the fit was
+# re-centred on the pair. Occupancy is falling across the two, which is what
+# the evening decay assumes. Eastside South reads 1321 free both times, the
+# same twenty cars in 1341 spaces.
+#
+# The first Tuesday reading. Every earlier reading is midday: 13:11 and 13:57 on a Thursday,
+# 11:51 on a Friday, 12:23 on a Sunday. It does not fit the weekday curve at
+# all. Measured against what the model predicted for 18:00 the five lots were
+# out by 37, 51, 13, -42 and 34 points, a mean of 35, and Eastside South
+# inverts completely: the curve calls it the fullest structure of the hour at
+# 43 percent and the board had it at 1.5, twenty cars in 1341 spaces, while it
+# was 88 percent full at 13:11 on the Thursday. Evenings are their own shape,
+# the way Fridays turned out to be.
 date,day,time,lot,total_spots,spaces_free
 2026-09-20,Sunday,12:23,Nutwood Structure,2484,2436
 2026-09-20,Sunday,12:23,State College Structure,1373,1318
@@ -44,3 +65,13 @@ date,day,time,lot,total_spots,spaces_free
 2026-10-30,Friday,11:51,Eastside North,1880,1544
 2026-10-30,Friday,11:51,Eastside South,1341,864
 2026-10-30,Friday,11:51,S8 and S10,2104,1232
+2026-11-03,Tuesday,18:14,Nutwood Structure,2484,1433
+2026-11-03,Tuesday,18:14,State College Structure,1373,662
+2026-11-03,Tuesday,18:14,Eastside North,1880,864
+2026-11-03,Tuesday,18:14,Eastside South,1341,1321
+2026-11-03,Tuesday,18:14,S8 and S10,2104,972
+2026-11-03,Tuesday,18:46,Nutwood Structure,2484,1479
+2026-11-03,Tuesday,18:46,State College Structure,1373,708
+2026-11-03,Tuesday,18:46,Eastside North,1880,942
+2026-11-03,Tuesday,18:46,Eastside South,1341,1321
+2026-11-03,Tuesday,18:46,S8 and S10,2104,992

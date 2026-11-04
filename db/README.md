@@ -28,27 +28,42 @@ access rules were worked out, which is the part of this project worth being
 able to explain: eight tables, twelve row level security policies, and a check
 at the end of the file that refuses to pass if any of it did not run.
 
-If you are reading those to understand the data, they are accurate, with two
-exceptions. Occupancy diverged on 2026-10-30 when Friday got its own curve,
-and ten clubs' interest tags were revised after `seed_clubs.sql` was written.
-`src/lib/campusRows.ts` is the live copy of both. If you are
+If you are reading those to understand the data, they are accurate with four
+exceptions, all of them in `src/lib/campusRows.ts`, which is the live copy.
+Occupancy diverged twice: on 2026-10-30 when Friday got its own curve, and on
+2026-11-03 when weekday evenings got theirs, which together move about a third
+of the grid and remove twenty cells outright, because Eastside South carries no
+evening figure at all. Ten clubs' interest tags were revised after
+`seed_clubs.sql` was written. And the demo account's interests read
+`algorithms` here and `robotics` live, which matters because no club carries
+`algorithms`. If you are
 reading them to understand what the app talks to, read `firestore.rules`
 instead.
 
 ## What moved, and what that cost
 
-Postgres rows became Firestore documents one for one, with two exceptions.
+Postgres rows became Firestore documents nearly one for one. Six columns did
+not make the trip and nothing stores or reads them now: `clubs.description`,
+which is most of the bulk of `seed_clubs.sql`, plus `clubs.status`,
+`spots.source_url`, `profiles.created_at` and `events.lat`/`events.lng`. The
+two shape changes below are the ones that were decisions rather than drops.
 
 Occupancy used to be its own table, twelve lots by seven days by sixteen hours,
 which is 1,344 rows. Firestore charges per document read, so that shape would
 have made every look at the parking screen 1,344 reads for twelve lots' worth
 of numbers. It is folded onto the lot document instead, as day then hour then
-percentage. Same numbers, twelve reads.
+percentage. Twelve reads instead of 1,344.
+
+The live grid is 1,324 rather than 1,344, and the twenty missing cells are
+deliberate: Eastside South has no evening figure, so it writes no row for
+17:00 to 21:00 on Monday to Thursday and the card says it has no typical
+reading for that hour.
 
 Joins do not exist, so the two names a screen reads across a relationship are
 copied onto the row that wants them: a building's name onto every spot, a
-club's name onto every event. The seed script writes both, which makes it the
-only place they can drift apart.
+club's name onto every event. Both are written out beside the row they belong
+to in `src/lib/campusRows.ts`, and the seed script copies them across without
+touching them, so that file is the only place they can drift apart.
 
 Spot hours also changed shape, after the SQL was written. `seed_spots.sql` has
 one `opens_at` and one `closes_at` per spot, which held the Monday to Thursday

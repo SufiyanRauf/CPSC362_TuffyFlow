@@ -53,6 +53,17 @@ export function tagText(tag: string) {
 // of the fix: it does not invent tags, it just lets a few obvious spellings
 // reach the ones that exist.
 //
+// Every value here is a real tag, but four of the 33 are carried only by
+// events and by no club at all: algorithms, ctf, networking and python. A
+// student who types "LeetCode", "capture the flag" or "Python" gets the green
+// confirmation and a chip, matches events, and gets nothing out of it on the
+// Clubs screen, because no club carries that word. If it is the only interest
+// they have entered the list stays in plain alphabetical order; alongside a
+// tag a club does carry, it simply contributes nothing. That is the
+// honest answer rather than a bug, and it is written down here because the
+// obvious repair is to point those aliases somewhere busier, which would
+// quietly change what the student said they were interested in.
+//
 // Every value here is a real tag. The 33 in use are: ai, algorithms, arts,
 // business, career, ctf, cultural, cybersecurity, dance, data-science,
 // engineering, faith, game-dev, greek-life, health-wellness, leadership,

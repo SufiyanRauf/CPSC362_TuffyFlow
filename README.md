@@ -14,10 +14,10 @@ it does, and it is what we show in class.
 
 **If you have just cloned this**, you need no credentials to build it, run it
 or run the tests. `npm install` then `npm run dev` serves the whole app on the
-bundled sample campus, and View demo works. None of the 148 tests need
-credentials either, though they do not all run off `npm install` alone: the 23
-date, clock and club tests do, the 93 Python ones want a virtualenv, and the 32
-security rules tests want `firebase-tools` and a JDK. Running it locally below
+bundled sample campus, and View demo works. None of the 161 tests need
+credentials either, though they do not all run off `npm install` alone: the 28
+date, clock, club and parking tests do, the 101 Python ones want a virtualenv,
+and the 32 security rules tests want `firebase-tools` and a JDK. Running it locally below
 has each. Only signing in and saving anything need your own
 Firebase project.
 
@@ -176,8 +176,8 @@ The factors differ per feature:
 | Feature | Filters | Factors |
 |---|---|---|
 | Parking | Permit type, and a walk under an hour, which catches a bad coordinate | Walking distance, typical fullness at arrival hour |
-| Campus spots | Open now | Walking distance, noise level, power outlets |
-| Events | Time conflicts with a class, already started | Tag overlap with interests, walking distance, how soon it starts |
+| Campus spots | Open now, and a walk under an hour | Walking distance, noise level, power outlets |
+| Events | Time conflicts with a class, already started, and a walk under an hour | Tag overlap with interests, walking distance, how soon it starts |
 
 ---
 
@@ -217,7 +217,9 @@ Both are free on Firebase's Spark plan for the ways we sign people in.
 
 ## What is real and what is ours
 
-Nothing is fetched at runtime, so every row ships inside the repository. That
+No campus data is fetched at runtime, so every row of it ships inside the
+repository. (The map tiles and the web font do come from the network, and they
+are the only two things that do.) That
 is not the same as everything being made up. A good deal of it was read off
 CSUF's own pages and is reproduced as published; the rest we estimated, and the
 two are kept apart on purpose.
@@ -227,7 +229,7 @@ two are kept apart on purpose.
 | Building names, codes and coordinates, from the campus map `locations.json`, 1 Oct 2026 | Class schedules and the demo student profile |
 | Parking lot names, coordinates and permit types, from the parking map at `parking.fullerton.edu`, 9 Oct 2026 | Typical parking occupancy for the six lots CSUF does not count |
 | Capacities of the four structures, from the parking availability board | |
-| Four parking readings on three days, in `data/parking_samples.csv` | |
+| Six parking readings on four days, two of them in the evening, in `data/parking_samples.csv` | |
 | 320 clubs: the Student Life and Leadership registered list of 22 Sep 2026, joined to the TitanLink directory for names, summaries, categories and IDs, read 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
 | Pollak Library floor designations, room booking rules and opening hours, from the library's own pages | |
 | Dining locations and hours for all 16 food locations, from Campus Dining and Titan Shops | Noise ratings, seat counts and outlet availability for every spot |
@@ -257,16 +259,30 @@ on a Saturday.
 
 Availability is a typical pattern by day and hour, never a live reading. CSUF
 publishes current counts for six facilities, the four structures plus S8 and S10
-as one combined row, and we read that board four times: once on a Sunday, twice
-on a Thursday and once on a Friday. The Sunday reading, the first Thursday one
-and the Friday one set the per lot numbers, first written down in `db/seed.sql`
-and now carried in `src/lib/campusRows.ts`, and the curve reproduces all three
-exactly. The second Thursday reading came after the curve was already fitted,
-which makes it the only real check we have, and every lot came out within three
-points.
+as one combined row, and we read that board six times: once on a Sunday, twice
+on a Thursday, once on a Friday and twice on a Tuesday evening. The Sunday
+reading, the first Thursday one, the Friday one and the first Tuesday one set
+the per lot numbers, first written down in `db/seed.sql` and now carried in
+`src/lib/campusRows.ts`. The curve reproduces every lot in every reading to
+within 2.72 points, and the first four to within half a point.
 
-Four readings on three days, so it is worth being plain about what they do and
-do not support. The Friday one is why Friday has a shape of its own: the single
+Only one of the six is a genuine check on the fit rather than an input to it.
+The second Thursday reading came after the curve was already drawn and was
+never used to redraw it, so it is a real hold out. The second Tuesday reading
+arrived after the evening curve was fitted and did test it, within 4.2 points,
+but the fit was then re-centred on both Tuesday readings, so neither is held
+out now and both sit a point or two off rather than exactly on. That is why
+the evening is the least supported part of the model.
+
+Six readings on four days, so it is worth being plain about what they do and
+do not support. The two evening ones are why weekday evenings have a shape of
+their own, and they are also the least supported part of the model: both were
+taken within the same hour on a single Tuesday, so 18:00 is measured and
+19:00 to 21:00 is an assumption. Eastside South is deliberately left out of the
+evening altogether, because on that Tuesday it did not take or release a single
+car in half an hour while 190 left the rest of campus, which reads as a closed
+structure rather than an empty one. The card says it has no typical reading for
+those hours, which is what we actually know. `DECISIONS.md` has the detail. The Friday one is why Friday has a shape of its own: the single
 weekday curve, fitted to the Thursday, said Eastside North was 99 percent full
 at midday on a Friday when the board said 18, and the order of the lots inverts
 between the two days. Friday now lands exactly, but on one reading at one hour,
@@ -276,7 +292,7 @@ Saturday is an assumption. The six employee, resident and hourly lots are not on
 the board at all and their figures are guesses.
 
 The weekday and weekend shapes turned out to be genuinely different rather than
-one curve scaled down, which is why the seed carries three columns. From Monday
+one curve scaled down, which is why the seed carries four columns. From Monday
 to Thursday Eastside fills to about 88 percent because it is nearest the
 academic buildings, while State College sits around 43. On the Friday reading
 Eastside North was the emptiest structure on campus at 18 percent, which is the
@@ -366,12 +382,14 @@ Completed:
 
 * Project concept, initial presentation and UI prototype
 * Database schema, security policies and seed data
-* The ranking engine, in Python, with 78 tests, and the endpoint it is
+* The ranking engine, in Python, with 86 tests, and the endpoint it is
   served behind, with 15 more that go through the app itself
 * The club ranking, pulled out of the screen into `src/lib/clubRanking.ts`,
   with 7 tests
 * The access rules, with 32 tests against Firebase's emulator
 * The event dates and the clock formatting, with 16 tests that need neither Java nor a project
+* The parking occupancy curve, with 5 tests read straight from the board
+  readings in `data/parking_samples.csv`
 * Dashboard, parking, spots, clubs, events and profile screens
 * Sign up, log in, Google sign in and sign out, all working against the live
   project
@@ -429,12 +447,20 @@ npm run typecheck   # tsc over the whole front end, strict, no unused locals
 npm run build       # typecheck plus the production bundle
 ```
 
-[TEST_CASES.md](TEST_CASES.md) lists all 148 of them by id, with the fixture
-each one sets up, the assertions it makes and whether it passed. It is
-generated by `python3 tools/gen_test_cases.py`, which runs every suite to fill
-in the pass column and refuses to write the file if one of them will not run.
+[TEST_CASES.md](TEST_CASES.md) lists all 161 of them by id, with the numbered
+requirement each one traces to, the fixture it sets up, the assertions it makes
+and whether it passed. It opens with the twelve requirements, seven functional
+and five not, and a matrix tracing each to the cases that check it.
 
-There are four sets of tests. The ranking engine and the endpoint in front of
+It is generated by `python3 tools/gen_test_cases.py`, which runs every suite to
+fill in the pass column and writes the plain text copies at the same time, so
+the two cannot drift apart. It refuses to write anything if a suite will not
+run, if a test runs that it could not find in the source, if one test name is
+defined twice, or if a requirement ends up with no case behind it. Those
+refusals are the point: the document is only worth reading if it cannot
+claim a pass that did not happen.
+
+There are five sets of tests. The ranking engine and the endpoint in front of
 it, which is the part with the logic worth testing:
 
 ```bash
@@ -495,6 +521,19 @@ and it used to live inside the component where nothing could reach it. It is in
 design: one rare shared interest has to outrank several common ones, because
 counting shared tags put a choral society above the software engineering clubs
 for a student who asked for software engineering.
+
+The parking occupancy curve has the fifth set:
+
+```bash
+npm run test:parking
+```
+
+Those read the board readings straight out of `data/parking_samples.csv` and
+check the curve against them, so adding a reading to that file is enough to
+test the model against it. They also pin the one place the seed deliberately
+has no answer: Eastside South carries no evening figure, because the evening
+reading caught it not taking cars at all, and a card that says it has no
+reading for that hour is the honest version of that.
 
 That is enough to use every screen on the sample campus. The rest connects it
 to a database.

@@ -3,6 +3,13 @@
 # lands silently and the endpoint stops matching the tests.
 fastapi==0.142.2
 pydantic==2.13.5
+# FastAPI asks for starlette>=0.46.0 with no upper bound, so a fresh install
+# takes whatever is newest. Starlette's TestClient already warns that it wants
+# httpx2 instead of httpx and falls back for now; when that fallback goes, an
+# unpinned install makes every Python test fail at import on a machine that
+# has not been touched. Pinning the transitive is the small version of that
+# fix. The two lines above pin the direct ones for the same reason.
+starlette==1.7.0
 
 # local only
 uvicorn==0.54.0

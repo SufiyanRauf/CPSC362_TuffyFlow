@@ -15,8 +15,11 @@ def test_haversine_matches_real_campus_distance():
 
 def test_haversine_catches_missing_radians_conversion():
     # Skipping the degrees to radians step inflates this by about 57x.
+    # Bounded on both sides on purpose. With only the upper bound this passed
+    # with haversine replaced by `return 0.0`, so it caught the 57x over-report
+    # it was written for and nothing else, including every under-report.
     metres = scoring.haversine(33.8796, -117.8853, 33.8823, -117.8827)
-    assert metres < 1000
+    assert 370 < metres < 400, metres
 
 
 def test_walk_minutes_is_a_sensible_campus_walk():
@@ -225,6 +228,19 @@ def test_weight_tables_each_add_up_to_one():
                         ("spot without noise", scoring.SPOT_WEIGHTS_NO_NOISE),
                         ("event", scoring.EVENT_WEIGHTS)]:
         assert abs(sum(table.values()) - 1.0) < 1e-9, name
+
+
+def test_the_weight_tables_keep_the_order_they_were_designed_with():
+    # Summing to one is preserved by every permutation and every inversion, so
+    # the test above is not weight coverage. These are the ratios the comments
+    # on the tables argue for, and nothing else was holding them: parking with
+    # walk 0.1 / fullness 0.9 passed the whole suite.
+    assert scoring.PARKING_WEIGHTS["walk"] > scoring.PARKING_WEIGHTS["fullness"]
+    assert scoring.SPOT_WEIGHTS["walk"] == scoring.SPOT_WEIGHTS["noise"]
+    assert scoring.SPOT_WEIGHTS["noise"] > scoring.SPOT_WEIGHTS["outlets"]
+    # the reduced table keeps the 2:1 the full one has between these two
+    assert (scoring.SPOT_WEIGHTS_NO_NOISE["walk"]
+            == 2 * scoring.SPOT_WEIGHTS_NO_NOISE["outlets"])
 
 
 def test_rank_is_stable_when_everything_ties():
@@ -537,6 +553,18 @@ def test_a_class_hours_away_does_not_anchor_the_evening():
     assert scoring.anchor_for(ctx, FRIDAY, 1320) is None
     # but an hour after it ends, it still does
     assert scoring.anchor_for(ctx, FRIDAY, 1095)[2] == "Titan Hall"
+
+
+def test_the_anchor_window_is_three_hours_to_the_minute():
+    # The test above probes a gap of 285 and a gap of 60, which leaves the
+    # window free to be anything from about 60 to 284 without turning anything
+    # red. The boundary is the thing worth pinning, the way the arrive-by and
+    # opening-minute boundaries are pinned elsewhere in this file.
+    ctx = _week_context(FRIDAY, 1320)
+    ends = 1035  # the Friday class runs 16:00 to 17:15
+    assert scoring.MAX_ANCHOR_GAP_MINUTES == 180
+    assert scoring.anchor_for(ctx, FRIDAY, ends + 180) is not None
+    assert scoring.anchor_for(ctx, FRIDAY, ends + 181) is None
 
 
 def test_tie_break_prefers_the_class_still_to_come():
@@ -892,10 +920,30 @@ def test_tags_we_cannot_judge_do_not_score_like_tags_that_are_wrong():
     out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 3, ctx)
     scores = {r["item"]["id"]: r["match_percent"] for r in out}
     assert scores["wanted"] == 100, scores
-    # scored on the two factors that are left, which are both at their best
-    assert scores["untagged"] == 100, scores
+    # Between the two, and that is the whole point. It used to read 100, level
+    # with an event that actually matched, because dropping the tag weight left
+    # it judged only on walk and soon, which are near maximal for almost every
+    # event. Scored at the stand-in it sits where an unknown belongs.
+    assert scores["elsewhere"] < scores["untagged"] < scores["wanted"], scores
+    assert scores["untagged"] == 70, scores
     # and a real mismatch still costs the whole weight of the factor
     assert scores["elsewhere"] == 40, scores
+
+
+def test_an_event_that_matches_outranks_one_with_no_tags_at_all():
+    # The regression behind the change above. In this context an event
+    # sharing two of the student's three topics scores 80, and an event we
+    # know nothing about used to score 100, so the better match was listed
+    # second. The old untagged score was not a constant to compare against
+    # either: it was whatever walk and soon came to, which here is both at
+    # their best, so no tagged event could win at all.
+    ctx = _empty_profile_context()
+    ctx["profile"]["interests"] = ["ai", "robotics"]
+    cfg = scoring.event_config(ctx)
+    events = [_an_event(id="untagged", tags=[]),
+              _an_event(id="matches-two", tags=["ai", "robotics", "knitting"])]
+    out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 2, ctx)
+    assert [r["item"]["id"] for r in out] == ["matches-two", "untagged"], out
 
 
 def test_a_brand_new_account_does_not_see_every_event_at_the_same_low_score():
@@ -926,6 +974,75 @@ def _a_spot(**overrides):
             "noise_level": 1, "has_outlets": True}
     spot.update(overrides)
     return spot
+
+
+def test_a_spot_or_event_at_nowhere_is_dropped_the_way_a_lot_is():
+    # 0, 0 is in the Atlantic, and the walk from campus works out at 203903
+    # minutes, a 141 day walk presented on a card as a plan. Parking has
+    # refused this since the guard was written; spots and events did not,
+    # because the guard sat inside parking_config. The reasoning was that
+    # their coordinates come from a building the browser looked up, which
+    # holds for our own screens and not for the endpoint, which anything on
+    # the internet can post to.
+    ctx = _empty_profile_context()
+    ctx["profile"]["interests"] = ["ai"]
+
+    spots = [_a_spot(id="real", lat=CS_LAT, lng=CS_LNG),
+             _a_spot(id="nowhere", lat=0.0, lng=0.0)]
+    cfg = scoring.spot_config(ctx)
+    out = scoring.rank(spots, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+    assert [r["item"]["id"] for r in out] == ["real"], out
+
+    events = [_an_event(id="real", tags=["ai"]),
+              _an_event(id="nowhere", tags=["ai"], lat=0.0, lng=0.0)]
+    cfg = scoring.event_config(ctx)
+    out = scoring.rank(events, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+    assert [r["item"]["id"] for r in out] == ["real"], out
+
+
+def test_the_spot_and_event_guard_reads_the_leg_their_cards_print():
+    # The point of this one. A spot and an event are measured from where the
+    # student already is that day, which anchor_for works out; only parking is
+    # measured to dest. A first version of the guard used dest for all three
+    # and the test above still passed, because its fixture pins dest to a real
+    # campus point and never varies the coordinate the guard actually reads.
+    # Both halves below failed against that version.
+    nowhere = {"dest_lat": 0.0, "dest_lng": 0.0}
+
+    # dest is junk and so is the spot, and the pair is a short walk apart, so a
+    # dest-based guard waves it through and the card prints a 141 day walk.
+    ctx = {**_empty_profile_context(), **nowhere}
+    ctx["profile"]["interests"] = ["ai"]
+    cfg = scoring.spot_config(ctx)
+    out = scoring.rank([_a_spot(id="nowhere", lat=0.0, lng=0.0)],
+                       cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+    assert out == [], out
+
+    # and the other way: dest is junk but the spot is real and next to the
+    # class, so a dest-based guard drops a perfectly good recommendation.
+    cfg = scoring.spot_config(ctx)
+    out = scoring.rank([_a_spot(id="real", lat=CS_LAT, lng=CS_LNG)],
+                       cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+    assert [r["item"]["id"] for r in out] == ["real"], out
+
+    # an event with no class that day keeps its place: the card does not
+    # mention walking at all, so there is no number to call implausible
+    saturday = {**_empty_profile_context(day=SATURDAY), **nowhere}
+    saturday["profile"]["interests"] = ["ai"]
+    cfg = scoring.event_config(saturday)
+    out = scoring.rank([_an_event(id="sat", tags=["ai"])],
+                       cfg["filters"], cfg["factors"], cfg["weights"], 10, saturday)
+    assert [r["item"]["id"] for r in out] == ["sat"], out
+    assert out[0]["walk_minutes"] is None, out
+
+
+def test_the_neutral_walk_stand_in_sits_at_the_midpoint():
+    # The ordering test next to this one holds worst < neutral < best, which
+    # 0.85 and 0.95 both satisfy; only 0.99 broke it. The comment explains why
+    # the midpoint specifically: pushed near 1.0, a Saturday with no class to
+    # measure from would present the top of the study spot list as right there.
+    assert scoring.NEUTRAL_WALK == 0.5
+    assert scoring.NEUTRAL_WALK == (0.0 + 1.0) / 2
 
 
 def test_a_time_that_is_not_a_time_is_refused():
@@ -1286,3 +1403,54 @@ def test_a_walk_of_an_hour_is_offered_and_anything_longer_is_not():
     out = scoring.rank([hour_away, further], cfg["filters"], cfg["factors"],
                        cfg["weights"], 5, ctx)
     assert [r["item"]["id"] for r in out] == ["hour"], out
+
+
+# ------------------------------------------------------------------ how fast
+#
+# The course asks for a response time requirement alongside the security model
+# and the no-data behaviour, and nothing here measured one. A wall clock
+# assertion is a blunt instrument and it is deliberately loose: the point is
+# not to pin a millisecond figure on somebody else's laptop, it is to fail
+# loudly if the ranking ever stops being linear in the number of candidates.
+# The real campus is 12 lots, 24 spots and 12 events, so the sizes below are
+# already far past anything the app will be handed.
+
+def test_a_whole_campus_is_ranked_well_inside_a_second():
+    import time
+
+    ctx = _parking_context()
+    lots = [dict(LOTS[i % len(LOTS)], id="lot-%d" % i) for i in range(500)]
+    cfg = scoring.parking_config(ctx)
+
+    start = time.perf_counter()
+    out = scoring.rank(lots, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx)
+    spent = time.perf_counter() - start
+
+    assert len(out) == 5, out
+    # 500 lots is forty times the real campus. A second is roughly a thousand
+    # times what this actually costs, so only a change of complexity trips it.
+    assert spent < 1.0, "ranking 500 lots took %.3fs" % spent
+
+
+def test_ranking_cost_grows_with_the_list_and_not_faster():
+    # The shape that matters. Ten times the candidates should cost roughly ten
+    # times as much, not a hundred. A nested scan over the availability rows
+    # inside the per-lot factors is the way this would quietly regress.
+    import time
+
+    ctx = _parking_context()
+    cfg = scoring.parking_config(ctx)
+
+    def cost(n):
+        lots = [dict(LOTS[i % len(LOTS)], id="lot-%d" % i) for i in range(n)]
+        best = float("inf")
+        for _ in range(3):
+            start = time.perf_counter()
+            scoring.rank(lots, cfg["filters"], cfg["factors"], cfg["weights"], 5, ctx)
+            best = min(best, time.perf_counter() - start)
+        return best
+
+    small, large = cost(100), cost(1000)
+    # Ten times the work, allowed four times the slack a straight line would
+    # need, because a short run on a busy machine is mostly noise.
+    assert large < small * 40, "100 lots %.4fs, 1000 lots %.4fs" % (small, large)
