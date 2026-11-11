@@ -619,7 +619,17 @@ somebody signs up, so the app writes a student's profile document itself the
 first time they sign in, and the profile screen opens with a short list of what
 is still missing: the permit, the noise preference and the class schedule.
 
-To erase somebody completely, including their schedule:
+A student who forgets their password uses Forgot password? on the log in card,
+which has Firebase email them a reset link. The card says the same thing
+whether or not the address has an account, so it cannot be used to find out who
+is signed up.
+
+A student can erase themselves from the profile screen, under Delete account.
+It asks for their password again, or for Google again, then removes the
+schedule, the profile and the login, in that order.
+
+To erase somebody else completely, including their schedule, from the command
+line:
 
 ```bash
 node db/delete_account.mjs ~/Downloads/your-key.json them@csu.fullerton.edu

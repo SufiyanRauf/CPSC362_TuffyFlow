@@ -12,9 +12,14 @@
 
 import { useSyncExternalStore } from 'react'
 import {
+  EmailAuthProvider,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  deleteUser,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -241,7 +246,16 @@ function plainly(error: unknown) {
     case 'auth/weak-password':
       return 'Passwords need at least 6 characters.'
     case 'auth/invalid-email':
+    case 'auth/missing-email':
       return "That doesn't look like an email address."
+    case 'auth/missing-password':
+      return 'Your password is missing.'
+    case 'auth/requires-recent-login':
+      // Deleting an account is the one thing here Firebase wants a fresh
+      // sign in for. confirmItIsYou asks first, so this is the fallback.
+      return 'Log out, log back in, and try again.'
+    case 'auth/user-mismatch':
+      return 'That is a different account from the one you are logged in as.'
     case 'auth/too-many-requests':
       return 'Too many tries. Give it a minute.'
     case 'auth/network-request-failed':
@@ -294,6 +308,73 @@ export async function logIn(email: string, password: string): Promise<AuthResult
   } catch (e) {
     return { ok: false, message: plainly(e) }
   }
+}
+
+// Reports ok whether or not the address has an account, because Firebase does:
+// telling the two apart is how a stranger finds out who is signed up. The
+// login card words its answer the same way.
+export async function resetPassword(email: string): Promise<AuthResult> {
+  if (!firebaseAuth) return { ok: false, message: NO_PROJECT }
+  try {
+    await sendPasswordResetEmail(firebaseAuth, email)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: plainly(e) }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Leaving for good
+//
+// Three steps, and campusData.deleteMyAccount runs them in order: prove it is
+// you, erase the rows, remove the sign in. The proof comes first because
+// Firebase refuses to delete an account that has not signed in recently, and
+// finding that out after the rows are gone would leave an empty account
+// behind instead of none.
+// ---------------------------------------------------------------------------
+
+// How this person signs in, which decides what the proof looks like: a
+// password to type, or Google's window again.
+export function accountProvider(): 'password' | 'google' | null {
+  const user = firebaseAuth?.currentUser
+  if (!user) return null
+  const ids = user.providerData.map((p) => p.providerId)
+  if (ids.includes('password')) return 'password'
+  if (ids.includes('google.com')) return 'google'
+  return null
+}
+
+export async function confirmItIsYou(password?: string): Promise<AuthResult> {
+  const user = firebaseAuth?.currentUser
+  if (!firebaseAuth || !user) return { ok: false, message: NO_PROJECT }
+  try {
+    if (accountProvider() === 'password') {
+      if (!password) return { ok: false, message: 'Your password is missing.' }
+      await reauthenticateWithCredential(
+        user, EmailAuthProvider.credential(user.email ?? '', password))
+    } else {
+      await reauthenticateWithPopup(user, new GoogleAuthProvider())
+    }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: plainly(e) }
+  }
+}
+
+// Only ever called once the rows are gone. The flag goes first for the reason
+// signOut gives: nothing may read its way back into this account afterwards.
+export async function removeSignIn(): Promise<AuthResult> {
+  const user = firebaseAuth?.currentUser
+  if (!firebaseAuth || !user) return { ok: false, message: NO_PROJECT }
+  try {
+    await deleteUser(user)
+  } catch (e) {
+    return { ok: false, message: plainly(e) }
+  }
+  signedOutOnPurpose = true
+  // Firebase's own listener has usually said so already by this point.
+  if (current.kind !== 'out') set({ kind: 'out' })
+  return { ok: true }
 }
 
 export async function signUp(

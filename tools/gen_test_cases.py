@@ -124,7 +124,8 @@ REQUIREMENTS = [
          text='A student can record and change a profile holding their name, '
               'major, interests, career goals, permit type and noise '
               'preference, and can delete it.',
-         rules=[('SEC', 'own profile', None, None)]),
+         rules=[('SEC', 'own profile', None, None),
+                ('SEC', 'own account', None, None)]),
     dict(id='FR-2',
          text='A student can add a class to a weekly schedule, read the '
               'schedule back, and remove a class from it.',

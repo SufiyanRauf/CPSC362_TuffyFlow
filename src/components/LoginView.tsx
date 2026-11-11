@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { NO_PROJECT, enterDemo, logIn, signInWithGoogle, signUp } from '../lib/session'
+import {
+  NO_PROJECT, enterDemo, logIn, resetPassword, signInWithGoogle, signUp,
+} from '../lib/session'
 import { signInAvailable } from '../lib/firebase'
 
 // Google's four color mark. Inline rather than an image so it needs no network
@@ -28,15 +30,21 @@ const field =
 // the wording is ours rather than a message from the API.
 const MIN_PASSWORD = 6
 
-type Mode = 'choose' | 'login' | 'signup'
+type Mode = 'choose' | 'login' | 'signup' | 'reset'
+
+// Says the same thing whether or not the address has an account, because
+// Firebase answers the same way for both and that is the point of it.
+const RESET_SENT = 'If there is an account for that address, a reset link is on its way. '
+  + 'Check your spam folder too.'
 
 export default function LoginView() {
   const [mode, setMode] = useState<Mode>('choose')
-  // Just the text. Other screens pair it with a bad flag because they report
-  // both halves, but nothing on this card can report a success: signing in
-  // replaces the whole screen, so the only thing left to say is what went
-  // wrong.
+  // Signing in replaces the whole screen, so for those the note only ever
+  // says what went wrong. Asking for a reset link is the one thing on this
+  // card that succeeds and leaves the card standing, which is what good is
+  // for.
   const [note, setNote] = useState<string | null>(null)
+  const [good, setGood] = useState(false)
   const [busy, setBusy] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -62,6 +70,7 @@ export default function LoginView() {
   function complain(field: 'email' | 'password' | 'name', text: string) {
     setWrong(field)
     setNote(null)
+    setGood(false)
     clearTimeout(complaining.current)
     complaining.current = setTimeout(() => setNote(text), 0)
   }
@@ -92,6 +101,7 @@ export default function LoginView() {
   function go(next: Mode) {
     setMode(next)
     setNote(null)
+    setGood(false)
     setWrong(null)
     setPassword('')
   }
@@ -113,9 +123,15 @@ export default function LoginView() {
   // That older shape said a failure might arrive with no message, so this had
   // to carry a stand-in sentence that nothing could ever reach: logIn, signUp
   // and signInWithGoogle all put a message on every failure they report.
-  async function run(action: () => Promise<{ ok: true } | { ok: false; message: string }>) {
+  // done is what to say when it works, for the one action that leaves this
+  // card on screen afterwards.
+  async function run(
+    action: () => Promise<{ ok: true } | { ok: false; message: string }>,
+    done?: string,
+  ) {
     setBusy(true)
     setNote(null)
+    setGood(false)
     // whatever comes back is about the pair, not about one box, so nothing
     // should still be marked as the offender
     setWrong(null)
@@ -123,6 +139,9 @@ export default function LoginView() {
       const result = await action()
       if (!result.ok) {
         setNote(result.message)
+      } else if (done) {
+        setGood(true)
+        setNote(done)
       }
       // Success signs the session in and the app replaces this screen on its
       // own, Google included: it is a popup, so this page never goes away.
@@ -142,6 +161,10 @@ export default function LoginView() {
     if (!email.trim()) {
       complain('email', 'Your email address is missing.')
       document.getElementById(ids.email)?.focus()
+      return
+    }
+    if (mode === 'reset') {
+      void run(() => resetPassword(email.trim()), RESET_SENT)
       return
     }
     if (!password) {
@@ -166,7 +189,10 @@ export default function LoginView() {
     void run(() => logIn(email.trim(), password))
   }
 
-  const title = mode === 'signup' ? 'Create an account' : mode === 'login' ? 'Log in' : 'Tuffy Flow'
+  const title = mode === 'signup' ? 'Create an account'
+    : mode === 'login' ? 'Log in'
+      : mode === 'reset' ? 'Reset your password'
+        : 'Tuffy Flow'
 
   return (
     <main className="flex min-h-screen items-start justify-center bg-titan px-4 py-10 sm:items-center">
@@ -262,6 +288,13 @@ export default function LoginView() {
               </p>
             )}
 
+            {mode === 'reset' && (
+              <p className="mb-4 text-center text-sm text-ink-soft">
+                Enter the email you signed up with and we will send you a link
+                to choose a new password.
+              </p>
+            )}
+
             {mode === 'signup' && (
               <label htmlFor={ids.name} className="block text-sm font-medium text-ink">
                 Name
@@ -304,6 +337,7 @@ export default function LoginView() {
               />
             </label>
 
+            {mode !== 'reset' && (
             <label htmlFor={ids.password} className="mt-4 block text-sm font-medium text-ink">
               Password
               <input
@@ -324,9 +358,20 @@ export default function LoginView() {
                 className={field}
               />
             </label>
+            )}
             {mode === 'signup' && (
               <p id={hints.password} className="mt-1 text-xs text-ink-faint">
                 At least {MIN_PASSWORD} characters.
+              </p>
+            )}
+            {/* Under the box it is about. The email typed so far is kept, so
+                the reset card opens with it already filled in. */}
+            {mode === 'login' && (
+              <p className="mt-2 text-right text-sm">
+                <button type="button" onClick={() => go('reset')}
+                        className="inline-block -my-1.5 py-1.5 font-medium text-titan underline underline-offset-2">
+                  Forgot password?
+                </button>
               </p>
             )}
 
@@ -341,7 +386,10 @@ export default function LoginView() {
                   : 'bg-titan text-white hover:bg-titan-700')
               }
             >
-              {busy ? 'Working…' : mode === 'signup' ? 'Create account' : 'Log in'}
+              {busy ? 'Working…'
+                : mode === 'signup' ? 'Create account'
+                  : mode === 'reset' ? 'Send reset link'
+                    : 'Log in'}
             </button>
           </form>
         )}
@@ -360,7 +408,10 @@ export default function LoginView() {
               //
               // Warm, because everything this line ever says is a fault. It
               // used to use the pale blue, which reads as a note instead.
-              ? 'mt-4 rounded-lg bg-tint-parking px-3 py-2 text-left text-sm text-flame-ink'
+              ? 'mt-4 rounded-lg px-3 py-2 text-left text-sm '
+                // green for the reset link going out, the same pair the
+                // profile screen uses for a save that went through
+                + (good ? 'bg-ok-soft text-ok' : 'bg-tint-parking text-flame-ink')
               : 'sr-only'
           }
         >
@@ -373,6 +424,13 @@ export default function LoginView() {
               No account yet?{' '}
               <button type="button" onClick={() => go('signup')} className="inline-block -my-1.5 py-1.5 font-medium text-titan underline underline-offset-2">
                 Create one
+              </button>
+            </>
+          ) : mode === 'reset' ? (
+            <>
+              Remembered it?{' '}
+              <button type="button" onClick={() => go('login')} className="inline-block -my-1.5 py-1.5 font-medium text-titan underline underline-offset-2">
+                Log in
               </button>
             </>
           ) : mode === 'signup' ? (

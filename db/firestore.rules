@@ -181,14 +181,16 @@ service cloud.firestore {
       //
       // The rule below still reaches them: it matches on the path, and a
       // subcollection does not need its parent document to exist, so the
-      // owner can list and delete their own schedule afterwards. What cannot
-      // reach them is this app, which has no screen for it. Clearing the
-      // schedule first is therefore the caller's job, and
-      // db/delete_account.mjs does it in that order.
+      // owner can list and delete their own schedule afterwards. Nothing would
+      // go looking for them, though, so clearing the schedule first is the
+      // caller's job. Both callers do it in that order: db/delete_account.mjs
+      // with the Admin SDK, and the Delete account button on the profile
+      // screen, through eraseStudent in src/lib/firestoreData.ts, with nothing
+      // but the two rules here.
       //
-      // Nothing in the app deletes a profile today. If anything ever does, it
-      // has to clear the subcollection first, or the next sign in writes a
-      // fresh empty profile on top of last term's whereabouts.
+      // Anything else that ever deletes a profile has to clear the
+      // subcollection first as well, or the next sign in writes a fresh empty
+      // profile on top of last term's whereabouts.
       allow delete: if isMe(uid);
 
       // A week of somebody's whereabouts, which is the most private thing
