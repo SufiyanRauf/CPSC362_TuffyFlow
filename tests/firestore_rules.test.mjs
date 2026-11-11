@@ -14,6 +14,7 @@
 //
 // Nothing here talks to a real project. The emulator is thrown away after.
 
+import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { after, before, describe, it } from 'node:test'
 import {
@@ -21,7 +22,7 @@ import {
 } from '@firebase/rules-unit-testing'
 import {
   addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, setDoc,
-  updateDoc,
+  updateDoc, writeBatch,
 } from 'firebase/firestore'
 
 const ALEX = 'alex-uid'
@@ -367,5 +368,44 @@ describe('a student’s own schedule', () => {
 
   it('refuses a field nobody asked for', async () => {
     await assertFails(addDoc(mine(alex()), aClass({ junk: 'x'.repeat(1000) })))
+  })
+})
+
+// The Delete account button, written out the way eraseStudent in
+// src/lib/firestoreData.ts does it: list the schedule, delete it in one batch,
+// then delete the profile. The pieces are each allowed further up; this is
+// that they are allowed together, in that order, from a browser.
+describe('a student deleting their own account', () => {
+  const LEAVER = 'riley-uid'
+  const riley = () => env.authenticatedContext(LEAVER).firestore()
+
+  it('can clear the schedule and then the profile, and nothing is left', async () => {
+    const db = riley()
+    const schedule = collection(db, 'profiles', LEAVER, 'class_meetings')
+    await assertSucceeds(setDoc(doc(db, 'profiles', LEAVER), freshProfile('Riley Park')))
+    await assertSucceeds(addDoc(schedule, aClass()))
+    await assertSucceeds(addDoc(schedule, aClass({ course_code: 'MATH 338', day_of_week: 3 })))
+
+    const listed = await assertSucceeds(getDocs(schedule))
+    assert.equal(listed.size, 2)
+    const batch = writeBatch(db)
+    for (const row of listed.docs) batch.delete(row.ref)
+    await assertSucceeds(batch.commit())
+    await assertSucceeds(deleteDoc(doc(db, 'profiles', LEAVER)))
+
+    // The schedule is still reachable by its owner with the profile gone,
+    // which is what makes a second press of the button safe.
+    const left = await assertSucceeds(getDocs(schedule))
+    assert.equal(left.size, 0)
+    const profile = await assertSucceeds(getDoc(doc(db, 'profiles', LEAVER)))
+    assert.equal(profile.exists(), false)
+  })
+
+  it('cannot be done to somebody else', async () => {
+    const db = alex()
+    const batch = writeBatch(db)
+    batch.delete(doc(db, 'profiles', JORDAN, 'class_meetings', 'secret'))
+    batch.delete(doc(db, 'profiles', JORDAN))
+    await assertFails(batch.commit())
   })
 })

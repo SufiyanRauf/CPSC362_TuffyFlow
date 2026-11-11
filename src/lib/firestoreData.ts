@@ -127,6 +127,16 @@ const STUDENT_FACING = [
   'That class is already on your schedule',
   'That class belongs to a different account.',
   'That form belongs to a different account.',
+  // What session.ts says when proving who you are fails, on the way to
+  // deleting an account, and what campusData says when the last step of
+  // that fails. All of them are things only the student can act on.
+  'Your profile and schedule were erased',
+  "That email and password don't match an account.",
+  'Your password is missing.',
+  'You closed the Google window',
+  'Your browser blocked the Google sign in window.',
+  'Too many tries.',
+  'Log out, log back in, and try again.',
 ]
 
 // What a student gets instead when nothing above matches. A panel said this
@@ -533,6 +543,38 @@ export async function addClassMeeting(
       fs.doc(db, 'profiles', userId, 'class_meetings', meetingId(meeting)),
       meeting,
     ))
+  } catch (e) {
+    throw new Error(readable(e))
+  }
+}
+
+// Everything this student has in the database, in the order
+// db/delete_account.mjs uses and for its reason: the schedule goes first,
+// because once the profile document is gone its subcollection is still there
+// and nothing in the app would find it again.
+//
+// The sign in account is not this file's to remove. campusData.deleteMyAccount
+// does that afterwards, through session.ts.
+export async function eraseStudent(userId: string) {
+  try {
+    const { fs, db } = await connect()
+    const snapshot = await fs.getDocs(
+      fs.collection(db, 'profiles', userId, 'class_meetings'),
+    )
+    // The reason getClassMeetings gives. An empty answer out of the cache
+    // would skip the schedule and delete the profile over the top of it.
+    if (snapshot.metadata.fromCache) {
+      throw new Error(OFFLINE)
+    }
+    // A batch takes 500. The profile screen cannot make a schedule anywhere
+    // near that, but a count nobody checks is how a delete stops half way.
+    const PAGE = 400
+    for (let at = 0; at < snapshot.docs.length; at += PAGE) {
+      const batch = fs.writeBatch(db)
+      for (const row of snapshot.docs.slice(at, at + PAGE)) batch.delete(row.ref)
+      await acknowledged(batch.commit())
+    }
+    await acknowledged(fs.deleteDoc(fs.doc(db, 'profiles', userId)))
   } catch (e) {
     throw new Error(readable(e))
   }

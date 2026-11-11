@@ -1,5 +1,6 @@
 import { canonicalTag, noiseWords, tagText } from '../lib/labels'
 import ConfirmDialog from './ConfirmDialog'
+import DeleteAccount from './DeleteAccount'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useAsync } from '../lib/useAsync'
 import {
@@ -883,6 +884,8 @@ export default function ProfileView() {
                 account. The key makes them start again instead. */}
             <Details key={`details-${profile.id}`} saved={profile} />
             <Week key={`week-${profile.id}`} meetings={meetings} buildings={buildings} />
+            {/* Accounts only. The demo has nothing of anybody's to erase. */}
+            {session.kind === 'account' && <DeleteAccount key={`delete-${profile.id}`} />}
           </>
         )}
       </Panel>

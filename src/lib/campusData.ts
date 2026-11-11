@@ -21,7 +21,9 @@ import {
   parkingLots, spots,
 } from './campusRows'
 import { datedEvents } from './eventDates'
-import { accountId, accountName, draftKey } from './session'
+import {
+  accountId, accountName, confirmItIsYou, draftKey, removeSignIn,
+} from './session'
 import { dataChanged, dataVersion } from './dataVersion'
 import * as live from './firestoreData'
 
@@ -200,6 +202,8 @@ export async function getAvailabilityAround(day: number, hour: number): Promise<
 // rather than swallowing it. Whatever called has to say so on screen.
 // ---------------------------------------------------------------------------
 
+const WRONG_ACCOUNT = 'That form belongs to a different account. Reload the page.'
+
 export async function saveProfile(next: Profile) {
   const id = accountId()
   // Whose form is this. The app remounts when the person changes, which is
@@ -212,7 +216,7 @@ export async function saveProfile(next: Profile) {
   // class. A stale form carrying a real account's id would put that id on
   // rows that are nobody's.
   if (next.id !== (id ?? profile.id)) {
-    throw new Error('That form belongs to a different account. Reload the page.')
+    throw new Error(WRONG_ACCOUNT)
   }
   if (id) await live.saveProfile(id, next)
   // A spread would keep sharing the interests and career_goals arrays with
@@ -291,6 +295,48 @@ export async function removeClassMeeting(id: string) {
     classMeetings = classMeetings.filter((m) => m.id !== id)
   }
   dataChanged()
+}
+
+// Erase the signed in student: their schedule, their profile and the account
+// itself. The in-app version of db/delete_account.mjs, which needs a key no
+// student has.
+//
+// Proof first, then the rows, then the sign in. Firebase refuses to delete an
+// account that has not signed in recently, and finding that out last would
+// leave an account with nothing in it rather than no account.
+//
+// No dataChanged() between the steps, and that is deliberate. It would send
+// every panel back for the profile, and getOrCreateProfile writes one when it
+// finds none, so the document just deleted would be back before the account
+// was gone. removeSignIn ends the session, which announces the change once
+// there is nobody left to re-read for.
+export async function deleteMyAccount(password?: string) {
+  const id = accountId()
+  if (!id) throw new Error('There is no account to delete here.')
+
+  const proof = await confirmItIsYou(password)
+  if (!proof.ok) throw new Error(proof.message)
+  // The proof can be a popup, which is long enough for another tab to have
+  // signed this browser in as somebody else.
+  if (accountId() !== id) throw new Error(WRONG_ACCOUNT)
+
+  await live.eraseStudent(id)
+
+  const gone = await removeSignIn()
+  if (!gone.ok) {
+    // The one place this can stop half way, so it says which half happened.
+    // Pressing the button again is safe: erasing nothing is not an error.
+    throw new Error(
+      'Your profile and schedule were erased, but the account itself is still here. '
+      + 'Press Delete account again to finish.',
+    )
+  }
+
+  try {
+    sessionStorage.removeItem(draftKey(id))
+  } catch {
+    // the same private-window case resetDemoData allows for
+  }
 }
 
 // The login card calls it a sample schedule, so leaving the demo has to make
