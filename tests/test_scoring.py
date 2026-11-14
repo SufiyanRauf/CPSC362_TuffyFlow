@@ -52,6 +52,9 @@ def test_normalize_scores_not_a_number_as_zero_rather_than_a_full_mark():
 
 
 def _parking_context(hour=10, rows=None, day=1, day_offset=0):
+    """A student permit holder walking to Computer Science, class at 11:30,
+    clock at 10:00 on a Monday, and no occupancy rows unless a test passes
+    some. Everything the parking scorer reads, and nothing else."""
     return {
         "profile": {"permit_type": "student", "noise_pref": 2,
                     "interests": [], "career_goals": []},
@@ -499,6 +502,9 @@ NUTWOOD_LAT, NUTWOOD_LNG = 33.879051, -117.888524
 
 
 def _week_context(day, minutes):
+    """A two class week: Monday 09:00 to 10:15 in Computer Science and Friday
+    16:00 to 17:15 in Titan Hall, with the clock set by the caller. For the
+    cases about which class counts as the next one."""
     return {
         "profile": {"interests": ["ai"], "career_goals": [], "noise_pref": 3,
                     "permit_type": "student"},
@@ -680,6 +686,9 @@ def test_the_walk_reason_does_not_repeat_the_number():
 # same mistake three times as large, and is the one that was still live.
 
 def _empty_profile_context(day=MONDAY, minutes=600):
+    """A signed in student who has filled nothing in: no permit, no noise
+    preference, no interests, no career goals. The scorer has to rank without
+    them rather than fall over, and these cases are what proves it."""
     return {
         "profile": {"permit_type": None, "noise_pref": None,
                     "interests": [], "career_goals": []},
@@ -873,6 +882,10 @@ def test_only_parking_carries_a_fullness():
 # carries 0.6 of the total on its own.
 
 def _an_event(**overrides):
+    """One event, deliberately at its best: same building as the 09:00 class
+    and an hour after it, so walk and recency are both maxed and tag overlap
+    is the only thing left that can move the score. Keyword arguments
+    override any field."""
     # Monday, an hour after the 09:00 class and in the same building, so the
     # walk and the recency factors are both at their best and the tags are the
     # only thing left that can move the score.
@@ -970,6 +983,9 @@ def test_a_brand_new_account_does_not_see_every_event_at_the_same_low_score():
 # with a reason, and a 500 is the app's fault however it was provoked.
 
 def _a_spot(**overrides):
+    """The plainest spot that passes every filter: quiet, has outlets, on
+    campus. Keyword arguments override any field, so a case changes the one
+    thing it is about and nothing else."""
     spot = {"id": "s", "name": "S", "lat": 33.88, "lng": -117.88,
             "noise_level": 1, "has_outlets": True}
     spot.update(overrides)
@@ -1126,6 +1142,8 @@ def test_a_body_with_infinity_in_it_gets_a_reason_not_a_crash():
 # printed on the same card said they were shut.
 
 def _spots_context(now_minutes=720):
+    """_empty_profile_context with a middling noise preference and the clock
+    at noon, which is the world the study and eat cases rank in."""
     ctx = _empty_profile_context()
     ctx["profile"]["noise_pref"] = 3
     ctx["now_minutes"] = now_minutes
@@ -1282,6 +1300,10 @@ def test_the_published_hours_line_up_with_what_the_app_can_offer():
 
 
 def _clash_context(day=1, classes=None, now=400):
+    """A week whose classes the caller supplies, with the clock at 06:40.
+    Early on purpose: the clash filter is only reached by an event that has
+    not started yet, so a later clock would drop the events for the wrong
+    reason and the case would prove nothing."""
     # Early in the morning on purpose. The clash filter is only reached by an
     # event that has not started yet, so a later clock would drop the events
     # below for the wrong reason and the test would prove nothing.

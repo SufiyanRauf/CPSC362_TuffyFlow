@@ -143,6 +143,20 @@ async function loadRecommendations(): Promise<RecommendResponse> {
     return { parking: [], spots: [], events: [] }
 
   const { dayOfWeek, minutes } = campusNow()
+  // Which hour's occupancy row to read. The 20 is not arbitrary: it is
+  // BASE_PARKING_BUFFER_MINUTES, 10, plus the largest surcharge arrive_by can
+  // add for a full lot, round(100 / 100 * 10), so it is the earliest the
+  // scorer can ever tell somebody to be at a lot once the walk is taken out.
+  //
+  // The walk is deliberately not in it, and that is the part worth knowing.
+  // Every lot has a different walk, so a per lot arrival hour would need a
+  // different occupancy row per lot, and the buffer that sets the hour is
+  // itself computed from the fullness in that row. One representative hour
+  // breaks that circle. The cost is real: for a lot far enough out, the hour
+  // whose fullness the card quotes can be the one before the hour it tells
+  // you to arrive in. getAvailabilityAround fetches the hour either side as
+  // well, but lot_fullness matches arrival_hour exactly, so the neighbours
+  // are shape, not slack.
   const arrivalHour = Math.floor(
     Math.max(0, next.start_minutes - 20) / 60,
   )
@@ -186,8 +200,13 @@ async function loadRecommendations(): Promise<RecommendResponse> {
     arrival_hour: arrivalHour,
     class_start_minutes: next.start_minutes,
     class_day_offset: next.day_offset,
+    // A lot that is not taking cars is left out rather than ranked. With its
+    // occupancy rows gone it scored on the unknown stand in instead, which at
+    // a busy hour beat every structure that was genuinely almost full, so the
+    // closed one came back first. That is the same card the evening change
+    // was written to stop printing.
     lots: dest
-      ? lots.map((l) => ({
+      ? lots.filter((l) => l.taking_cars !== false).map((l) => ({
         id: l.id, name: l.name, lat: l.lat, lng: l.lng, permits: l.permits,
       }))
       : [],

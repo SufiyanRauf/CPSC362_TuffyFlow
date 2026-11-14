@@ -119,6 +119,12 @@ function readable(error: unknown): string {
 // The app is deployed where anybody can open it, and a message nobody has
 // thought about yet comes out generic that way instead of putting a shell
 // command in front of a visitor.
+//
+// The coupling is by string literal, and sitting next to readable() does not
+// fix that: reword a sentence there and it silently stops matching here, so
+// a message meant for a student quietly becomes the generic one. That is the
+// safe direction to fail in, which is why it is written this way rather than
+// as an error code, but it is a real cost and not a prevented one.
 const STUDENT_FACING = [
   'Could not reach the server.',
   'You have been logged out.',
@@ -186,6 +192,14 @@ async function readAll<T>(name: string): Promise<T[]> {
     // Worse, the promise resolved, and the holds in this file and in
     // campusData only drop on a rejection, so the empty answer was kept for
     // the life of the page and the panels could not retry out of it.
+    //
+    // Worth being blunt about what this rests on: "nothing here turns on
+    // persistence". Call enableIndexedDbPersistence anywhere and a warm
+    // cache becomes a correct, useful answer that this line throws away, so
+    // the app would break offline in exactly the mode persistence is for.
+    // Nothing enforces that today beyond the absence of the call. If it ever
+    // goes on, this has to become a check on whether the cache actually
+    // returned anything, not on where the answer came from.
     if (snapshot.metadata.fromCache) {
       throw new Error(OFFLINE)
     }
@@ -454,6 +468,13 @@ export async function getClassMeetings(userId: string): Promise<ClassMeeting[]> 
 // 8s this fired first, so the app announced "could not reach the server" while
 // Firestore still believed it was online and was still trying, and a write
 // that landed a second later left an error on screen next to saved data.
+//
+// ONLINE_STATE_TIMEOUT_MS is a Firebase internal with no public guarantee,
+// so this is a number chosen to sit behind a number that could change. If it
+// ever does, the symptom is the one above: a premature "could not reach the
+// server" over a write that then succeeds. Raising this is the fix, and
+// anything up to a few seconds more costs only how long a stuck write waits
+// before it admits it is stuck.
 const WRITE_ACK_MS = 12000
 
 async function acknowledged<T>(write: Promise<T>): Promise<T> {

@@ -220,6 +220,8 @@ def test_a_number_outside_its_bounds_is_a_422_with_the_field_named():
 
 
 def _with_availability(**overrides):
+    """_a_body with its one occupancy row replaced, for the cases about what
+    the endpoint does with a reading it cannot use."""
     row = {"lot_id": "eastside-south", "day_of_week": 1, "hour": 10,
            "typical_pct_full": 62}
     row.update(overrides)
@@ -227,6 +229,8 @@ def _with_availability(**overrides):
 
 
 def _with_event(**overrides):
+    """_a_body with its one event replaced, so a case can change a single
+    field of that event and leave the rest of the request alone."""
     row = {"id": "e1", "name": "Resume Workshop", "lat": CS_LAT, "lng": CS_LNG,
            "tags": ["ai"], "starts_minutes": 900, "ends_minutes": 990,
            "day_offset": 0}
@@ -235,6 +239,8 @@ def _with_event(**overrides):
 
 
 def _with_meeting(**overrides):
+    """_a_body with its one class meeting replaced, for the cases about a
+    malformed or missing entry in the weekly schedule."""
     row = {"day_of_week": 1, "start": 540, "end": 615,
            "lat": CS_LAT, "lng": CS_LNG, "building_name": "Computer Science"}
     row.update(overrides)

@@ -1,4 +1,7 @@
-import { canonicalTag, noiseWords, tagText } from '../lib/labels'
+import { noiseWords, tagText } from '../lib/labels'
+import {
+  LONGEST_TAG, MOST_TAGS, classProblem, tagFor, tagSlug,
+} from '../lib/profileEdits'
 import ConfirmDialog from './ConfirmDialog'
 import DeleteAccount from './DeleteAccount'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -96,10 +99,10 @@ const input = 'min-h-11 rounded-md border border-rule-strong bg-white px-2.5 py-
 // label reads inside a sentence ("Add an interest"), field names the list it
 // belongs to, because the same tag is allowed in both and "Remove ai" on its
 // own does not say which one it would come out of
-// What db/firestore.rules allows, kept in step by hand: at most twelve
-// tags, each at most 32 characters.
-const MOST_TAGS = 12
-const LONGEST_TAG = 32
+// What db/firestore.rules allows: at most twelve tags, each at most 32
+// characters. Both now live in src/lib/profileEdits.ts beside a test that
+// reads the rules file, because "kept in step by hand" is the kind of
+// promise that holds right up until it does not.
 
 // hintId is the one sentence under the Interests row that says how these are
 // matched. It is passed to both fields, not only the one it is printed under,
@@ -147,8 +150,8 @@ function TagField({ label, field, tags, onChange, hintId }: {
     // it had been added and then matched nothing for the rest of the term,
     // because interests are compared to club and event tags by exact string
     // and that vocabulary is small and never shown to anyone.
-    const typed = draft.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-    const tag = canonicalTag(typed)
+    const typed = tagSlug(draft)
+    const tag = tagFor(draft)
     if (!tag) { say('Letters and numbers only.'); return }
     if (tags.includes(tag)) { say(`You already have ${tag}.`); setDraft(''); return }
     // Same ceiling as db/firestore.rules. Said here rather than left to the
@@ -532,11 +535,7 @@ function AddClass({ buildings: unsorted }: { buildings: Building[] }) {
   const startId = useId()
   // '' compares less than any time string, so a cleared start used to pass
   // and the class landed at midnight
-  const why = !course.trim() ? 'Give the class a course code.'
-    : !from || !to ? 'Fill in both times.'
-    : to <= from ? 'The end time has to be after the start time.'
-    : !where ? 'Pick the building the class is in.'
-    : ''
+  const why = classProblem(course, from, to, where)
   const bad = why !== ''
 
   async function add() {

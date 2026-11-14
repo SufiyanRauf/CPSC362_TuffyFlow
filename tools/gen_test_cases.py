@@ -80,11 +80,23 @@ SUITES = [
          file='tests/parking_curve.test.mjs',
          kind='node', command='npm run test:parking',
          covers='Parking',
-         note='The occupancy figures the parking screen shows. The first two '
+         note='The occupancy figures the parking screen shows. Three of them '
               'read the board readings out of data/parking_samples.csv, so '
               'adding a reading there is enough to check the curve against '
-              'it; the other three pin the shape of the seed itself, and '
+              'it; the other four pin the shape of the seed itself, and '
               'those do carry numbers written into the test.'),
+    dict(prefix='PROF', title='Profile screen rules',
+         file='tests/profile_edits.test.mjs',
+         kind='node', command='npm run test:profile',
+         covers='Student profile, Weekly schedule',
+         note='The two rules the profile screen applies before it writes '
+              'anything, which have to agree with db/firestore.rules and '
+              'until now agreed with it by a comment saying so. They were '
+              'inside ProfileView.tsx, the largest file in the project and '
+              'the one with no tests; they are in src/lib/profileEdits.ts '
+              'now, the way clubRanking.ts came out of ClubsView.tsx. Two of '
+              'these cases read the rules file and fail if the numbers drift '
+              'apart.'),
     dict(prefix='CLUB', title='Club ranking', file='tests/club_ranking.test.mjs',
          kind='node', command='npm run test:clubs',
          covers='Club matching',
@@ -125,11 +137,13 @@ REQUIREMENTS = [
               'major, interests, career goals, permit type and noise '
               'preference, and can delete it.',
          rules=[('SEC', 'own profile', None, None),
-                ('SEC', 'own account', None, None)]),
+                ('SEC', 'own account', None, None),
+                ('PROF', None, ('tag', 'interest'), None)]),
     dict(id='FR-2',
          text='A student can add a class to a weekly schedule, read the '
               'schedule back, and remove a class from it.',
-         rules=[('SEC', 'own schedule', None, None)]),
+         rules=[('SEC', 'own schedule', None, None),
+                ('PROF', None, ('class',), None)]),
     dict(id='FR-3',
          text='The app offers parking lots for the class the student is '
               'heading to, ordered by how far the walk is and how full the lot '
@@ -370,11 +384,32 @@ def py_cases(path):
             else:
                 refusals.append('%s raises %s' % (called, caught))
 
-        expected = refusals + [ast.unparse(s.test) for s in ast.walk(node)
-                               if isinstance(s, ast.Assert)]
+        # Asserts in source order, and any state change made between them.
+        # Reading the asserts alone, which is what this did, printed
+        # test_arrive_by_is_none_when_the_minute_to_leave_is_this_minute as
+        # `arrive_by(lot, ctx, 5) is None`; `arrive_by(lot, ctx, 5) ==
+        # '11:10'`: the same call twice with two different answers, because
+        # the line moving now_minutes from 670 to 669 sat between them and was
+        # dropped. Assignments before the first assert are setup and belong to
+        # the Precondition column, so only the ones after it are kept.
+        steps = sorted((s for s in ast.walk(node)
+                        if isinstance(s, (ast.Assert, ast.Assign,
+                                          ast.AugAssign))),
+                       key=lambda s: (s.lineno, s.col_offset))
+        first = next((i for i, s in enumerate(steps)
+                      if isinstance(s, ast.Assert)), None)
+        body, n_asserts = [], 0
+        for i, s in enumerate(steps):
+            if isinstance(s, ast.Assert):
+                body.append(ast.unparse(s.test))
+                n_asserts += 1
+            elif first is not None and i > first:
+                body.append(ast.unparse(s))
+        expected = refusals + body
 
         out.append(dict(key=node.name, checks=humanise(node.name),
-                        setup=setup, expected=expected))
+                        setup=setup, expected=expected,
+                        asserts=len(refusals) + n_asserts))
     return out
 
 
@@ -547,14 +582,49 @@ def cell(text):
     return text.replace('|', '\\|').replace('\n', ' ').strip()
 
 
-def expected_cell(expected):
+def expected_cell(expected, n_asserts=None):
+    """The cell can hold a state change as well as an assert, so the count at
+    the end is of assertions only and is passed in rather than measured off
+    the list."""
     if not expected:
         return ''
+    if n_asserts is None:
+        n_asserts = len(expected)
     shown = expected[:SHOWN]
     text = '; '.join('`%s`' % e for e in shown)
     if len(expected) > SHOWN:
-        text += ' (%d assertions in all)' % len(expected)
+        text += ' (%d assertions in all)' % n_asserts
     return cell(text)
+
+
+def fixtures(path):
+    """The module level helpers the Precondition column names, with the
+    docstring each one has to carry."""
+    with open(path) as f:
+        tree = ast.parse(f.read())
+    defined, called = [], set()
+    for node in tree.body:
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        for sub in ast.walk(node):
+            if (isinstance(sub, ast.Call) and isinstance(sub.func, ast.Name)
+                    and sub.func.id.startswith('_')):
+                called.add(sub.func.id)
+        if not node.name.startswith('_'):
+            continue
+        args = node.args
+        pad = [None] * (len(args.args) - len(args.defaults))
+        shown = ['%s=%s' % (a.arg, ast.unparse(d)) if d is not None else a.arg
+                 for a, d in zip(args.args, pad + list(args.defaults))]
+        if args.kwarg:
+            shown.append('**' + args.kwarg.arg)
+        doc = ast.get_docstring(node)
+        defined.append(dict(
+            name=node.name, sig='%s(%s)' % (node.name, ', '.join(shown)),
+            doc=' '.join((doc or '').split())))
+    for f in defined:
+        f['used'] = f['name'] in called
+    return defined
 
 
 def main():
@@ -701,6 +771,27 @@ def main():
         raise SystemExit('SHARED names a case that does not exist: %s'
                          % ', '.join(unused_shared))
 
+    # The Precondition column has always named a fixture and then never said
+    # what one is, leaving a reader to open the test file to find out what
+    # world a case ran in. Guarded both ways, like everything else here: a
+    # fixture with no docstring cannot be described, and a fixture nothing
+    # calls would be describing a world no case runs in.
+    glossary = []
+    for s in suites:
+        if s['kind'] == 'py':
+            glossary += [dict(f, file=s['file'])
+                         for f in fixtures(os.path.join(ROOT, s['file']))]
+    missing = [f['name'] for f in glossary if not f['doc']]
+    if missing:
+        raise SystemExit('%d fixture(s) have no docstring, so the glossary '
+                         'cannot say what they build: %s'
+                         % (len(missing), ', '.join(missing)))
+    idle = [f['name'] for f in glossary if not f['used']]
+    if idle:
+        raise SystemExit('%d fixture(s) are defined but nothing calls them, '
+                         'so the glossary would describe a world no case runs '
+                         'in: %s' % (len(idle), ', '.join(idle)))
+
     out = []
     w = out.append
 
@@ -761,13 +852,31 @@ def main():
     w('')
     w('## What is not tested, and why')
     w('')
-    w('Worth saying plainly, because "%d cases, all passing" invites the reader')
+    w('Worth saying plainly, because "%d cases, all passing" invites the reader'
+      % total)
     w('to assume more than it should. There are no automated tests for the')
     w('React screens, the sign in flow or the map. The logic those screens')
     w('depend on was deliberately moved out of them, into `src/lib` and `api/`,')
     w('so that it could be tested without a browser harness, and that is what')
-    w('the cases below cover. What is left in the components is layout and')
-    w('wiring, and it is checked by hand.')
+    w('the cases below cover.')
+    w('')
+    w('That move is not finished, and the honest version of the sentence is')
+    w('"we tested the algorithms and the security model" rather than "there')
+    w('is no logic left in the screens". Three pieces of it were still inside')
+    w('`ProfileView.tsx`, the largest file here and the one with no tests of')
+    w('its own, and the two that matter most had to agree with')
+    w('`db/firestore.rules` while the only thing holding them in step was a')
+    w('comment saying so. They are now in `src/lib/profileEdits.ts` and are')
+    w('the Profile screen rules suite below: the interest slug, the two tag')
+    w('ceilings, and the class time validation. Two of those cases read the')
+    w('rules file itself rather than repeating its numbers, so the client and')
+    w('the database drift apart in a test run instead of in front of a')
+    w('student.')
+    w('')
+    w('Still checked by hand only: the session storage draft recovery in that')
+    w('same file, and every screen as a screen. The second of those is what a')
+    w('component harness would cover, and there is no component harness in')
+    w('this project.')
     w('')
     w('Two consequences are worth naming rather than leaving for a reader to')
     w('find. FR-1 and FR-2 are proved at the database rather than at the')
@@ -784,6 +893,16 @@ def main():
     w('`tools/gen_test_cases.py` against the tests that actually ran, and a')
     w('requirement that ends up with no cases stops the script rather than')
     w('appearing here with an empty row.')
+    w('')
+    w('Two things about this table that it would be easy to overclaim. It')
+    w('traces tests to requirements, not a specification to a design to code:')
+    w('the match is made on words in the test names and assertions, so a case')
+    w('can be claimed by the right requirement for the wrong reason, which is')
+    w('why every rule word has to match something or the script stops. And')
+    w('the requirements were written in November against a system built from')
+    w('September onwards, so they are a description of what was built rather')
+    w('than a brief it was built to. Both are true of a lot of real projects')
+    w('and neither is worth hiding.')
     w('')
     w('| Requirement | What it means | Cases | Count |')
     w('|---|---|---|---|')
@@ -805,6 +924,20 @@ def main():
     w('.venv/bin/pip install -r api/requirements.txt')
     w('```')
     w('')
+    w('## The fixtures the preconditions name')
+    w('')
+    w('The Precondition column in every table below names one of these. They')
+    w('are the worlds the cases run in, and a case changes one thing about the')
+    w('world it is about and leaves the rest alone, so that a failure points')
+    w('at the thing being tested rather than at the setup. Generated from the')
+    w('docstrings in the test files: a fixture with none, or one nothing')
+    w('calls, stops the script.')
+    w('')
+    w('| Fixture | Defined in | What it builds |')
+    w('|---|---|---|')
+    for f in glossary:
+        w('| `%s` | `%s` | %s |' % (f['sig'], f['file'], cell(f['doc'])))
+    w('')
 
     for s in suites:
         w('---')
@@ -824,7 +957,8 @@ def main():
             w('| %s | %s | %s | %s | %s | %s |'
               % (r['id'], ', '.join(r['requirements']) or '--',
                  cell('`%s`' % r['setup'] if r['setup'] else ''),
-                 cell(r['checks']), expected_cell(r['expected']), r['result']))
+                 cell(r['checks']),
+                 expected_cell(r['expected'], r.get('asserts')), r['result']))
         w('')
 
     # Markdown tables only render when the delimiter row has exactly as many

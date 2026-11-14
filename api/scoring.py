@@ -528,6 +528,11 @@ def event_config(context):
         # special cased one day at 0.8 while two days came out at 0.875, so an
         # event the day after tomorrow outranked one tomorrow.
         label = "tomorrow" if days == 1 else "in %d days" % days
+        # 9 is one day past the furthest event the campus data carries, which
+        # is 8. Anchoring on 8 would score that event a flat zero on soonness
+        # and let the other two factors decide it alone; anchoring one day out
+        # keeps every real event somewhere above the floor. It is a property
+        # of the seed, so a longer event list wants a larger number here.
         return normalize(days, 0, 9), label
 
     return {

@@ -322,10 +322,18 @@ export default function ParkingView() {
 
       <p className="text-xs text-ink-faint">
         CSUF counts the four structures, and counts S8 and S10 together. We read its board on
-        a Thursday, a Friday, a Sunday and a Tuesday evening and fitted the hour by hour
+        a Thursday, a Friday, two Sundays and a Tuesday evening and fitted the hour by hour
         pattern ourselves, so the shape of the day is our work rather than a published
-        figure. Friday rests on a single midday reading, and the evening on two
-        taken half an hour apart. The employee, resident and hourly lots it does not count at
+        figure. Monday to Thursday is measured at three hours, all of them after
+        Eastside South closed. The weekend is measured at two, midday and
+        half past nine at night; Friday still rests on one reading taken
+        before the closure, so it describes a quieter campus than the one
+        outside. Eastside South is left out altogether: ten readings across
+        four days, from two people, all say the same 1321 free spaces, including
+        middays with every other structure over 85 percent full, so it is not
+        taking cars. Checked against readings it was not fitted to, the curve
+        runs low in the late afternoon and late evening on a weekday. The
+        employee, resident and hourly lots the board does not count at
         all, so those are estimates.
       </p>
     </div>

@@ -36,7 +36,87 @@
 # the evening decay assumes. Eastside South reads 1321 free both times, the
 # same twenty cars in 1341 spaces.
 #
-# The first Tuesday reading. Every earlier reading is midday: 13:11 and 13:57 on a Thursday,
+# The Wednesday 11:59 reading is the one that settled Eastside South. It is
+# the third in a row to read exactly 1321 free, now on a different day and at
+# midday rather than in the evening, with Nutwood at 95.9 percent, Eastside
+# North at 90.9 and State College at 90.5. Nobody passes up 1321 free spaces
+# next to a structure that full. It was the fullest thing on campus at 87.9
+# percent on 1 October and at 35.6 on 30 October, so it closed somewhere
+# between 30 October and 3 November. It carries no figures at all now and is
+# marked as not taking cars, so it is left out of parking recommendations
+# rather than ranked on a stand-in.
+#
+# The same reading said the weekday curve was wrong for everything else as
+# well, by about 21 points at midday, and in the direction the closure
+# predicts: Nutwood went from about 50 percent at this hour to 95.9, State
+# College from about 43 to 90.5. Thirteen hundred spaces came off the board
+# and those drivers went somewhere. It was not refitted on that one reading,
+# because one reading at one hour is what produced the overfitted evening
+# curve the first time round.
+#
+# The Thursday 13:35 reading is the second one, at a different hour, and it is
+# what the refit rests on. Monday to Thursday now carries a measured level per
+# lot at 11:00, 13:00 and 18:00 rather than one shared curve with per lot
+# offsets. The readings would not fit that arrangement: between 13:00 and
+# 18:00 the three structures fall 40 to 50 points and S8 and S10 drops six, so
+# they are not the same shape at different heights. Eastside South read 1321
+# free for the fourth time, now across three days.
+#
+# Everything before 3 November describes the campus as it was with Eastside
+# South open. Those readings are kept as a record and are deliberately not
+# fitted to; Friday and the weekend still rest on them, and say so.
+#
+# Phillip collected a second set of readings covering the same period and
+# some hours this file does not. They are NOT in here, and the reason is
+# provenance rather than doubt about his arithmetic: twelve of his thirteen
+# rows are recovered from indexed captures of
+# parking.fullerton.edu/parkinglotcounts, and the project is not allowed to
+# scrape. Every row below is a photograph of the public board.
+#
+# Two of his rows also do not survive checking. His September readings put
+# Nutwood at 95 to 100 percent full from 11:06 to 14:21 on the 23rd, which
+# cannot be squared with the board showing it 49.6 percent full at 13:11 on
+# 1 October; both are ordinary mid-semester weekdays. And his 5 November 13:32
+# row agrees with the 13:35 photograph below to within three spaces on four
+# lots while giving S8 and S10 as 972, which is 61 spaces out in three minutes
+# and happens to be exactly the S8 and S10 figure from 3 November 18:14.
+#
+# What his sheet is good for, and what it was used for:
+#
+#   It confirms the Eastside South closure from a source that is not this
+#   camera. Across his five November rows and the four below, nine
+#   observations between 3 Nov 18:14 and 5 Nov 13:35, covering 10:07 through
+#   20:45, every single one reads 1321. His own sheet flags the counter as
+#   possibly stale. Either way nothing is parking there.
+#
+#   Checked against his four November rows, which this curve was not fitted
+#   to, the fit comes out at a mean of 2.7 points at 10:07 and 5.0 at 10:56 --
+#   so the assumed morning ramp holds up -- and 8.3 at 15:15 and 9.0 at 20:45,
+#   with Nutwood 16 points low in the afternoon and S8 and S10 22 points low
+#   late in the evening. Those are the two places this file already warned
+#   were assumptions rather than readings, and they are too steep. The curve
+#   has not been changed for it, because fitting to data the project is not
+#   allowed to use would be worse than carrying a known bias that is written
+#   down. Two more photographs, one around 15:00 and one around 20:00, fix it
+#   with numbers nobody can argue with.
+#
+# The Sunday 8 November 21:40 reading is the first second look at a day the
+# curve was already fitted for, nine hours later than the reading it was
+# fitted to and seven weeks after it. The three open structures came back at
+# 1.77, 3.35 and 0.90 percent against a model saying 1, 2 and 1, so the flat
+# weekend level holds and Eastside North even rose slightly. S8 and S10 did
+# not: 45.6 percent against 57, eleven points out, and it is the only lot the
+# weekend shape has been changed for. Sunday now slides in a straight line
+# from the midday reading to the evening one, and the hours before noon are
+# left flat because no weekend morning has ever been read.
+#
+# It is also the tenth reading of 1321 free at Eastside South, three days
+# after the ninth, at night, on a weekend, and from this camera rather than
+# Phillip's sheet. Nothing has moved in there in the five days from 3 to 8
+# November.
+#
+# The first Tuesday reading. Every earlier reading is midday: 13:11 and
+# 13:57 on a Thursday,
 # 11:51 on a Friday, 12:23 on a Sunday. It does not fit the weekday curve at
 # all. Measured against what the model predicted for 18:00 the five lots were
 # out by 37, 51, 13, -42 and 34 points, a mean of 35, and Eastside South
@@ -75,3 +155,18 @@ date,day,time,lot,total_spots,spaces_free
 2026-11-03,Tuesday,18:46,Eastside North,1880,942
 2026-11-03,Tuesday,18:46,Eastside South,1341,1321
 2026-11-03,Tuesday,18:46,S8 and S10,2104,992
+2026-11-04,Wednesday,11:59,Nutwood Structure,2484,103
+2026-11-04,Wednesday,11:59,State College Structure,1373,130
+2026-11-04,Wednesday,11:59,Eastside North,1880,171
+2026-11-04,Wednesday,11:59,Eastside South,1341,1321
+2026-11-04,Wednesday,11:59,S8 and S10,2104,785
+2026-11-05,Thursday,13:35,Nutwood Structure,2484,206
+2026-11-05,Thursday,13:35,State College Structure,1373,196
+2026-11-05,Thursday,13:35,Eastside North,1880,181
+2026-11-05,Thursday,13:35,Eastside South,1341,1321
+2026-11-05,Thursday,13:35,S8 and S10,2104,911
+2026-11-08,Sunday,21:40,Nutwood Structure,2484,2440
+2026-11-08,Sunday,21:40,State College Structure,1373,1327
+2026-11-08,Sunday,21:40,Eastside North,1880,1863
+2026-11-08,Sunday,21:40,Eastside South,1341,1321
+2026-11-08,Sunday,21:40,S8 and S10,2104,1145

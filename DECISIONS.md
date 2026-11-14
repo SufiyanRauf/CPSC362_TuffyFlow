@@ -248,6 +248,229 @@ the screen says the evening rests on two readings half an hour apart.
 
 ---
 
+**2026-11-05: Phillip's readings, and what was taken from them**
+
+Phillip collected thirteen readings covering September to November, several at
+hours this project has never measured. Most of it is not in the seed, and the
+reason is worth writing down because it is a judgement rather than a rule.
+
+Twelve of the thirteen are recovered from indexed captures of
+parking.fullerton.edu/parkinglotcounts. The project is not allowed to scrape,
+and while there is a real difference between an app fetching a page at runtime
+and a teammate reading historical captures, the difference is not one I can
+settle on the team's behalf. Every reading in data/parking_samples.csv is a
+photograph of the public board, and keeping that true is worth more than four
+extra rows.
+
+Two of his rows also fail a check, which matters for how much weight the rest
+carries. His September readings put Nutwood between 95 and 100 percent full
+from 11:06 to 14:21 on the 23rd. The board photograph from 1 October has it at
+49.6 percent at 13:11. Both are ordinary mid-semester weekdays and they cannot
+both be describing normal operation. Separately, his 5 November 13:32 row
+agrees with our own 13:35 photograph to within three spaces on four of five
+lots, and then gives S8 and S10 as 972 against our 911 -- 61 spaces in three
+minutes, and exactly the S8 and S10 figure from 3 November 18:14.
+
+Two things were taken.
+
+The first is the Eastside South closure, which his sheet confirms from a
+source that is not our camera. His five November rows and our four give nine
+observations between 3 November 18:14 and 5 November 13:35, spanning 10:07 to
+20:45, and every one of them reads 1321 free. His own sheet raises the counter
+being stale; that is the same conclusion by another name, and either way
+nothing is parking there. A finding that survives two independent sources is
+worth more than one that rests on four photographs from one person.
+
+The second is an out of sample check, which is the most useful thing in the
+file. The curve was fitted to our readings and not to his, so his four
+November rows are a free test of it. It comes out at a mean of 2.7 points at
+10:07 and 5.0 at 10:56, which validates the morning ramp -- the part that is
+assumed rather than measured, and the part I was least sure of. It comes out
+at 8.3 at 15:15 and 9.0 at 20:45, with Nutwood 16 points low in the afternoon
+and S8 and S10 22 points low late in the evening.
+
+So the curve has a known bias, in the two places it already said were
+assumptions, and it has not been corrected. Fitting to data the project is not
+allowed to use, in order to quietly improve a number, would trade something
+that matters for something that does not. The bias is recorded instead, here
+and in the samples file. Two more photographs, one about 15:00 and one about
+20:00, would fix it with figures nobody can question.
+
+---
+
+**2026-11-08: The profile screen's rules came out of the component**
+
+Everything in this project that could be tested without a browser had been
+moved into src/lib or api/ already, and TEST_CASES.md said so in a sentence
+that was not quite true: "what is left in the components is layout and
+wiring". It was not. ProfileView.tsx is the largest file here and the only
+one with no test of its own, and three pieces of real logic were still in it.
+
+Two of those had to agree with db/firestore.rules, and the only thing holding
+them in step was a comment saying "kept in step by hand". That is the kind of
+promise that holds right up until it does not, and the failure is not subtle:
+change the cap in the rules and a student typing a thirteenth interest reads
+a security rules error instead of a sentence.
+
+So the interest slug, the two tag ceilings and the class time validation are
+now in src/lib/profileEdits.ts, the same move clubRanking.ts made out of
+ClubsView.tsx and for the same reason, which is that node --test can import a
+.ts from src/lib but not a .tsx component. Seven cases cover them, and two of
+those read db/firestore.rules and parse the numbers out of it rather than
+repeating them, so the client and the database now drift apart in a test run
+instead of in front of somebody using the app.
+
+Rejected adding a component harness, vitest and testing-library, to test the
+screen as a screen. It is the more complete answer and it is probably right
+eventually, but it is a new dependency and a new runner for logic that did
+not need to be in a component in the first place. Moving the logic is the
+cheaper fix and it leaves less behind.
+
+What is still untested in that file, and is now named in TEST_CASES.md rather
+than covered by a sentence that was too broad: the session storage draft
+recovery, and every screen as a screen.
+
+The same pass fixed four passages that could be read but not defended. The
+20 in recommend.ts that picks which occupancy hour to read is
+BASE_PARKING_BUFFER_MINUTES plus the largest surcharge arrive_by can add, so
+it is the earliest the scorer can ever name once the walk is taken out; the
+walk is deliberately not in it, because a per lot arrival hour would need the
+fullness of the hour it is trying to find. The 17:00 handoff in campusRows.ts
+is a mean of the two hours either side, each from the branch that owns it,
+and is now parenthesised to read as one rather than as four terms over two.
+The 9 in soon_factor is one day past the furthest event the seed carries.
+And the two ?? defaults in weekdayLevel cannot fire at a 6 to 21 grid, which
+they now say.
+
+---
+
+**2026-11-08: The weekend was read a second time, and mostly held**
+
+The weekend curve rested on one Sunday reading at 12:23 on 20 September. A
+second one, 21:40 on Sunday 8 November, is the first time any day in this
+model has been read again at a different hour after being fitted, so it is the
+closest thing the project has to a proper held out test rather than a check
+done thirty minutes later.
+
+Three of the four open lots came back without needing anything. Nutwood 1.93
+to 1.77 percent, State College 4.01 to 3.35, Eastside North 0.48 to 0.90,
+which went up. Nine hours apart, seven weeks apart, against a model predicting
+1, 2 and 1. A weekend genuinely is flat for the structures, and the flat level
+they already carried was right.
+
+S8 and S10 was eleven points out: 45.58 percent against a predicted 57. So the
+weekend now carries a measured level for that pair at the two hours that were
+read, 59 at noon and 46 at 21:00, with a straight line between them, and
+nothing else about the weekend changed. Rejected sliding the whole weekend
+base down in the evening, because that would have dragged three lots that were
+measured flat in order to fix one that was not, which is the same mistake the
+shared weekday base made.
+
+Honest limits, and they are the same three as before. The line between noon
+and nine is straight because two points cannot describe a curve, and inventing
+one from a single pair is exactly what produced the first, overfitted evening
+shape. Nothing before noon has ever been read on a weekend, so those hours
+hold the midday level rather than running the line backwards, which would
+claim S8 and S10 is fuller at seven on a Sunday morning than at lunchtime.
+And only Sundays have been sampled, so Saturday still inherits a Sunday.
+
+One thing worth noticing across both tables now that there are two weekend
+hours. S8 and S10 has never been read below 45 percent at any hour of any day,
+while the structures empty to 1. Roughly a thousand cars sit in those two lots
+whatever the time, which is the residence halls, and it is the same fact that
+makes the pair fall six points between 13:00 and 18:00 on a weekday while the
+structures fall forty to fifty. The model now says that in two places instead
+of fighting it in one.
+
+Eastside South read 1321 free for the tenth time, three days after the ninth,
+at night, on a weekend, and from this camera rather than Phillip's sheet.
+Nothing has moved in there in the five days from 3 to 8 November. The screen
+footnote and the test comment now say ten readings across four days.
+
+---
+
+**2026-11-05: Monday to Thursday is measured per lot now, not one shared curve**
+
+Yesterday's entry ended by saying a second weekday midday reading would settle
+whether to refit. It arrived: Thursday 13:35, at a different hour from the
+Wednesday one, so the two together give a shape rather than a point.
+
+They also showed the old arrangement could not hold the answer. A shared base
+with a per lot offset forces every lot onto the same curve at different
+heights, and the readings are not that. Between 13:00 and 18:00 the three
+structures fall forty to fifty points while S8 and S10 drops six. S8 and S10
+sits by the stadium and the gym, which stay open in the evening, and the model
+had no way to say so: it was carrying a uniform decay that was roughly twice
+too fast for that lot and roughly right for the others.
+
+So Monday to Thursday now carries a measured level per lot at three hours,
+11:00, 13:00 and 18:00, with the hours between them interpolated. Rejected
+keeping the shared base and adding a fourth offset column, which would have
+been a fifth variation on a shape the data had already refused twice.
+
+What that cost, stated plainly. The four November readings now reproduce to
+within 2.11 points, and the two middays to within half a point. The two
+Thursday readings from 1 October are forty two and forty six points out, and
+they are supposed to be: Eastside South was the fullest structure on campus
+that afternoon, it closed a month later, and its thirteen hundred spaces of
+demand are in the other three now. A curve that still matched both Octobers
+and both Novembers would be describing two different campuses at once. Those
+two readings are named in the test file's NOT_FITTED list with that reason,
+and a test fails if they ever start matching, so the exemption cannot quietly
+outlive it.
+
+Honest limits, and there are three. The morning ramp and the last three hours
+of the evening are fractions of each lot's own measured level, not readings;
+only 11:00, 13:00 and 18:00 are real. Friday and the weekend still rest on
+readings taken before the closure and will be describing a quieter campus than
+the one outside, which the parking footnote now says. And only Tuesday,
+Wednesday and Thursday were sampled, so Monday inherits them.
+
+---
+
+**2026-11-04: Eastside South is closed, and the curve is behind because of it**
+
+A midday Wednesday reading settled two things the evening pair had only
+hinted at.
+
+Eastside South read exactly 1321 free for the third time, on a different day
+and at a different time of day. The first two were Tuesday evening. This one is
+11:59 on a Wednesday, with Nutwood at 95.9 percent, Eastside North at 90.9 and
+State College at 90.5. Nobody leaves 1321 spaces empty next to a structure that
+full. It was the fullest thing on campus at 87.9 percent on 1 October and 35.6
+on 30 October, so it closed somewhere between 30 October and 3 November.
+
+Yesterday it lost its evening rows. That was not enough. With no rows at all it
+fell back on the unknown stand in, which is 50 percent, and at a busy hour that
+beats every structure that is genuinely almost full, so the closed structure
+came back as the **top** recommendation at midday. Exactly the card the evening
+change was written to stop printing, reintroduced by the fix for it.
+
+So it is marked as not taking cars and filtered out of the candidate list,
+the way a lot the permit does not admit is. It stays on the map and in the
+data, because it exists and may reopen; it is just not an answer to "where
+should I park". Rejected deleting the lot outright, which would be a claim
+about the future I cannot support, and rejected leaving it scored, which is
+the thing that was actively wrong.
+
+The second thing is harder to act on. The same reading says the weekday curve
+is now about 21 points low at midday for everything else, and in the direction
+the closure predicts: Nutwood went from roughly 50 percent at that hour to
+95.9, State College from roughly 43 to 90.5. Thirteen hundred spaces came off
+the board and those drivers are now in the other three structures.
+
+I have not refitted for that, deliberately. One reading at one hour is exactly
+what produced the first evening curve, which a review round then showed was
+overfitted: it had invented a 57 point cliff at an hour nobody measured and had
+encoded a closure as demand. Doing the same thing again at midday would be the
+same mistake with more consequences, because midday is when the screen is
+actually used. The debt is recorded instead: `tests/parking_curve.test.mjs`
+carries a NOT_FITTED list naming this reading and the reason, and a test that
+fails if the curve ever starts matching it, so the exemption cannot outlive
+what it is for. A second weekday midday reading settles it.
+
+---
+
 **2026-11-03: App Check, and why it is reCAPTCHA Enterprise**
 
 The scoring endpoint has no sign in of its own and the Firestore rules let any
@@ -497,7 +720,7 @@ entirely, since in student org writing it nearly always means events.
 The occupancy curve used to be a single time of day shape with a per lot offset
 derived from the length of the lot's name, which is to say no information at
 all. Took readings off the campus parking board and set the per lot numbers
-from those. Six readings are in data/parking_samples.csv: one on a Sunday,
+from those. Six readings were in data/parking_samples.csv at the time: one on a Sunday,
 two on a Thursday and one on a Friday. Three of them set the per lot numbers,
 the Sunday, the first Thursday and the Friday, and the curve reproduces all
 three exactly. The second Thursday timestamp was taken after the curve was
@@ -668,7 +891,10 @@ from 171 KB to 127 KB at the time, and the stylesheet with it from 12 KB to
 6 KB. Those were measured against the Supabase build; the move to Firebase
 pushed the first load up again, and the entry at the end of this file has the
 figures that hold today. The split itself still earns its place: the map is
-about 51 KB of the 217 KB the demo downloads.
+about 50 KB of the 224 KB the demo downloads. (Both numbers are
+re-measurements. This said 51 of 217 and the Firebase entry below said 216,
+which is how the drift was noticed: two figures for one thing, and the bundle
+had grown past both since either was taken.)
 
 The map is hidden from screen readers and is not a tab stop. Everything on it
 is already in the list above it in words, and a reader tabbing into Leaflet
@@ -819,8 +1045,13 @@ the first load went from 127 KB compressed to 158 KB, which is 31 KB more for
 the login screen and the demo. Firestore is another 170 KB on top, and that one
 is fetched only when somebody signs in, the same trick the map already uses.
 Measured it rather than assuming: browsing the whole demo, parking screen and
-map included, pulls 216 KB and never asks for the Firestore chunk at all. Only
-an account pays for it.
+map included, pulls 224 KB and never asks for the Firestore chunk at all. Only
+an account pays for it. (158 and 216 when this entry was written. Re-measured
+against the current build on 8 November 2026 with `gzip -c` over dist/: the
+first load is 174 KB and the demo 224 KB, because the bundle has grown since.
+The shape of the argument is unchanged and the Firestore chunk, 167 KB, is
+still fetched only on sign in. The numbers are corrected in place rather than
+left as a record, because both sentences claim what the app downloads now.)
 
 Two things are genuinely better. Firestore denies anything the rules do not
 allow, which is the opposite default from Postgres, where a table with security
@@ -1258,7 +1489,7 @@ bare one breaks both and nothing else notices.
 **src/vite-env.d.ts**: the types for import.meta.env, so the Firebase config
 reads are checked rather than any.
 
-**data/parking_samples.csv**: the six readings off CSUF's live counts
+**data/parking_samples.csv**: the nine readings off CSUF's live counts
 board, which the occupancy curve was fitted to. **docs/architecture.mmd**: the
 three recommenders drawn from the student's side, which GitHub renders.
 
@@ -1279,9 +1510,6 @@ says load it again. Every loader in the app takes the last two.
 **db/seed_demo_account.sql**: the demo student. Separate from the other seeds
 because a profile belongs to a person and a person only exists once somebody
 has signed up.
-
-**firebase.json**: what tells the Firebase CLI where the rules are. Small,
-and the deploy command does nothing without it.
 
 **db/delete_account.mjs**: erases one student and their schedule. Firebase
 cascades nothing, so this is the thing Postgres did for free.
@@ -1326,10 +1554,24 @@ a .tsx component.
 case that forced the rarity weighting, so the choral society cannot climb back
 above the software engineering clubs without a failure.
 
-**tests/parking_curve.test.mjs**: five cases over the occupancy curve, which had none at all while it was the only data the parking screen shows. Two of them read the board readings out of data/parking_samples.csv and check the curve against them, so adding a reading there tests the model without touching the test. The other three pin the shape of the seed: the 1 to 99 bounds, Eastside South having no evening row, and Friday keeping its own curve rather than the weekday evening one.
+**tests/parking_curve.test.mjs**: seven cases over the occupancy curve, which had none at all while it was the only data the parking screen shows. Three of them read the board readings out of data/parking_samples.csv and check the curve against them, so adding a reading there tests the model without touching the test. The other four pin the shape of the seed: the 1 to 99 bounds, Eastside South carrying no rows at all, Friday keeping its own curve rather than the weekday evening one, and the weekend sliding only for the one lot that was measured sliding.
+
+**src/lib/profileEdits.ts**: the decisions the profile screen makes before it
+writes anything. The interest slug, the two tag ceilings and the class time
+check were inside ProfileView.tsx, which is the largest file in the project and
+the one with no tests, so the two rules that have to agree with
+db/firestore.rules were the two nobody could check. The same move clubRanking.ts
+made out of ClubsView.tsx, and for the same reason: node --test can import a .ts
+from here but not a .tsx component.
+
+**tests/profile_edits.test.mjs**: seven cases over the above. Two of them read
+db/firestore.rules and check the ceilings the screen enforces against the ones
+the database enforces, so the two drift apart in a test run rather than in front
+of a student who types a thirteenth interest and gets a security rules error.
+That agreement used to be a comment saying it was kept in step by hand.
 
 **tools/gen_test_cases.py**: writes TEST_CASES.md. Reads the test files for the
-names, the fixtures and the assertions, runs all seven suites for the pass
+names, the fixtures and the assertions, runs all eight suites for the pass
 column, and refuses to write anything if a suite will not run, so the document
 cannot claim a pass nobody saw.
 

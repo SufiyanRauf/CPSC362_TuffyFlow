@@ -64,7 +64,8 @@ const parkingLots: ParkingLot[] = [
   // north one was built. That is why the directions link searches for the old
   // name: the real one does not resolve.
   { id: 'lot-esps', name: "Eastside South Parking Structure", lat: 33.880356, lng: -117.881687,
-    permits: ['student', 'employee', 'visitor'], total_spaces: 1341 },
+    permits: ['student', 'employee', 'visitor'], total_spaces: 1341,
+    taking_cars: false },
 
   // The two big surface lots at the top of campus, by the stadium. Freshmen in
   // the residence halls park at S8 and take the shuttle in.
@@ -114,6 +115,16 @@ const parkingLots: ParkingLot[] = [
 // S8 and S10 at 59, which sit by the stadium and the gym. State College is
 // the highest of the four, at almost exactly 4.
 //
+// The weekend has since been read a second time, at 21:40 on Sunday 8
+// November, seven weeks after the first and nine hours later in the day. It
+// is the only part of this model that has been checked against a reading
+// taken at a different hour on a day it was already fitted for, and three of
+// the four lots came back inside a point and a half with no change at all:
+// Nutwood 1.93 to 1.77, State College 4.01 to 3.35, Eastside North 0.48 to
+// 0.90, which went up. A weekend really is flat for the structures. S8 and
+// S10 is not, and that is the one thing the second reading changed. See
+// WEEKEND_MEASURED.
+//
 // Only Sunday was sampled, so Saturday is an assumption.
 //
 // The six lots that are not on the board carry guesses, marked below.
@@ -127,8 +138,13 @@ const parkingLots: ParkingLot[] = [
 // note further down, and the CSV header, which owns up to the same slip.)
 // Far fewer classes run here on Fridays.
 //
-// Eastside South is deliberately absent from the evening, and that is the most
-// important line in this block. Both Tuesday readings put it at 1.49 percent,
+// Eastside South is deliberately absent, and that is the most important line
+// in this block. It has now read exactly 1321 free ten times, from two
+// different people, across four days and from 10:07 in the morning to 21:40
+// at night, the last of them on a Sunday three days after the one before.
+// A counter
+// that never moves over a span like that is a closed gate, not a quiet
+// structure. Both Tuesday readings put it at 1.49 percent,
 // twenty cars in 1341 spaces, and it is the only facility that did not change
 // at all between them: 190 cars left campus in those 32 minutes and none of
 // them left Eastside South. At the same moment 1016 drivers were parked in
@@ -140,10 +156,20 @@ const parkingLots: ParkingLot[] = [
 // Writing it in as an offset would have made the app rank it the best evening
 // parking on campus four days a week, at one to four percent full and with the
 // shortest leave-by buffer of any lot, which is advice to drive to a gate that
-// may be shut. An absent row is the honest alternative: lot_fullness falls back
-// to UNKNOWN_FULLNESS and the card says "no typical reading for that hour",
-// which is exactly what we have. A second evening reading on a day it is
-// plainly open is what would fix this properly.
+// may be shut.
+//
+// Two mechanisms now hold it out, and it is worth being clear about which one
+// actually fires, because this block argued for the first one back when it was
+// the only one. The first is here: LOT_DEMAND maps the lot to null, so the
+// loop below writes it no rows, lot_fullness falls back to UNKNOWN_FULLNESS
+// and a card would say "no typical reading for that hour". The second came
+// later, when the readings turned an evening oddity into a closure: the lot
+// carries taking_cars: false and src/lib/recommend.ts drops it from the
+// candidate list before the scorer ever sees it. The second is the one that
+// fires, so no card is rendered at all. The first is kept because it is what
+// makes the absence true in the data rather than only in the filter, and
+// because anything else reading these rows, the seed script included, gets
+// the same answer without having to know about the flag.
 //
 // Evenings are their own shape too, for the same reason Fridays are. The
 // weekday curve treats 18:00 as the tail of the midday hump and had the campus
@@ -170,13 +196,14 @@ const parkingLots: ParkingLot[] = [
 // Tuesday was sampled, so the rest of Monday to Thursday inherits it.
 const LOT_DEMAND: Record<
   string,
-  { weekday: number; weekend: number; friday: number; evening: number | null }
+  | { weekday: number; weekend: number; friday: number; evening: number | null }
+  | null
 > = {
   // Measured, from data/parking_samples.csv.
   "Nutwood Parking Structure":       { weekday: -24, weekend:  -1, friday: -9, evening:  -9 },
   "State College Parking Structure": { weekday: -31, weekend:   1, friday: -22, evening:   0 },
   "Eastside North Parking Structure": { weekday: 12, weekend:  -3, friday: -37, evening:   2 },
-  "Eastside South Parking Structure": { weekday: 14, weekend:  -1, friday: -19, evening: null },
+  "Eastside South Parking Structure": null,
   // The board reports these two as one row, so the pair's reading is the best
   // we have for either of them on its own.
   "S8":                { weekday:  -9, weekend:  56, friday: -14, evening:   3 },
@@ -193,6 +220,93 @@ const LOT_DEMAND: Record<
   // A small lot that fills before the structures do.
   "Student Union Way (hourly)":      { weekday:   5, weekend: -30, friday: -5, evening: -20 },
 }
+
+// Monday to Thursday, measured per lot rather than as one shared curve with a
+// per lot offset. Three hours are real, all of them taken after Eastside South
+// closed: 11:00 and 13:00 on 4 and 5 November, and 18:00 from the pair on 3
+// November. The hours between them are interpolated; the morning ramp and the
+// last three hours are not measured and say so below.
+//
+// This replaced a shared base plus offsets because the readings showed a shape
+// that arrangement cannot hold. Between 13:00 and 18:00 the three structures
+// fall 40 to 50 points while S8 and S10 drops six, so they are not one curve
+// at different heights, and forcing them to be one left the model 24 points
+// out at 13:00 and 42 points out on Nutwood alone.
+//
+// The closure is why these are all November numbers. Before it, Nutwood sat
+// near 50 percent at this hour and Eastside South was the fullest structure on
+// campus; 1341 spaces came off the board and those drivers are in these four
+// now. Readings taken before 3 November describe a campus that no longer
+// exists, so they are kept in data/parking_samples.csv as a record and are not
+// fitted to.
+const WEEKDAY_MEASURED: Record<string, Record<number, number>> = {
+  'lot-nps':  { 11: 96, 13: 92, 18: 41 },
+  'lot-scps': { 11: 91, 13: 86, 18: 50 },
+  'lot-enps': { 11: 91, 13: 90, 18: 52 },
+  'lot-s8':   { 11: 63, 13: 57, 18: 53 },
+  'lot-s10':  { 11: 63, 13: 57, 18: 53 },
+}
+
+// The hours either side of what was measured. Mornings fill towards the 11:00
+// peak and evenings empty away from 18:00, both as a fraction of the lot's own
+// measured level, so a lot that stays busy into the evening keeps doing so
+// instead of being dragged down by a shared decay. These fractions are the
+// assumption in this model; the three anchors above are not.
+const MORNING_SHARE: Record<number, number> = {
+  6: 0.08, 7: 0.20, 8: 0.55, 9: 0.75, 10: 0.90,
+}
+const EVENING_SHARE: Record<number, number> = { 19: 0.78, 20: 0.56, 21: 0.38 }
+
+function weekdayLevel(lotId: string, hour: number): number | null {
+  const m = WEEKDAY_MEASURED[lotId]
+  if (!m) return null
+  // Neither ?? can fire while the grid runs 6 to 21: both tables cover every
+  // hour on their side of it. They are here so that widening the grid gives
+  // the nearest share rather than NaN, which would clamp to 1 and read as an
+  // empty lot. If you widen it, measure the new hours instead of relying on
+  // these.
+  if (hour <= 10) return m[11] * (MORNING_SHARE[hour] ?? 0.08)
+  if (hour >= 19) return m[18] * (EVENING_SHARE[hour] ?? 0.38)
+  if (hour === 11 || hour === 13 || hour === 18) return m[hour]
+  if (hour === 12) return (m[11] + m[13]) / 2
+  // 14 to 17, straight between the 13:00 and 18:00 readings
+  return m[13] + ((m[18] - m[13]) * (hour - 13)) / 5
+}
+
+// Saturday and Sunday, measured at two hours seven weeks apart: 12:23 on 20
+// September and 21:40 on 8 November 2026. Only S8 and S10 is in here, and the
+// absence of the three structures is the finding rather than an omission.
+// Over those nine hours they moved by less than a point and a half each and
+// Eastside North moved upwards, so the flat level they already carry from
+// LOT_DEMAND is what was measured twice, and refitting them would be fitting
+// to noise. S8 and S10 is the one that slides, 59.3 percent down to 45.6.
+//
+// Written as a straight line between the two hours, because two points cannot
+// describe a curve and pretending otherwise is what produced the first,
+// overfitted evening shape. Nothing before 12:00 has ever been read on a
+// weekend, so those hours hold the midday level instead of running this line
+// backwards, which would claim S8 and S10 is fuller at seven on a Sunday
+// morning than at noon. That may even be true, since these are the lots the
+// residence halls park in and those cars sit still all weekend, but it is not
+// something anybody here has measured.
+//
+// Worth noticing across both tables: S8 and S10 has never been read below 45
+// percent at any hour of any day, while the structures empty to 1. About a
+// thousand cars live in these two lots whatever the time, which is also why
+// they fall six points between 13:00 and 18:00 on a weekday while the
+// structures fall forty to fifty.
+const WEEKEND_MEASURED: Record<string, Record<number, number>> = {
+  'lot-s8':  { 12: 59, 21: 46 },
+  'lot-s10': { 12: 59, 21: 46 },
+}
+
+function weekendLevel(lotId: string, hour: number): number | null {
+  const m = WEEKEND_MEASURED[lotId]
+  if (!m) return null
+  if (hour <= 12) return m[12]
+  return m[12] + ((m[21] - m[12]) * (hour - 12)) / 9
+}
+
 function buildAvailability(): LotAvailability[] {
   const rows: LotAvailability[] = []
   for (const lot of parkingLots) {
@@ -221,21 +335,42 @@ function buildAvailability(): LotAvailability[] {
             : evening
               ? eveningBase[hour]
               : afternoon(hour)
+        // A lot with no entry at all has no honest figure at any hour, so it
+        // drops out of the grid entirely rather than carrying a number.
+        if (demand === null) continue
         const offset = weekend
-          ? demand?.weekend ?? 0
+          ? demand.weekend
           : friday
-            ? demand?.friday ?? 0
-            : evening ? demand?.evening : demand?.weekday ?? 0
-        // An absent evening offset means we have no honest figure for this lot
-        // at this hour, so no row is written and the scorer says so.
+            ? demand.friday
+            : evening ? demand.evening : demand.weekday
+        // An absent offset means we have no honest figure for this lot at this
+        // hour, so no row is written and the scorer says so.
         if (offset === null || offset === undefined) continue
         // 17:00 is a handoff, not a measurement, and switching base and offsets
         // together made it a step: State College jumped 36 points and the
         // resident lots 35, in one hour, on no evidence. Averaging the two
         // branches there spreads the change over 16:00 to 18:00 instead.
-        const level = evening && hour === 17
-          ? (afternoon(16) + (demand?.weekday ?? 0) + eveningBase[18] + offset) / 2
-          : base + offset
+        // The four board lots on Monday to Thursday use their own measured
+        // curve, and S8 and S10 uses one at the weekend too. Everything else
+        // keeps the shared shape, because nothing has ever measured it.
+        // Friday has one reading at one hour and so has no curve of its own.
+        const measured = weekend
+          ? weekendLevel(lot.id, hour)
+          : friday ? null : weekdayLevel(lot.id, hour)
+        const level = measured !== null
+          ? measured
+          : evening && hour === 17
+            // The midpoint of the two hours either side, each taken from the
+            // branch that genuinely owns it: 16:00 is the last hour the
+            // afternoon shape describes, and 18:00 is the measured evening
+            // anchor. Not both at 17:00, even though both branches are
+            // defined there, because 17:00 is the hour being handed over and
+            // neither shape has any claim on it. The parentheses are the
+            // point: this is a mean of two branch values, not four terms over
+            // two.
+            ? ((afternoon(16) + demand.weekday)
+               + (eveningBase[18] + offset)) / 2
+            : base + offset
         rows.push({
           lot_id: lot.id, day_of_week: day, hour,
           // floor 1, ceiling 99: never claim a lot is literally empty or full.

@@ -73,6 +73,13 @@ export type ParkingLot = {
   // record of what the published figure was when the rows were written.
   // Nothing reads it yet: the parking screen works off typical_pct_full.
   total_spaces: number | null
+  // Absent means yes, which is every lot but one. Eastside South is set false
+  // because the board has reported the same 1321 free spaces across ten
+  // readings on four days, including middays where every other structure
+  // was over 90 percent full. A structure nobody can get into is not a worse
+  // recommendation, it is not a recommendation, so it is filtered out the way
+  // a lot the permit does not admit is.
+  taking_cars?: boolean
 }
 
 export type LotAvailability = {

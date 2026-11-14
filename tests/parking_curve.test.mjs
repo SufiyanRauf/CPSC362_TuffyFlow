@@ -40,8 +40,22 @@ function readings() {
 const row = (id, day, hour) =>
   lotAvailability.find((r) => r.lot_id === id && r.day_of_week === day && r.hour === hour)
 
+// Readings the curve has NOT been fitted to, and why. Listed rather than
+// quietly skipped, because the whole point of this file is that the curve is
+// checked against the board instead of against numbers somebody typed. A
+// reading in here is a known debt; the test below proves each one is still
+// genuinely off, so refitting the curve makes this list fail until it is
+// emptied, rather than leaving a stale exemption behind.
+const NOT_FITTED = {
+  '2026-10-01 13:11': 'Taken while Eastside South was open and the fullest '
+    + 'structure on campus. It closed between 30 October and 3 November and '
+    + 'its 1341 spaces of demand moved into the other three, so this reading '
+    + 'describes a campus that no longer exists. Kept as a record.',
+  '2026-10-01 13:57': 'The second of the same pair, same reason.',
+}
+
 test('every board reading is reproduced by the curve, or has no row at all', () => {
-  const all = readings()
+  const all = readings().filter((r) => !NOT_FITTED[`${r.date} ${r.time}`])
   assert.ok(all.length >= 20, `expected the samples file to have rows, got ${all.length}`)
   for (const r of all) {
     for (const id of BOARD[r.lot]) {
@@ -79,20 +93,41 @@ test('every hour of every day carries a percentage that could be real', () => {
   }
 })
 
-test('Eastside South has no evening row on the days the reading covers', () => {
-  // Both Tuesday readings put it at twenty cars in 1341 spaces, unchanged
-  // across half an hour in which 190 cars left the rest of campus. That reads
-  // as a structure that was not taking cars, so it is left out rather than
-  // written in as the best evening parking on campus.
-  for (const day of [1, 2, 3, 4]) {
-    for (const hour of [17, 18, 19, 20, 21]) {
-      assert.equal(row('lot-esps', day, hour), undefined,
-        `Eastside South should have no row for day ${day} hour ${hour}`)
-    }
+test('the readings we have not fitted to are still genuinely off', () => {
+  // If the curve is refitted and starts matching one of these, this fails and
+  // the entry has to come out of NOT_FITTED. That keeps the exemption list
+  // from outliving the reason for it.
+  for (const key of Object.keys(NOT_FITTED)) {
+    const group = readings().filter((r) => `${r.date} ${r.time}` === key)
+    assert.ok(group.length > 0, `${key} is exempted but is not in the samples file`)
+    const offs = group.flatMap((r) => BOARD[r.lot].map((id) => {
+      const got = row(id, DAYS[r.day], r.hour)
+      return got ? Math.abs(got.typical_pct_full - r.pct) : null
+    })).filter((x) => x !== null)
+    assert.ok(offs.some((o) => o > WITHIN),
+      `${key} now matches the curve to within ${WITHIN} points, so it is no `
+      + 'longer a known debt and should come out of NOT_FITTED')
   }
-  // but it is still there during the day, and at the weekend
-  assert.ok(row('lot-esps', 2, 13), 'Eastside South lost its afternoon')
-  assert.ok(row('lot-esps', 0, 13), 'Eastside South lost its Sunday')
+})
+
+test('a lot that is not taking cars is kept out of the grid entirely', () => {
+  // Eastside South read exactly 1321 free ten times, across four days and
+  // from two people, including middays where every other structure was over
+  // 90 percent full and a Sunday night three days after the one before it.
+  // A structure
+  // nobody can get into has no typical occupancy, so it carries no rows at
+  // any hour of any day.
+  const closed = parkingLots.filter((l) => l.taking_cars === false)
+  assert.ok(closed.length > 0, 'expected at least one lot marked not taking cars')
+  for (const lot of closed) {
+    const rows = lotAvailability.filter((r) => r.lot_id === lot.id)
+    assert.equal(rows.length, 0, `${lot.name} should carry no availability rows`)
+  }
+  // and every other lot still carries a full week
+  for (const lot of parkingLots.filter((l) => l.taking_cars !== false)) {
+    const rows = lotAvailability.filter((r) => r.lot_id === lot.id)
+    assert.ok(rows.length > 0, `${lot.name} lost its availability`)
+  }
 })
 
 test('the evening shape applies to weekdays only, and not to Friday', () => {
@@ -103,4 +138,27 @@ test('the evening shape applies to weekdays only, and not to Friday', () => {
   assert.notEqual(fridayEvening, tuesdayEvening)
   // and the weekend is untouched by any of it
   assert.equal(row('lot-nps', 0, 18).typical_pct_full, row('lot-nps', 6, 18).typical_pct_full)
+})
+
+test('the weekend empties in the evening only where it was measured', () => {
+  // Two Sunday readings nine hours apart. S8 and S10 fell eleven points
+  // between them and the three open structures did not move, so only the one
+  // pair carries a weekend slide. If a later refit flattens S8 and S10 again,
+  // or starts sliding the structures on no evidence, this fails.
+  for (const id of ['lot-s8', 'lot-s10']) {
+    const noon = row(id, 0, 12).typical_pct_full
+    const night = row(id, 0, 21).typical_pct_full
+    assert.ok(noon - night >= 10,
+      `${id} should fall at least 10 points from noon to 21:00 on a Sunday, `
+      + `got ${noon} to ${night}`)
+  }
+  for (const id of ['lot-nps', 'lot-scps', 'lot-enps']) {
+    const noon = row(id, 0, 12).typical_pct_full
+    const night = row(id, 0, 21).typical_pct_full
+    assert.ok(Math.abs(noon - night) <= 3,
+      `${id} was read flat across a Sunday, so the curve should be flat too, `
+      + `got ${noon} to ${night}`)
+  }
+  // Saturday still inherits Sunday whole: nobody has read a Saturday.
+  assert.equal(row('lot-s8', 6, 21).typical_pct_full, row('lot-s8', 0, 21).typical_pct_full)
 })
