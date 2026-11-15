@@ -408,4 +408,31 @@ describe('a student deleting their own account', () => {
     batch.delete(doc(db, 'profiles', JORDAN))
     await assertFails(batch.commit())
   })
+
+  // The test above puts both deletes in one batch, and a batch is refused at
+  // its first denied write, so it never reaches the profile rule at all:
+  // loosening that rule to any signed in account would leave it passing.
+  // This one asks for the profile delete on its own.
+  it('cannot be done to somebody else by the profile delete alone', async () => {
+    await assertFails(deleteDoc(doc(alex(), 'profiles', JORDAN)))
+  })
+
+  // What a second press of the button actually needs, which the pass above
+  // only showed against an already empty schedule: a class meeting that
+  // outlived the profile it hangs under is still its owner's to delete. A
+  // subcollection does not need its parent document to exist, so this is the
+  // row eraseStudent pages for until the listing comes back empty.
+  it('can clear a class meeting left behind with no profile above it', async () => {
+    const db = riley()
+    const schedule = collection(db, 'profiles', LEAVER, 'class_meetings')
+    const orphan = await assertSucceeds(addDoc(schedule, aClass()))
+    await assertSucceeds(deleteDoc(doc(db, 'profiles', LEAVER)))
+
+    const listed = await assertSucceeds(getDocs(schedule))
+    assert.equal(listed.size, 1)
+    await assertSucceeds(deleteDoc(orphan))
+    // And the profile delete is a permitted no-op second time round, which is
+    // the other half of that claim.
+    await assertSucceeds(deleteDoc(doc(db, 'profiles', LEAVER)))
+  })
 })

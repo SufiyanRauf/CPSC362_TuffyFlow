@@ -137,6 +137,9 @@ const STUDENT_FACING = [
   // deleting an account, and what campusData says when the last step of
   // that fails. All of them are things only the student can act on.
   'Your profile and schedule were erased',
+  'Your schedule was erased',
+  'That is a different account from the one you are logged in as.',
+  'This account has no email address to check a password against.',
   "That email and password don't match an account.",
   'Your password is missing.',
   'You closed the Google window',
@@ -363,7 +366,7 @@ function emptyProfileFields(fullName: string | null) {
 // name for the components, which is the layer where it is true: they ask for a
 // profile and do not care which of the two happened.
 export async function getOrCreateProfile(
-  userId: string, fullName: string | null,
+  userId: string, fullName: string | null, mayCreate = true,
 ): Promise<Profile> {
   // One try around the whole body, the way every other call in this file is
   // written. connect() has to be inside it: it was outside once, and a failed
@@ -381,6 +384,11 @@ export async function getOrCreateProfile(
       // a paid plan, so the first look creates it instead. The rules allow a
       // person to create their own and nobody else's.
       const fresh = emptyProfileFields(fullName)
+      // Unless the account is on its way out. campusData says so while
+      // deleteMyAccount is working, because a profile written back after the
+      // real one was erased belongs to a uid that is about to stop existing,
+      // and no student and no rule could reach it afterwards.
+      if (!mayCreate) return { id: userId, ...fresh }
       await acknowledged(fs.setDoc(ref, fresh))
       return { id: userId, ...fresh }
     }
@@ -577,26 +585,49 @@ export async function addClassMeeting(
 // The sign in account is not this file's to remove. campusData.deleteMyAccount
 // does that afterwards, through session.ts.
 export async function eraseStudent(userId: string) {
+  // How many class meetings actually went, which decides what the student is
+  // told if this stops part way through. It is read in the catch below.
+  let cleared = 0
   try {
     const { fs, db } = await connect()
-    const snapshot = await fs.getDocs(
-      fs.collection(db, 'profiles', userId, 'class_meetings'),
-    )
-    // The reason getClassMeetings gives. An empty answer out of the cache
-    // would skip the schedule and delete the profile over the top of it.
-    if (snapshot.metadata.fromCache) {
-      throw new Error(OFFLINE)
-    }
-    // A batch takes 500. The profile screen cannot make a schedule anywhere
-    // near that, but a count nobody checks is how a delete stops half way.
+    const schedule = fs.collection(db, 'profiles', userId, 'class_meetings')
+    // A batch takes 500. 400 leaves room, and it keeps a failure down to one
+    // page rather than a whole schedule.
     const PAGE = 400
-    for (let at = 0; at < snapshot.docs.length; at += PAGE) {
+    // In pages until the listing comes back empty, which is what
+    // db/delete_account.mjs does and for the reason one listing misses: a row
+    // written after the listing is not in it. The Week panel sits on this
+    // same screen and stays live while this runs, and a second tab can add a
+    // class too, so the row that arrives in between would outlive the profile
+    // it hangs under. Nothing could reach it afterwards either, because every
+    // rule on it keys on the owner being signed in and that account is about
+    // to stop existing.
+    //
+    // Bounded, so a page that refuses to go away cannot spin here forever.
+    // Twenty passes is eight thousand classes, which is not a timetable.
+    for (let pass = 0; pass < 20; pass += 1) {
+      const page = await fs.getDocs(fs.query(schedule, fs.limit(PAGE)))
+      // The reason getClassMeetings gives. An empty answer out of the cache
+      // would skip the schedule and delete the profile over the top of it.
+      if (page.metadata.fromCache) {
+        throw new Error(OFFLINE)
+      }
+      if (page.empty) break
       const batch = fs.writeBatch(db)
-      for (const row of snapshot.docs.slice(at, at + PAGE)) batch.delete(row.ref)
+      for (const row of page.docs) batch.delete(row.ref)
       await acknowledged(batch.commit())
+      cleared += page.size
     }
     await acknowledged(fs.deleteDoc(fs.doc(db, 'profiles', userId)))
   } catch (e) {
+    // Which half happened. "Your account was not deleted" is a lie once a
+    // class has gone, and the student has no other way of finding that out.
+    if (cleared > 0) {
+      throw new Error(
+        'Your schedule was erased, but the rest of your account is still here. '
+        + 'Press Delete account again to finish.',
+      )
+    }
     throw new Error(readable(e))
   }
 }

@@ -162,7 +162,7 @@ export async function getProfile(): Promise<Profile> {
     // The name comes from the session rather than the database, because on a
     // brand new account there is no document yet and this is the call that
     // creates it. Firebase is the only thing that knows what to put on it.
-    return id ? live.getOrCreateProfile(id, accountName()) : profile
+    return id ? live.getOrCreateProfile(id, accountName(), id !== leaving) : profile
   })
 }
 
@@ -204,8 +204,30 @@ export async function getAvailabilityAround(day: number, hour: number): Promise<
 
 const WRONG_ACCOUNT = 'That form belongs to a different account. Reload the page.'
 
+// Whose account is being erased right now, or null. Set once the rows start
+// going and left set afterwards, because nothing may write this account again.
+//
+// It exists because the Profile screen keeps Details, Week and Delete account
+// side by side, each with its own busy flag, so Save changes and Add class
+// stay live while the delete runs. Both of those end in dataChanged(), which
+// moves the once() key and sends every panel back for the profile, and
+// getOrCreateProfile writes a fresh one when it finds none. That would leave
+// a profile owned by a uid that can never sign in again: the rules key on the
+// owner being signed in, so no student and no screen could ever read or
+// delete it, and only db/delete_account.mjs with a service account key could
+// clear it up.
+//
+// Known gap, and it is written down rather than papered over: this is in
+// memory, so a reload inside the half-way state in deleteMyAccount loses it
+// and the next read recreates the profile. Pressing the button again is what
+// closes that, which is what the half-way message asks for.
+let leaving: string | null = null
+
+const LEAVING = 'Your account is being deleted, so that change was not saved.'
+
 export async function saveProfile(next: Profile) {
   const id = accountId()
+  if (id && id === leaving) throw new Error(LEAVING)
   // Whose form is this. The app remounts when the person changes, which is
   // what normally stops a stale form reaching the wrong account, but that
   // is mitigation by timing and this is the check. A form built for one
@@ -231,6 +253,7 @@ let nextClassId = 0
 
 export async function addClassMeeting(meeting: Omit<ClassMeeting, 'id' | 'profile_id'>) {
   const id = accountId()
+  if (id && id === leaving) throw new Error(LEAVING)
   if (id) {
     // No id to doubt here, unlike the two writes either side of this one. The
     // form hands over the class and nothing else, and firestoreData names the
@@ -275,6 +298,7 @@ const WRONG_SCHEDULE = 'That class belongs to a different account. Reload the pa
 
 export async function removeClassMeeting(id: string) {
   const account = accountId()
+  if (account && account === leaving) throw new Error(LEAVING)
   // The schedule is a subcollection under the person, so deleting from it
   // needs to know whose it is. Postgres took the row id alone and let a
   // policy decide; here the path is the restriction.
@@ -310,6 +334,10 @@ export async function removeClassMeeting(id: string) {
 // finds none, so the document just deleted would be back before the account
 // was gone. removeSignIn ends the session, which announces the change once
 // there is nobody left to re-read for.
+//
+// Not calling it is necessary and not sufficient, which is what the leaving
+// guard above is for: Save changes and Add class sit on this same screen and
+// call dataChanged() themselves.
 export async function deleteMyAccount(password?: string) {
   const id = accountId()
   if (!id) throw new Error('There is no account to delete here.')
@@ -320,15 +348,35 @@ export async function deleteMyAccount(password?: string) {
   // signed this browser in as somebody else.
   if (accountId() !== id) throw new Error(WRONG_ACCOUNT)
 
-  await live.eraseStudent(id)
+  // From here on nothing may write this account again. Cleared if the erase
+  // fails outright, because the profile is then still there and somebody left
+  // on the screen should be able to go on using it.
+  leaving = id
+  try {
+    await live.eraseStudent(id)
+  } catch (e) {
+    leaving = null
+    throw e
+  }
 
   const gone = await removeSignIn()
   if (!gone.ok) {
-    // The one place this can stop half way, so it says which half happened.
-    // Pressing the button again is safe: erasing nothing is not an error.
+    // One of the two places this can stop half way. eraseStudent reports the
+    // other one, between the schedule and the profile, and both of them name
+    // the half that happened: "your account was not deleted" is a lie once
+    // the rows have gone and the student has no other way to find that out.
+    //
+    // gone.message is carried through rather than dropped, because it is the
+    // half that says what to do next. Too many tries wants a minute, and a
+    // sign in Firebase thinks is too old wants a fresh one, and neither of
+    // those is "press the button again straight away".
+    //
+    // Pressing it again is safe once the message allows it: erasing nothing
+    // is not an error, and the guard above stops anything else writing in the
+    // meantime.
     throw new Error(
-      'Your profile and schedule were erased, but the account itself is still here. '
-      + 'Press Delete account again to finish.',
+      'Your profile and schedule were erased, but the account itself is still '
+      + 'here, so it needs one more go. ' + gone.message,
     )
   }
 

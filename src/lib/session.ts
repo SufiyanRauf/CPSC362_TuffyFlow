@@ -310,15 +310,23 @@ export async function logIn(email: string, password: string): Promise<AuthResult
   }
 }
 
-// Reports ok whether or not the address has an account, because Firebase does:
-// telling the two apart is how a stranger finds out who is signed up. The
-// login card words its answer the same way.
+// Reports ok whether or not the address has an account: telling the two apart
+// is how a stranger finds out who is signed up. The login card words its
+// answer the same way.
+//
+// The user-not-found case is answered here rather than left to Firebase.
+// Firebase only swallows it when Email Enumeration Protection is switched on
+// in the console, which is a setting and not code, so leaving it to that made
+// this card an exact test of whether an address has an account: green for
+// yes, red for no. It is also the wrong thing to say, because the reset card
+// has no password box and that code maps to a sentence about a password.
 export async function resetPassword(email: string): Promise<AuthResult> {
   if (!firebaseAuth) return { ok: false, message: NO_PROJECT }
   try {
     await sendPasswordResetEmail(firebaseAuth, email)
     return { ok: true }
   } catch (e) {
+    if ((e as { code?: string })?.code === 'auth/user-not-found') return { ok: true }
     return { ok: false, message: plainly(e) }
   }
 }
@@ -335,25 +343,49 @@ export async function resetPassword(email: string): Promise<AuthResult> {
 
 // How this person signs in, which decides what the proof looks like: a
 // password to type, or Google's window again.
+//
+// Google wins when an account carries both, which is the opposite of the
+// obvious order and the safer way round. Somebody who has only ever pressed
+// Continue with Google can always do that again; a password on the same
+// address may be one they never chose and cannot produce, and the screen
+// refuses to open the dialog without it. Both providers on one account only
+// happens by signing in with Google onto an address that already had a
+// password, which this app never does on purpose.
 export function accountProvider(): 'password' | 'google' | null {
   const user = firebaseAuth?.currentUser
   if (!user) return null
   const ids = user.providerData.map((p) => p.providerId)
-  if (ids.includes('password')) return 'password'
   if (ids.includes('google.com')) return 'google'
+  if (ids.includes('password')) return 'password'
   return null
 }
 
 export async function confirmItIsYou(password?: string): Promise<AuthResult> {
   const user = firebaseAuth?.currentUser
   if (!firebaseAuth || !user) return { ok: false, message: NO_PROJECT }
+  const how = accountProvider()
   try {
-    if (accountProvider() === 'password') {
+    if (how === 'password') {
       if (!password) return { ok: false, message: 'Your password is missing.' }
+      // Not user.email ?? '', which built a credential with an empty address
+      // and had Firebase refuse it as a malformed email, on a form that never
+      // asked for one. Firebase does not normally allow a password account
+      // without an address, so this says so rather than guessing.
+      if (!user.email) {
+        return {
+          ok: false,
+          message: 'This account has no email address to check a password against.',
+        }
+      }
       await reauthenticateWithCredential(
-        user, EmailAuthProvider.credential(user.email ?? '', password))
-    } else {
+        user, EmailAuthProvider.credential(user.email, password))
+    } else if (how === 'google') {
       await reauthenticateWithPopup(user, new GoogleAuthProvider())
+    } else {
+      // Neither of the two the app offers. Opening Google's window anyway
+      // ended in a uid mismatch and a generic "try again", which is a dead
+      // end on something irreversible, so it fails in words instead.
+      return { ok: false, message: 'Log out, log back in, and try again.' }
     }
     return { ok: true }
   } catch (e) {
@@ -363,15 +395,23 @@ export async function confirmItIsYou(password?: string): Promise<AuthResult> {
 
 // Only ever called once the rows are gone. The flag goes first for the reason
 // signOut gives: nothing may read its way back into this account afterwards.
+//
+// First really does mean before the call, the way signOut has it. deleteUser
+// signs the client out itself when it succeeds, so the listener fires while
+// this function is still waiting, and setting the flag after it was setting
+// it too late. It mattered in the one case the flag exists for: a delete that
+// reaches the server and then fails locally, in a private window with the
+// storage write refused, leaves currentUser behind, and View demo then Leave
+// demo would hand the browser back an account that no longer exists.
 export async function removeSignIn(): Promise<AuthResult> {
   const user = firebaseAuth?.currentUser
   if (!firebaseAuth || !user) return { ok: false, message: NO_PROJECT }
+  signedOutOnPurpose = true
   try {
     await deleteUser(user)
   } catch (e) {
     return { ok: false, message: plainly(e) }
   }
-  signedOutOnPurpose = true
   // Firebase's own listener has usually said so already by this point.
   if (current.kind !== 'out') set({ kind: 'out' })
   return { ok: true }

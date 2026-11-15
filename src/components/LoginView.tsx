@@ -43,6 +43,23 @@ export default function LoginView() {
   // says what went wrong. Asking for a reset link is the one thing on this
   // card that succeeds and leaves the card standing, which is what good is
   // for.
+  // Set by the profile screen in the moment before the session ends, because
+  // the screen that did the deleting is gone by the time there is anything to
+  // say about it, and landing on this card with no word at all reads exactly
+  // like having been logged out. Read once and removed, so a reload does not
+  // say it a second time.
+  const [deleted, setDeleted] = useState(() => {
+    try {
+      const was = sessionStorage.getItem('tuffyflow.deleted')
+      if (was) sessionStorage.removeItem('tuffyflow.deleted')
+      return was === '1'
+    } catch {
+      // A private window with storage refused. The delete still happened, so
+      // the only loss is the confirmation.
+      return false
+    }
+  })
+
   const [note, setNote] = useState<string | null>(null)
   const [good, setGood] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -66,6 +83,18 @@ export default function LoginView() {
   // the timer has nothing to land on today. Holding it is what keeps that true
   // if something later signs in or switches cards from the same place.
   const complaining = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  // Anything typed makes the last answer stale, and a green one most of all:
+  // "the link is on its way" left on screen while the address is corrected
+  // reads as if it went to the address now in the box. A red one is the same
+  // bug the other way round. The pending complaint is called off too, or it
+  // would land on top of what is being typed.
+  function freshStart() {
+    clearTimeout(complaining.current)
+    setNote(null)
+    setGood(false)
+    setWrong(null)
+  }
 
   function complain(field: 'email' | 'password' | 'name', text: string) {
     setWrong(field)
@@ -99,6 +128,7 @@ export default function LoginView() {
   // focus, a keyboard is left on a button that no longer exists and a screen
   // reader never hears that the screen changed.
   function go(next: Mode) {
+    setDeleted(false)
     setMode(next)
     setNote(null)
     setGood(false)
@@ -214,6 +244,13 @@ export default function LoginView() {
           {title}
         </h1>
 
+        {deleted && (
+          <p role="status" className="mt-4 rounded-lg bg-ok-soft px-3 py-2 text-left text-sm text-ok">
+            Your account is deleted. Your profile, your schedule and your login
+            are gone.
+          </p>
+        )}
+
         {mode === 'choose' ? (
           <>
             <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-ink-soft">
@@ -301,7 +338,7 @@ export default function LoginView() {
                 <input
                   id={ids.name}
                   value={name}
-                  onChange={(e) => { setWrong(null); setName(e.target.value) }}
+                  onChange={(e) => { freshStart(); setName(e.target.value) }}
                   autoComplete="name"
                   // aria-required rather than the native required attribute,
                   // for all three boxes. required hands the browser its own
@@ -325,7 +362,7 @@ export default function LoginView() {
                 value={email}
                 // clearing the mark as well, or a field stays announced as
                 // invalid after it has been corrected
-                onChange={(e) => { setWrong(null); setEmail(e.target.value) }}
+                onChange={(e) => { freshStart(); setEmail(e.target.value) }}
                 // username rather than email on the log in form, which is the
                 // pairing a password manager expects next to current-password
                 autoComplete={mode === 'signup' ? 'email' : 'username'}
@@ -344,7 +381,7 @@ export default function LoginView() {
                 id={ids.password}
                 type="password"
                 value={password}
-                onChange={(e) => { setWrong(null); setPassword(e.target.value) }}
+                onChange={(e) => { freshStart(); setPassword(e.target.value) }}
                 // new-password is what tells a password manager to offer one
                 // rather than filling in the old one
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}

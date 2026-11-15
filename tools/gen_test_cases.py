@@ -58,7 +58,7 @@ SUITES = [
               'Nothing in this suite touches the real project. Needs '
               'firebase-tools and a JDK on the path, and a passing run '
               'prints a wall of red PERMISSION_DENIED lines, because most of '
-              'these cases are refusals that are supposed to happen. Seven '
+              'these cases are refusals that are supposed to happen. Nine '
               'are the other way round, checking that the owner is still let '
               'through, because a rule that refuses everybody passes every '
               'refusal test there is.'),
@@ -97,6 +97,18 @@ SUITES = [
               'now, the way clubRanking.ts came out of ClubsView.tsx. Two of '
               'these cases read the rules file and fail if the numbers drift '
               'apart.'),
+    dict(prefix='AUTH', title='Account messages',
+         file='tests/auth_messages.test.mjs',
+         kind='node', command='npm run test:auth',
+         covers='Student profile',
+         note='Whether what the sign in code says ever reaches the person '
+              'reading the screen. session.ts turns a Firebase error code '
+              'into a sentence, and firestoreData.ts keeps the list of '
+              'sentences allowed through to a panel; the two agreed by hand '
+              'until the agreement slipped, and the sentence for picking the '
+              'wrong Google account while deleting an account was written, '
+              'was reachable, and was being swallowed. These read both files '
+              'and make a new branch be classified as one or the other.'),
     dict(prefix='CLUB', title='Club ranking', file='tests/club_ranking.test.mjs',
          kind='node', command='npm run test:clubs',
          covers='Club matching',
@@ -223,6 +235,12 @@ REQUIREMENTS = [
               'recommendation.',
          rules=[('API', None, ('empty', 'nothing'), None),
                 ('SC', None, ('empty', 'nothing', 'never knew'), None)]),
+    dict(id='NFR-8',
+         text='When something goes wrong with a student\'s own account the app '
+              'tells them what happened, in words they can act on, and never '
+              'tells them an action did not happen when part of it did; and '
+              'deleting an account leaves nothing of theirs behind.',
+         rules=[('AUTH', None, None, None)])
 ]
 
 # Cases that are not evidence for any one requirement: the geometry,
@@ -290,7 +308,7 @@ FEATURES = [
     ('Events', ['FR-5']),
     ('All four, and what they rest on',
      ['FR-1', 'FR-2', 'FR-7', 'FR-8',
-      'NFR-1', 'NFR-2', 'NFR-3', 'NFR-4', 'NFR-6', 'NFR-7']),
+      'NFR-1', 'NFR-2', 'NFR-3', 'NFR-4', 'NFR-6', 'NFR-7', 'NFR-8']),
 ]
 
 
@@ -873,10 +891,23 @@ def main():
     w('the database drift apart in a test run instead of in front of a')
     w('student.')
     w('')
+    w('Leaving for good arrived later and is the one irreversible thing the')
+    w('app does, so it is worth saying exactly how far the cases below go.')
+    w('Tested: the database allows each step and refuses it on somebody')
+    w('else, a class meeting left behind with no profile above it is still')
+    w('its owner to delete, and every sentence the sign in code can say is')
+    w('either allowed through to a panel or listed as belonging to the login')
+    w('card. Not tested: the order the three steps run in, and the guard that')
+    w('stops Save changes writing the profile back while the delete is in')
+    w('flight. Those two are checked by reading the source rather than by')
+    w('calling anything, which is weaker, and it is said here rather than')
+    w('left to look like coverage.')
+    w('')
     w('Still checked by hand only: the session storage draft recovery in that')
-    w('same file, and every screen as a screen. The second of those is what a')
-    w('component harness would cover, and there is no component harness in')
-    w('this project.')
+    w('same file, the Delete account panel and the reset card as screens, and')
+    w('every other screen as a screen. The last of those is what a component')
+    w('harness would cover, and there is no component harness in this')
+    w('project.')
     w('')
     w('Two consequences are worth naming rather than leaving for a reader to')
     w('find. FR-1 and FR-2 are proved at the database rather than at the')

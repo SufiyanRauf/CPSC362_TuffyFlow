@@ -15,8 +15,9 @@ type ConfirmDialogProps = {
 
 // The app's only modal. Everything else gives its answer after the fact, with
 // a status line, because almost nothing here is worth interrupting somebody
-// for. This is for the two that are: taking a class off the schedule, which
-// costs five fields to put back, and leaving, which ends the session.
+// for. This is for the three that are: taking a class off the schedule, which
+// costs five fields to put back, leaving, which ends the session, and
+// deleting the account, which cannot be undone at all.
 export default function ConfirmDialog({
   title, detail, confirmLabel, destructive = false, onConfirm, onCancel,
 }: ConfirmDialogProps) {

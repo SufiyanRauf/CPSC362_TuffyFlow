@@ -13,7 +13,8 @@
     "test:dates": "node --test tests/event_dates.test.mjs tests/clock_text.test.mjs",
     "test:clubs": "node --test tests/club_ranking.test.mjs",
     "test:parking": "node --test tests/parking_curve.test.mjs",
-    "test:profile": "node --test tests/profile_edits.test.mjs"
+    "test:profile": "node --test tests/profile_edits.test.mjs",
+    "test:auth": "node --test tests/auth_messages.test.mjs"
   },
   "dependencies": {
     "firebase": "^13.1.0",

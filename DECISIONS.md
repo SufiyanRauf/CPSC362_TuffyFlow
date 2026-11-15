@@ -298,6 +298,81 @@ and in the samples file. Two more photographs, one about 15:00 and one about
 
 ---
 
+**2026-11-14: What the review of the account work found**
+
+Password reset and in-app account deletion came in on 11 November as one
+commit of 445 lines, and it was read afterwards across four separate passes:
+the delete path and the rules, the session state machine, the three screens,
+and the documents. The code was careful and most of it stood. Four things did
+not, and they are worth writing down because three of them were comments that
+described something the code did not do, which is the failure this project is
+most likely to repeat.
+
+The profile could come back after it was deleted. deleteMyAccount deliberately
+does not call dataChanged() between its steps, and the comment explaining that
+was right about why: it would send every panel back for the profile, and
+getOrCreateProfile writes one when it finds none. What it missed is that not
+calling it is not the same as nobody calling it. Details and Week sit on the
+same screen with their own busy flags, so Save changes and Add class stay live
+while the delete runs, and both of those call dataChanged() themselves. The
+end state was a profile owned by an account that can never sign in again:
+every rule on it keys on the owner being signed in, so no student and no
+screen could ever read it or delete it, and only the admin key could clear it
+up. There is a leaving guard in campusData.ts now. The three writers refuse
+while it is set and the read is told not to create.
+
+The schedule had the same hole from the other direction. eraseStudent listed
+the schedule once and deleted what the listing held, so a class added in
+between was still there when the profile above it went. db/delete_account.mjs
+had this right already and loops until the listing comes back empty; the
+in-app one does now too.
+
+A student could be told their account was not deleted after their schedule had
+gone. The erase has two places it can stop half way, and only one of them said
+so. Both name the half that happened now, and the reason removeSignIn gave is
+carried through instead of dropped, because "too many tries" and "log back in"
+are the half that says what to do next and "press the button again" is the one
+thing that makes the first of those worse.
+
+The reset card was an account oracle whenever Firebase's Email Enumeration
+Protection was off. The comment said it reports the same thing either way
+"because Firebase does", and Firebase only does that when a console setting
+says so, which is not code and is not in the setup steps. Green for an address
+with an account and red for one without is exactly what the wording was
+written to prevent. resetPassword answers the user-not-found case itself now,
+so the promise lives in the code.
+
+Also: the flag that stops View demo handing back an account you have just left
+was being set after the delete rather than before it, which is the opposite of
+what its own comment said and of what signOut does; Google now wins over a
+password when an account carries both, because a federated proof is one the
+person can always complete and a password on that address may be one they
+never chose; and re-authentication fails in words rather than opening a Google
+window for an account that does not sign in with Google.
+
+The sentence for picking the wrong Google account was written, was reachable,
+and was being swallowed, because it never went on the list of sentences
+allowed through to a panel. That list and the sentences are in two different
+files and agreed by hand. tests/auth_messages.test.mjs reads both and fails if
+a sentence is written but cannot reach the screen, and it found a second one
+nobody had classified on its first run. Two more rules cases went in as well,
+for the two things the one new case could not see: a batch is refused at its
+first denied write, so putting both deletes in one batch never reached the
+profile rule at all, and the capability a second press of the button actually
+needs is deleting a class meeting that has outlived the profile above it.
+
+Not changed, and recorded so nobody has to find it twice. The leaving guard is
+in memory, so a reload inside the half-way state loses it and the next read
+recreates the profile; pressing the button again is what closes that, which is
+what the message asks for. The three steps' order and the guard itself are
+checked by reading the source rather than by calling anything, which is weaker
+than a real test and is said as much in TEST_CASES.md. And the screens are
+still checked by hand, because there is no component harness here and adding
+one for this would be a new runner and a new dependency for logic that should
+not have been in a component in the first place.
+
+---
+
 **2026-11-08: The profile screen's rules came out of the component**
 
 Everything in this project that could be tested without a browser had been
@@ -1205,7 +1280,7 @@ asks what the rules do rather than whether they are there: a logged out visitor
 sees nothing, an anonymous sign in counts as nobody, one student cannot reach
 another's profile or schedule, the campus is read only from a browser, a
 profile can only be created empty, and a class with a malformed time or an
-extra field is refused. Thirty two of them, and they pass.
+extra field is refused. Thirty six of them, and they pass.
 
 They were worth not trusting on a first green run, so we broke the rules on
 purpose, five times, and checked each break was caught: letting any signed in
@@ -1271,7 +1346,7 @@ test after it checking an empty database and passing for the wrong reason.
 The last one is the one to remember. We had been treating that suite as proof
 the rules worked, and for the back half of it we were proving nothing. The
 suite now uses a second uid for the create test instead of wiping the data,
-and the thirty two tests all mean something.
+and the thirty six tests all mean something.
 
 Each of the five has a test on it now, and we put the bugs back afterwards to
 check the tests failed. Two of them did not fail on the first attempt, which
@@ -1348,7 +1423,10 @@ one of the two.
 **src/components/LoginView.tsx**: the login card, and the only way in. View
 demo enters with the sample profile and needs no account. The other three are
 real: Google opens a popup, so the page is never left and the address bar is
-never touched, and Create an account and Log in are one form in two modes.
+never touched, and Create an account, Log in and Reset your password are one
+form in three modes behind the chooser. The reset card hides the password box,
+keeps the address already typed, and says the same thing whether or not that
+address has an account, so it cannot be used to find out who is signed up.
 Every failure is turned into a sentence somebody can act on rather than
 Firebase's own code, including the one the browser raises when the request
 never got anywhere; anything unrecognized gets a plain sentence and the code
@@ -1362,7 +1440,17 @@ saving bumps a version counter that every scored screen subscribes to, so they
 reload. A signed in student's edits go to Firestore and are there next time. The
 demo has nowhere to put them, so they last as long as the tab, which is what
 the screen says. It also opens with a list of anything a new account has not
-filled in yet.
+filled in yet, and, for a signed in account, the Delete account panel at the
+bottom of it.
+
+**src/components/DeleteAccount.tsx**: the way out for good, and a file of its
+own because ProfileView is long enough already and shares nothing with it but
+the page. Only rendered for a signed in account, since the demo has nothing to
+delete. It asks for the proof before the dialog rather than after it, so nobody
+agrees to something irreversible and is then told to go and type a password,
+and it says which half happened if the delete stops part way through. The
+button does not claim to be deleting while it is still waiting on Google's
+window.
 
 **src/lib/campusData.ts**: the one way in to any data at all, and the thing that
 chooses between the sample campus and Firestore. The sample rows themselves live
@@ -1377,7 +1465,11 @@ their account id and the schedule is a subcollection under it, so the rules
 check ownership by comparing, not by looking anything up. It is also where
 Firestore's own answers get turned into sentences, and where a profile document
 is created the first time somebody signs in, because Firebase has no free way
-to do that when the account is made.
+to do that when the account is made. eraseStudent is the other end of that: it
+pages the schedule until the listing comes back empty, rather than listing once,
+because a class added in between would outlive the profile it hangs under and
+nothing could reach it afterwards. The same call takes a flag saying not to
+create a profile, which campusData sets while an account is being erased.
 
 **src/lib/campusRows.ts**: every sample row, and nothing else. No imports but
 types, so that the seed script can read it under Node. The demo, an unconfigured
@@ -1396,9 +1488,12 @@ the session need to ring it and neither can import the other.
 
 **src/lib/session.ts**: signed in, signed out, or the demo. A module store
 rather than a React context, so campusData.ts can ask who is signed in without
-being a component. Sign up, log in and Google sign in live here too, and they
-report failures back as sentences rather than throwing Firebase's own codes
-at the screen.
+being a component. Sign up, log in and Google sign in live here too, and so
+do the password reset and the three steps of leaving for good: accountProvider
+says which proof to ask for, confirmItIsYou asks for it, and removeSignIn
+removes the account once the rows are gone. They report failures back as
+sentences rather than throwing Firebase's own codes at the screen, and
+tests/auth_messages.test.mjs is what checks those sentences reach it.
 
 **src/components/CampusMap.tsx**: the parking screen's map. Circle markers, no
 image files, loaded only when that screen opens.
@@ -1511,8 +1606,11 @@ says load it again. Every loader in the app takes the last two.
 because a profile belongs to a person and a person only exists once somebody
 has signed up.
 
-**db/delete_account.mjs**: erases one student and their schedule. Firebase
-cascades nothing, so this is the thing Postgres did for free.
+**db/delete_account.mjs**: erases one student and their schedule with a
+service account key, which is the path for erasing somebody else. A student
+erasing their own does it from the profile screen now, through
+campusData.deleteMyAccount, with no key and nothing but the rules. Firebase
+cascades nothing either way, so this is the thing Postgres did for free.
 
 **db/firestore.rules**: the access rules, and the whole security model. The
 config ships in the browser bundle, so anyone can read it out and talk to the
@@ -1569,6 +1667,15 @@ db/firestore.rules and check the ceilings the screen enforces against the ones
 the database enforces, so the two drift apart in a test run rather than in front
 of a student who types a thirteenth interest and gets a security rules error.
 That agreement used to be a comment saying it was kept in step by hand.
+
+**tests/auth_messages.test.mjs**: five cases over the sentences the sign in
+code produces. Two files have to agree for one to reach the screen: session.ts
+turns a Firebase code into a sentence, and firestoreData.ts keeps the list of
+sentences allowed through to a panel. They agreed by hand until the agreement
+slipped, so these read both files and fail if a sentence is written, reachable
+and swallowed. They also pin the two things the delete path cannot express in a
+rule: that the schedule is paged until empty, and that nothing may write an
+account that is being erased.
 
 **tools/gen_test_cases.py**: writes TEST_CASES.md. Reads the test files for the
 names, the fixtures and the assertions, runs all eight suites for the pass
