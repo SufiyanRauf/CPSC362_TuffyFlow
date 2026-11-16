@@ -115,7 +115,7 @@ test('the half way messages say which half, and are allowed through', () => {
 
   for (const half of [
     'Your profile and schedule were erased',
-    'Your schedule was erased',
+    'Some of your account was erased',
   ]) {
     assert.ok(allowed.some((prefix) => half.startsWith(prefix)),
       `${half} is not allowed through to the screen`)
@@ -135,8 +135,17 @@ test('nothing may write an account that is being erased', () => {
   const guards = campus.match(/=== leaving\) throw new Error\(LEAVING\)/g) ?? []
   assert.equal(guards.length, 3,
     'the three writers in campusData.ts no longer all check the leaving guard')
-  assert.match(campus, /live\.getOrCreateProfile\(id, accountName\(\), id !== leaving\)/,
+  assert.match(campus, /live\.getOrCreateProfile\(id, accountName\(\), \(\) => id !== leaving\)/,
     'getOrCreateProfile may create a profile for an account being erased')
+  // A predicate and not a boolean, because the answer is wanted after the
+  // read rather than from before it. The read is long enough for the delete
+  // to have started since, and a boolean settled beforehand says yes anyway.
+  assert.match(data, /if \(!mayCreate\(\)\) return \{ id: userId, \.\.\.fresh \}/,
+    'getOrCreateProfile is deciding whether it may create before its own read')
+  // And the guard has to end with the sign in it belongs to. Held past one,
+  // it refuses every save by a student whose account is still there.
+  assert.match(campus, /subscribeToSession\(\(\) => \{\s*\n\s*if \(leaving && accountId\(\) !== leaving\) leaving = null/,
+    'the leaving guard can now outlive the session that set it')
 })
 
 test('the schedule is paged until it comes back empty', () => {
@@ -145,6 +154,51 @@ test('the schedule is paged until it comes back empty', () => {
   // loops; this one has to as well.
   assert.match(data, /fs\.query\(schedule, fs\.limit\(PAGE\)\)/,
     'eraseStudent no longer pages the schedule')
-  assert.match(data, /if \(page\.empty\) break/,
+  assert.match(data, /if \(page\.empty\) \{\s*\n\s*emptied = true/,
     'eraseStudent no longer stops on an empty page, so it cannot be looping')
+  // Twenty passes is eight thousand classes, so this is near unreachable. It
+  // matters because the way out of it used to be the profile delete, which
+  // abandons every row the loop never got to: the exact outcome the paging is
+  // here to avoid, arrived at by running out of road.
+  assert.match(data, /if \(!emptied\) throw new Error/,
+    'running out of passes deletes the profile over the rows that are left')
+})
+
+test('the delete is announced before the sign out, not after', () => {
+  // deleteUser signs the client out itself, so the listener fires and the
+  // login card mounts while removeSignIn is still waiting. The card reads the
+  // flag on the way up. Written afterwards, it announced nothing and then sat
+  // in sessionStorage waiting to congratulate the next login card in the tab.
+  const campus = read('../src/lib/campusData.ts')
+  const set = campus.indexOf("sessionStorage.setItem(DELETED, '1')")
+  const out = campus.indexOf('const gone = await removeSignIn()')
+  assert.ok(set > 0, 'campusData no longer leaves the word for the login card')
+  assert.ok(out > 0, 'campusData no longer ends the session')
+  assert.ok(set < out,
+    'the delete is announced after the sign out, so the login card misses it')
+  // And taken back if the sign out is the step that failed.
+  assert.match(campus, /sessionStorage\.removeItem\(DELETED\)/,
+    'a delete that did not finish still announces itself as done')
+})
+
+test('the half way guard and the sentence it reads agree', () => {
+  // campusData decides whether to hold the leaving guard by reading the front
+  // of the error firestoreData throws. That is two files agreeing by hand, the
+  // same coupling STUDENT_FACING has, and the same way of catching it: if
+  // somebody rewords the sentence, the guard silently stops matching and a
+  // live panel can write a profile back while the student is being told to
+  // press Delete account again.
+  const campus = read('../src/lib/campusData.ts')
+  const guard = campus.match(/const PART_ERASED = '([^']+)'/)
+  assert.ok(guard, 'campusData no longer names the half way sentence')
+  // Matched on the tail, not the head. Matching the head found the copy of
+  // the sentence sitting in STUDENT_FACING instead of the one that is thrown,
+  // so rewording the throw alone left this passing against the allowlist.
+  const thrown = data.match(/'([^']*but the rest is still here[^']*)'/)
+  assert.ok(thrown, 'firestoreData no longer throws a half way sentence')
+  assert.ok(thrown[1].startsWith(guard[1]),
+    `the guard looks for ${guard[1]} and the throw says ${thrown[1]}`)
+  // And it is only cleared when nothing was erased.
+  assert.match(campus, /if \(!halfWay\) leaving = null/,
+    'the leaving guard is being cleared on a half way erase again')
 })

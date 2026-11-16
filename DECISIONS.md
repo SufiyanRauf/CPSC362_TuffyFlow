@@ -89,7 +89,8 @@ sounds: it is a real coordinate, so it produced a confident ranking, and what
 it actually ranked was whatever happened to sit nearest the arithmetic center
 of the campus. On a Sunday that put Pollak Library top at a hundred percent
 for no reason anyone could defend. Now the walk scores a flat half, the other
-factors decide, and the card says there is no class that day to measure from.
+factors decide, and the card says nothing at all about the walk rather than
+explaining an absence nobody asked about.
 
 The three hour cap is the same argument. A class that ended at 10:15 does not
 say where someone is at seven in the evening, and guessing with a building name
@@ -125,7 +126,7 @@ sheet that actually names them, and capacity is null wherever CSUF does not
 publish one.
 
 The permit column became an array in the same pass. It had to: the structures
-take student, employee and hourly permits at the same time, and a single value
+take student, employee and visitor permits at the same time, and a single value
 per lot cannot say that. It is one line in the scorer, `permit in lot.permits`
 rather than `==`.
 
@@ -232,7 +233,10 @@ reading taken on a day it is plainly open would settle it.
 
 Against the 3 point per lot bar the Thursday pair set, every lot in all six
 readings is now within 2.72 points, and that worst case is the pre-existing
-Thursday 13:57 one rather than anything the evening added. The four earlier
+Thursday 13:57 one rather than anything the evening added. (Superseded by the
+5 November refit: nine readings, seven of them fitted, worst case 2.11 on
+Eastside North at 18:46 on the Tuesday, and the 1 October pair deliberately
+40-odd points out.) The four earlier
 readings are untouched, because the evening branch only applies from 17:00 on
 Monday to Thursday.
 
@@ -295,6 +299,58 @@ allowed to use, in order to quietly improve a number, would trade something
 that matters for something that does not. The bias is recorded instead, here
 and in the samples file. Two more photographs, one about 15:00 and one about
 20:00, would fix it with figures nobody can question.
+
+---
+
+**2026-11-15: The second review found the first review's own mistakes**
+
+The account work was read again, by three passes that were told what the
+first round had already fixed and asked what it missed. What came back was
+mostly about the fixes themselves, which is the useful answer.
+
+The confirmation on the login card never appeared. The flag it reads was
+written after `deleteMyAccount` returned, and by then there was nobody left to
+read it: `deleteUser` signs the client out itself, so the listener fires and
+App swaps in the login card while `removeSignIn` is still waiting. The card
+reads the flag as it mounts, which is already past. Worse than silence, the
+flag then stayed in sessionStorage, waiting to tell whoever next landed on
+that card in the same tab that their account had been deleted. It is written
+before the sign out now, and taken back if that step is the one that failed.
+The irony is the point: the same ordering bug was fixed three functions away
+in `removeSignIn`, with a comment explaining it, in the same commit.
+
+`eraseStudent` paged the schedule until the listing came back empty, bounded
+at twenty passes so a page that would not go away could not spin. Running out
+of passes fell through to the profile delete, which abandons every row the
+loop never reached. That is the exact outcome the paging exists to prevent,
+reached by running out of road. It stops now and reports the half instead.
+
+The `leaving` guard outlived its own sign in. It was cleared only if the erase
+failed outright, so after the half-way state a student who signed out and back
+in, which is what the message tells them to do, found every save refused with
+"your account is being deleted" until they reloaded. It is cleared the moment
+the session stops being that account. Either the delete finished, and that uid
+cannot sign in again, or it did not, and the account is real and writing to it
+is right.
+
+Two smaller ones. The profile-creation guard was a boolean settled before the
+read it guards, so a read already in flight still wrote; it is a predicate
+asked afterwards. And a wrong password on the delete screen said "that email
+and password don't match an account", on a form with no email box, because it
+borrowed the login card's wording for a code Firebase uses for both.
+
+The rules suite had eight tests that could not fail. They update Alex's
+profile, the only thing creating it was the first test in the block, and the
+last test in the block deletes it: run with `--test-name-pattern`, or
+reordered, and every `assertFails` was refused for the document being missing
+rather than for the rule under test. Proved by deleting the permit rule and
+running one of them alone, which passed before and fails now. Alex is put back
+before each test with the Admin SDK, and the create test moved to a uid of its
+own, since the same write against an existing document is an update and proves
+nothing about creating.
+
+Nothing of Bhavy's was changed. All thirty two replaced lines were mine, from
+the previous round's fixes, which is where the defects were.
 
 ---
 
@@ -450,17 +506,19 @@ claim S8 and S10 is fuller at seven on a Sunday morning than at lunchtime.
 And only Sundays have been sampled, so Saturday still inherits a Sunday.
 
 One thing worth noticing across both tables now that there are two weekend
-hours. S8 and S10 has never been read below 45 percent at any hour of any day,
+hours. S8 and S10 has been read below 45 percent exactly once, 41.44 at 11:51 on the Friday,
 while the structures empty to 1. Roughly a thousand cars sit in those two lots
 whatever the time, which is the residence halls, and it is the same fact that
-makes the pair fall six points between 13:00 and 18:00 on a weekday while the
-structures fall forty to fifty. The model now says that in two places instead
+makes the pair fall 4 points between 13:00 and 18:00 on a weekday while
+Nutwood falls 51, Eastside North 38 and State College 36. The model now says that in two places instead
 of fighting it in one.
 
 Eastside South read 1321 free for the tenth time, three days after the ninth,
 at night, on a weekend, and from this camera rather than Phillip's sheet.
 Nothing has moved in there in the five days from 3 to 8 November. The screen
-footnote and the test comment now say ten readings across four days.
+footnote and the test comment say five readings across four days: the other
+five were from the spreadsheet this project does not draw on, and citing them
+put harvested figures behind a conclusion that does not need them.
 
 ---
 
@@ -472,8 +530,7 @@ Wednesday one, so the two together give a shape rather than a point.
 
 They also showed the old arrangement could not hold the answer. A shared base
 with a per lot offset forces every lot onto the same curve at different
-heights, and the readings are not that. Between 13:00 and 18:00 the three
-structures fall forty to fifty points while S8 and S10 drops six. S8 and S10
+heights, and the readings are not that. Between 13:00 and 18:00 Nutwood falls 51 points, Eastside North 38 and State College 36, while S8 and S10 drops 4. S8 and S10
 sits by the stadium and the gym, which stay open in the evening, and the model
 had no way to say so: it was carrying a uniform decay that was roughly twice
 too fast for that lot and roughly right for the others.
@@ -512,8 +569,10 @@ Eastside South read exactly 1321 free for the third time, on a different day
 and at a different time of day. The first two were Tuesday evening. This one is
 11:59 on a Wednesday, with Nutwood at 95.9 percent, Eastside North at 90.9 and
 State College at 90.5. Nobody leaves 1321 spaces empty next to a structure that
-full. It was the fullest thing on campus at 87.9 percent on 1 October and 35.6
-on 30 October, so it closed somewhere between 30 October and 3 November.
+full. It was the fullest thing on campus at 13:11 on 1 October, at 87.9 percent,
+though Eastside North passed it by 13:57. By 30 October it was third at 35.6,
+behind Nutwood at 45.7 and S8 and S10 at 41.4. It closed somewhere between 30
+October and 3 November.
 
 Yesterday it lost its evening rows. That was not enough. With no rows at all it
 fell back on the unknown stand in, which is 50 percent, and at a busy hour that
@@ -721,7 +780,7 @@ be able to send each other a link to the screen we are looking at.
 
 The objection back then was that real routes need a rewrite rule on the host so
 a refresh on /parking does not 404. Hash routes do not, because everything after
-the # never reaches the server. src/lib/useHashRoute.ts is about fifty lines
+the # never reaches the server. src/lib/useHashRoute.ts is about sixty lines
 and no dependency. A hash that is not one of the six views leaves the screen
 alone rather than bouncing to the dashboard, which is what kept catching us out
 while we were testing.
@@ -795,21 +854,29 @@ entirely, since in student org writing it nearly always means events.
 The occupancy curve used to be a single time of day shape with a per lot offset
 derived from the length of the lot's name, which is to say no information at
 all. Took readings off the campus parking board and set the per lot numbers
-from those. Six readings were in data/parking_samples.csv at the time: one on a Sunday,
+from those. Six readings were in data/parking_samples.csv at the time: one on a Sunday, two on a Tuesday evening,
 two on a Thursday and one on a Friday. Three of them set the per lot numbers,
 the Sunday, the first Thursday and the Friday, and the curve reproduces all
 three exactly. The second Thursday timestamp was taken after the curve was
 fitted and never used to fit it, which makes it the only real check we have,
 and every lot came out within three points.
 
+> Superseded on 5 November. Both 1 October readings are now excluded rather
+> than fitted, because the closure moved the campus they describe, and a test
+> requires them to stay more than three points off. Nothing is held out any
+> more. There are nine readings on seven days now, and the curve reproduces
+> the seven it is fitted to within 2.11 points, mean 0.57.
+
 > This entry originally covered the Sunday and the Thursday only. The Friday
 > reading came later, on 2026-10-30, and gave Friday its own shape. See the
 > entry for that date.
 
 The useful surprise was that the weekday and weekend shapes are not the same
-curve scaled down. On a Thursday afternoon Eastside is at 88 percent because
+curve scaled down. On a Thursday afternoon before the closure Eastside South
+was at 88 percent because
 it is nearest the academic buildings while State College sits at 43. On the
-Sunday reading every structure was at or under 4 percent except S8 and S10 at 59,
+Sunday reading every structure was at or just under 4 percent, State College
+highest at 4.01, except S8 and S10 at 59,
 which is beside the stadium and the gym. Our first attempt applied the Thursday
 numbers to the weekend too and had Eastside at 54 percent on a Sunday against
 a real 0.5. The seed carried three columns from here, and a fourth from
@@ -1098,7 +1165,7 @@ Three things this costs, stated plainly because they are not small:
 Eight tables of Postgres, twelve row level security policies and five seed
 files stop being what the app talks to. They are still in db/ and still
 accurate, because they are where the campus data was written down with its
-sources, and the README's provenance table points at them. db/README.md says
+sources. db/README.md says
 which files are live.
 
 Occupancy had to change shape. As rows it is twelve lots by seven days by
@@ -1108,7 +1175,7 @@ worth of numbers. It is folded onto the lot document now, day then hour then
 percentage. Checked the fold both ways: 1,344 rows in, 1,344 cells out, and a
 spot read back the same figure it went in as.
 
-(1,344 is the Postgres shape, and it is what db/seed.sql still produces. The live grid in src/lib/campusRows.ts is 1,324, because Eastside South carries no evening figure and so writes no row for 17:00 to 21:00 on Monday to Thursday. The 2026-11-03 entry says why.)
+(1,344 is the Postgres shape, and it is what db/seed.sql still produces. The live grid in src/lib/campusRows.ts is 1,232, because Eastside South is closed and carries no row at any hour of any day, which is 112 cells rather than the twenty an evening-only exclusion would have cost. The 2026-11-03 entry says why.)
 
 Joins do not exist, so a building's name is copied onto every spot and a club's
 name onto every event. That is ordinary for a document database and it means
@@ -1133,6 +1200,7 @@ allow, which is the opposite default from Postgres, where a table with security
 switched off is wide open. The bug in the row level security entry above, where
 a half-run schema left every student's whereabouts world readable, cannot
 happen in this shape.
+
 And Google sign in is a popup rather than a redirect, so it never touches the
 address bar, and the whole business of keeping the sign in flow out of the
 router's hash goes away.
@@ -1155,7 +1223,7 @@ project, and the seed script that loads a real one.
 That last one is why it had to move. The seed runs under Node, and the file it
 used to live in reaches for Vite's import.meta.env by way of the session, which
 Node cannot load. Copying the rows into the seed script would have meant two
-copies of 320 clubs and 1,344 occupancy figures, drifting apart quietly. One
+copies of 320 clubs and 1,232 occupancy figures, drifting apart quietly. One
 file, read by all three, cannot.
 
 ---
@@ -1280,7 +1348,7 @@ asks what the rules do rather than whether they are there: a logged out visitor
 sees nothing, an anonymous sign in counts as nobody, one student cannot reach
 another's profile or schedule, the campus is read only from a browser, a
 profile can only be created empty, and a class with a malformed time or an
-extra field is refused. Thirty six of them, and they pass.
+extra field is refused. Thirty seven of them, and they pass.
 
 They were worth not trusting on a first green run, so we broke the rules on
 purpose, five times, and checked each break was caught: letting any signed in
@@ -1291,6 +1359,8 @@ it green. A suite that cannot fail is worth nothing.
 
 They need Firebase's emulator, which is a Java program, so running them means
 having a JDK on the path. The README says how.
+
+---
 
 **2026-10-27: Events stopped having dates**
 
@@ -1319,7 +1389,8 @@ plus the two timestamps, so a screen still reads e.starts_at and does not have
 to know it was worked out a moment ago. No component changed.
 
 There is a suite for it now, in tests/event_dates.test.mjs, which reads the
-dates at five points in the future and either side of the November clock
+dates at five fixed points, two of them now in the past, and either side of
+the November clock
 change. We put both bugs back to check it could fail: a hard coded timezone
 offset broke three of the nine, and treating the day offset as hours broke
 four. It needs no emulator and no project, so it runs anywhere.
@@ -1346,7 +1417,7 @@ test after it checking an empty database and passing for the wrong reason.
 The last one is the one to remember. We had been treating that suite as proof
 the rules worked, and for the back half of it we were proving nothing. The
 suite now uses a second uid for the create test instead of wiping the data,
-and the thirty six tests all mean something.
+and the thirty seven tests all mean something.
 
 Each of the five has a test on it now, and we put the bugs back afterwards to
 check the tests failed. Two of them did not fail on the first attempt, which
@@ -1551,6 +1622,7 @@ generates nothing instead of quietly surviving a find and replace.
 **tests/test_scoring.py**: the ranking engine's tests, which are the ones
 with real logic to check. **tests/firestore_rules.test.mjs**: what the access
 rules actually allow, run against Firebase's emulator.
+
 **tests/event_dates.test.mjs**: the same event read at five points in the
 future, including either side of the November clock change. Needs no emulator
 and no project.
@@ -1562,7 +1634,7 @@ ones both go through it, so the two cannot disagree.
 
 **src/components/ConfirmDialog.tsx**: the only modal in the app. Everything
 else answers after the fact with a status line, because almost nothing here is
-worth interrupting somebody for. This is for the two that are: taking a class
+worth interrupting somebody for. This is for the three that are: taking a class
 off the schedule, which costs five fields to put back, and leaving, which ends
 the session.
 
@@ -1571,7 +1643,7 @@ whole page does not go white. Offers a reload rather than clearing the flag,
 because re-rendering the same state would throw again and the button would
 look broken.
 
-**tests/test_api.py**: fifteen tests that go through the FastAPI app itself
+**tests/test_api.py**: seventeen tests that go through the FastAPI app itself
 rather than calling the scorer directly. It exists because the endpoint once
 returned an empty body rather than a reason and every unit test stayed green.
 
@@ -1579,19 +1651,19 @@ returned an empty body rather than a reason and every unit test stayed green.
 and noon are the two cases worth pinning: replacing the modulo branch with a
 bare one breaks both and nothing else notices.
 
-**api/requirements.txt**: two packages the endpoint needs and three more for running it and the tests locally.
+**api/requirements.txt**: three packages the endpoint needs, pinned, and three more below a local-only marker for running it and the tests.
 
 **src/vite-env.d.ts**: the types for import.meta.env, so the Firebase config
 reads are checked rather than any.
 
-**data/parking_samples.csv**: the nine readings off CSUF's live counts
+**data/parking_samples.csv**: the nine readings off the campus availability board
 board, which the occupancy curve was fitted to. **docs/architecture.mmd**: the
 three recommenders drawn from the student's side, which GitHub renders.
 
 **src/lib/useWideScreen.ts**: whether there is room for the right rail. It
 asks the browser rather than leaving it to the rail's own classes, because
 hiding something in CSS still mounts it, and the two panels in that rail were
-fetching about 115 documents on every phone that could not show them.
+fetching about 127 documents on every phone that could not show them.
 
 **src/lib/time.ts, labels.ts, maps.ts**: the small shared ones: campus time
 and the weekday names, the words for a kind of spot and for a person, and the
@@ -1668,7 +1740,7 @@ the database enforces, so the two drift apart in a test run rather than in front
 of a student who types a thirteenth interest and gets a security rules error.
 That agreement used to be a comment saying it was kept in step by hand.
 
-**tests/auth_messages.test.mjs**: five cases over the sentences the sign in
+**tests/auth_messages.test.mjs**: seven cases over the sentences the sign in
 code produces. Two files have to agree for one to reach the screen: session.ts
 turns a Firebase code into a sentence, and firestoreData.ts keeps the list of
 sentences allowed through to a panel. They agreed by hand until the agreement
@@ -1678,7 +1750,7 @@ rule: that the schedule is paged until empty, and that nothing may write an
 account that is being erased.
 
 **tools/gen_test_cases.py**: writes TEST_CASES.md. Reads the test files for the
-names, the fixtures and the assertions, runs all eight suites for the pass
+names, the fixtures and the assertions, runs all nine suites for the pass
 column, and refuses to write anything if a suite will not run, so the document
 cannot claim a pass nobody saw.
 
@@ -1693,7 +1765,7 @@ it sets up, what it asserts and whether it passed. Generated, not maintained.
 **README.txt**: the plain text copy of README.md. Generated, not maintained.
 
 **package.json**: the front end's dependencies and the scripts. `dev`, `build`
-and `typecheck`, plus `seed` and the four test commands.
+and `typecheck`, plus `seed` and the six test commands.
 
 **vite.config.ts**, **tsconfig.json**, **tsconfig.app.json**,
 **tsconfig.node.json**: the build. The app config turns on
@@ -1701,8 +1773,10 @@ and `typecheck`, plus `seed` and the four test commands.
 `../src/lib/time.ts` by its real name and still satisfy tsc, Vite and bare
 Node at once.
 
-**vercel.json**: routes `/api/*` at the Python functions and everything else at
-the single page app, so a deep link reloads instead of 404ing.
+**vercel.json**: the Python function settings and the response headers. No
+routes and no rewrites: Vercel's own `api/` convention serves `/api/recommend`,
+and the app's routes are hash routes, so nothing after the # ever reaches the
+server and there is no deep link to fall back for.
 
 **.env.example**: the five Firebase values, with no real ones in it. Copy to
 `.env` and fill in. All five are public by design; the rules are what keeps the
@@ -1715,9 +1789,8 @@ db/firestore.rules, and sets the port the emulator runs the rules tests on.
 
 **index.html**: the page Vite builds from, and the only one. It carries the
 title, the Google Fonts link and the single `<div id="root">` the app mounts
-into. A deep link never reaches it directly in production; vercel.json rewrites
-everything that is not `/api/*` back to it, which is what makes a reload on
-`#/clubs` work instead of 404ing.
+into. A reload on `#/clubs` works without any rewrite, because everything
+after the # stays in the browser and the request Vercel sees is for `/`.
 
 **package-lock.json**: the exact dependency versions. Committed on purpose, so
 Vercel and the three of us build from the same tree rather than whatever
@@ -1727,8 +1800,8 @@ resolves on the day.
 `.env` and the Firebase scratch files, plus `*.local.md`, which is how our own
 working notes stay out of a graded submission.
 
-**src/main.tsx**: four lines. Mounts the app into the root div and nothing
-else. No router setup, because routing is a hash read in `useHashRoute`.
+**src/main.tsx**: sixteen lines. Mounts the app into the root div inside a
+StrictMode and an ErrorBoundary, and nothing else. No router setup, because routing is a hash read in `useHashRoute`.
 
 **src/index.css**: the whole theme, in Tailwind v4's `@theme` block. There is
 no tailwind.config.js by design. The stock palettes are switched off with

@@ -122,7 +122,11 @@ class Availability(BaseModel):
 class Spot(BaseModel):
     id: str
     name: str
-    kind: str | None = None
+    # A closed set, like permit_type above and for the same reason:
+    # src/types.ts declares SpotKind as these four and the card renderer
+    # switches on it, so as a bare str a typo reached the browser with a 200
+    # and rendered as nothing.
+    kind: Literal["study", "eat", "charge", "meet"] | None = None
     lat: Latitude
     lng: Longitude
     noise_level: int = Field(ge=1, le=5)

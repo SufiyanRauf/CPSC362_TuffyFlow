@@ -738,8 +738,11 @@ def test_an_unset_noise_preference_still_says_how_loud_the_spot_is():
 
 
 def test_events_still_rank_for_a_profile_with_no_interests():
-    # Nothing matches the tags, so tags score zero, but the event should still
-    # come back: how soon it is and how far it is are worth something on their own.
+    # The profile has nothing to match against, so tag_factor returns
+    # NOTHING_TO_JUDGE and its weight is shared out among the others rather
+    # than scored zero. This said "tags score zero" and that is a different
+    # mechanism with a different number: the card comes back at 75, not the
+    # low forties a zero would give.
     ctx = _empty_profile_context()
     cfg = scoring.event_config(ctx)
     events = [{"id": "e1", "name": "Open Mic Night", "lat": CS_LAT, "lng": CS_LNG,
@@ -1107,6 +1110,23 @@ def test_a_factor_that_returns_not_a_number_scores_zero_not_a_perfect_match():
 
     out = scoring.rank([{"id": "x", "name": "X"}], [], {"only": broken}, {"only": 1.0}, 1, {})
     assert out[0]["match_percent"] == 0
+
+    # And the other half of the same clamp. NaN is caught by the comparison
+    # above; a factor that simply returns more than 1 is not, and without the
+    # min() a weight of 1.4 printed as a 140 percent match.
+    def too_much(_item, _ctx):
+        return 1.4, ""
+
+    over = scoring.rank([{"id": "x", "name": "X"}], [], {"only": too_much},
+                        {"only": 1.0}, 1, {})
+    assert over[0]["match_percent"] == 100
+
+    def too_little(_item, _ctx):
+        return -0.5, ""
+
+    under = scoring.rank([{"id": "x", "name": "X"}], [], {"only": too_little},
+                         {"only": 1.0}, 1, {})
+    assert under[0]["match_percent"] == 0
 
 
 def test_a_body_with_infinity_in_it_gets_a_reason_not_a_crash():
@@ -1476,3 +1496,66 @@ def test_ranking_cost_grows_with_the_list_and_not_faster():
     # Ten times the work, allowed four times the slack a straight line would
     # need, because a short run on a busy machine is mostly noise.
     assert large < small * 40, "100 lots %.4fs, 1000 lots %.4fs" % (small, large)
+
+
+def test_an_event_tomorrow_morning_is_still_offered_this_afternoon():
+    """The day has to beat the clock, or half the list disappears at midday.
+
+    not_started reads "starts later today, OR is on a later day". Without the
+    second half, an event at 09:00 tomorrow is compared against this
+    afternoon's clock, loses, and every tomorrow-morning event drops off the
+    screen from noon onwards. Nothing in the suite paired a future day with a
+    start time earlier than now, so deleting that clause passed everything.
+    """
+    ctx = _empty_profile_context(minutes=720)
+    cfg = scoring.event_config(ctx)
+    tomorrow_morning = {"id": "e1", "name": "Early One", "tags": [],
+                        "lat": CS_LAT, "lng": CS_LNG,
+                        "starts_minutes": 540, "ends_minutes": 630, "day_offset": 1}
+    out = scoring.rank([tomorrow_morning], cfg["filters"], cfg["factors"],
+                       cfg["weights"], 1, ctx)
+    assert len(out) == 1, "an event tomorrow morning vanished after noon today"
+
+
+def test_an_event_starting_this_very_minute_is_not_offered():
+    """The boundary. Telling somebody to walk to a thing that is starting now
+    is not a recommendation, and the filter is a strict > for that reason."""
+    # Clock at 11:40, which is past the 09:00 to 10:15 class in this fixture.
+    # At 10:00 every event here is refused by the clash filter instead, which
+    # is a different rule and would pass whatever not_started did.
+    ctx = _empty_profile_context(minutes=700)
+    cfg = scoring.event_config(ctx)
+
+    def offered(starts):
+        e = {"id": "e", "name": "E", "tags": [], "lat": CS_LAT, "lng": CS_LNG,
+             "starts_minutes": starts, "ends_minutes": starts + 60, "day_offset": 0}
+        return len(scoring.rank([e], cfg["filters"], cfg["factors"],
+                                cfg["weights"], 1, ctx))
+
+    assert offered(701) == 1, "an event a minute from now should still be offered"
+    assert offered(700) == 0, "an event starting this very minute should not be"
+    assert offered(699) == 0, "an event that has already started should not be"
+
+
+def test_the_noise_penalty_falls_a_quarter_for_every_level_over_the_preference():
+    """The slope itself, not just the order.
+
+    Every other noise test asks which of two spots wins, and ordering holds
+    for any downward slope, so the divisor was free: changing the 4 to a 2
+    passed the whole suite while turning a level 3 spot from a half match into
+    a zero for somebody who asked for quiet.
+    """
+    ctx = _empty_profile_context()
+    ctx["profile"]["noise_pref"] = 2
+    cfg = scoring.spot_config(ctx)
+    noise = cfg["factors"]["noise"]
+    scores = []
+    for level in range(1, 6):
+        spot = {"id": "s", "name": "S", "lat": CS_LAT, "lng": CS_LNG,
+                "noise_level": level, "has_outlets": True}
+        value, _ = noise(spot, ctx)
+        scores.append(round(value, 4))
+    # At or under the preference is a full match; above it each level costs a
+    # quarter, so the loudest room a quiet-seeking student can be offered
+    # still scores above zero.
+    assert scores == [1.0, 1.0, 0.75, 0.5, 0.25], scores

@@ -11,7 +11,13 @@ pydantic==2.13.5
 # fix. The two lines above pin the direct ones for the same reason.
 starlette==1.7.0
 
-# local only
+# Local only by intent, not by mechanism. vercel.json excludes the test FILES
+# from the function bundle and nothing excludes these three, so they are
+# installed into it as well: a bigger image and a slower cold start, on a plan
+# where neither costs money. Splitting them into a second file would mean two
+# pip installs in the README for that, which is a worse trade for whoever
+# clones this. Named here so the next person does not read "local only" as a
+# guarantee the deploy honours.
 uvicorn==0.54.0
 pytest==9.1.1
 httpx==0.28.1

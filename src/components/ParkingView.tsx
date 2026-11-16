@@ -1,11 +1,11 @@
 import { Suspense, lazy } from 'react'
 import { useAsync } from '../lib/useAsync'
-import { getRecommendations, findNextClass } from '../lib/recommend'
+import { getRecommendations, findNextClass, campusNow } from '../lib/recommend'
 import Panel from './Panel'
 import PageHeader from './PageHeader'
 import Pill from './Pill'
 import { ArrowRightIcon, ClockIcon, WalkIcon } from './icons'
-import { BUSY_PERCENT, DAYS, clockText } from '../lib/time'
+import { BUSY_PERCENT, DAYS, clockText, leaveTimeGone } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
 import { useMinuteTick } from '../lib/useMinuteTick'
 import { directionsUrl } from '../lib/maps'
@@ -74,7 +74,7 @@ function when(dayOffset: number, dayOfWeek: number) {
 export default function ParkingView() {
   const version = useDataVersion()
   // Both of these are worked out against the clock, and nothing bumps the data
-  // version on the clock, so without the hour in here the ranking and the
+  // version on the clock, so without a tick in here the ranking and the
   // arrive-by times stayed at whatever they were when the screen was opened.
   const minute = useMinuteTick()
   const recs = useAsync(getRecommendations, [version, minute])
@@ -94,6 +94,12 @@ export default function ParkingView() {
       + when(next.data.day_offset, next.data.day_of_week)
       + (next.data.building_lat === 0 ? '' : ` in ${next.data.building_name}`)
     : 'your next class'
+
+  // Needed for the leave times below, which are worked out against the minute
+  // the ranking was asked for while the ranking itself is cached for the hour.
+  const classDayOffset = next.state === 'ready' && next.data
+    ? next.data.day_offset
+    : null
 
   // Where the walks are measured to, so the map shows what the ranking is
   // relative to rather than a scatter of lots. findNextClass falls back to
@@ -258,7 +264,8 @@ export default function ParkingView() {
                               and have to say the same thing. */}
                           <p className="flex items-center justify-end gap-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-ink-faint">
                             <ClockIcon className="h-3.5 w-3.5" />
-                            {lot.arrive_by ? 'Be at lot by' : 'Leave'}
+                            {leaveTimeGone(lot.arrive_by, classDayOffset, campusNow().minutes)
+                              ? 'Leave' : 'Be at lot by'}
                           </p>
                           <p
                             className={
@@ -266,7 +273,9 @@ export default function ParkingView() {
                               'mt-1 whitespace-nowrap font-semibold tabular-nums tracking-tight text-titan'
                             }
                           >
-                            {lot.arrive_by ? clockText(lot.arrive_by) : 'now'}
+                            {!lot.arrive_by
+                              || leaveTimeGone(lot.arrive_by, classDayOffset, campusNow().minutes)
+                              ? 'now' : clockText(lot.arrive_by)}
                           </p>
                         </div>
 
@@ -328,10 +337,10 @@ export default function ParkingView() {
         Eastside South closed. The weekend is measured at two, midday and
         half past nine at night; Friday still rests on one reading taken
         before the closure, so it describes a quieter campus than the one
-        outside. Eastside South is left out altogether: ten readings across
-        four days, from two people, all say the same 1321 free spaces, including
-        middays with every other structure over 85 percent full, so it is not
-        taking cars. Checked against readings it was not fitted to, the curve
+        outside. Eastside South is left out altogether: five readings across
+        four days all say the same 1321 free spaces, including a midday with
+        Nutwood, Eastside North and State College all over 90 percent full, so
+        it is not taking cars. Checked against readings it was not fitted to, the curve
         runs low in the late afternoon and late evening on a weekday. The
         employee, resident and hourly lots the board does not count at
         all, so those are estimates.

@@ -177,12 +177,10 @@ export default function ClubsView() {
     all.length === 0 ? '' : scored.length === 0 ? nothingText : shownLine,
   )
 
-  // Every button on this screen takes itself off the page when you press it:
-  // the two reset buttons only exist while a filter is on, and the one at the
-  // bottom only exists while the list is capped. Focus landed on the body each
-  // time, which on the bottom one dropped a keyboard user at the end of a page
-  // that had just grown by 280 cards. The count line is always there, so it is
-  // somewhere to hand focus back to.
+  // The two reset buttons take themselves off the page when pressed, because
+  // they only exist while a filter is on, and focus landed on the body each
+  // time. There is no capped list and no Show more button: the 320 clubs are
+  // paged, which is what listRef below is for.
   // A page change puts you at the top of the list, not the top of the document
   // and not halfway down. Handing focus to the sr-only count line did the
   // first, because that line sits above the filters and focusing a zero sized

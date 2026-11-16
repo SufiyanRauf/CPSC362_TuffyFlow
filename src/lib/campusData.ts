@@ -23,6 +23,7 @@ import {
 import { datedEvents } from './eventDates'
 import {
   accountId, accountName, confirmItIsYou, draftKey, removeSignIn,
+  subscribeToSession,
 } from './session'
 import { dataChanged, dataVersion } from './dataVersion'
 import * as live from './firestoreData'
@@ -162,7 +163,7 @@ export async function getProfile(): Promise<Profile> {
     // The name comes from the session rather than the database, because on a
     // brand new account there is no document yet and this is the call that
     // creates it. Firebase is the only thing that knows what to put on it.
-    return id ? live.getOrCreateProfile(id, accountName(), id !== leaving) : profile
+    return id ? live.getOrCreateProfile(id, accountName(), () => id !== leaving) : profile
   })
 }
 
@@ -223,7 +224,29 @@ const WRONG_ACCOUNT = 'That form belongs to a different account. Reload the page
 // closes that, which is what the half-way message asks for.
 let leaving: string | null = null
 
+// Cleared the moment the session stops being that account, because from there
+// the guard can only do harm. Either the delete finished, in which case the
+// uid cannot sign in again and there is nothing to protect, or it stopped half
+// way with the login still alive, in which case signing back in is a real
+// student using a real account and writing their profile again is the right
+// answer rather than the thing being prevented. Left set across a sign out it
+// was neither: every save threw "your account is being deleted" at somebody
+// whose account was still there, until they reloaded the page.
+subscribeToSession(() => {
+  if (leaving && accountId() !== leaving) leaving = null
+})
+
 const LEAVING = 'Your account is being deleted, so that change was not saved.'
+
+// Where the login card looks for the one word about a delete that worked.
+// sessionStorage rather than a module, so it survives the reload signing out
+// can cause, and read once and removed there.
+const DELETED = 'tuffyflow.deleted'
+
+// The opening words of what eraseStudent throws once it has deleted something.
+// firestoreData.ts owns the sentence; this is the half of the coupling that
+// decides whether the guard above stays up.
+const PART_ERASED = 'Some of your account was erased'
 
 export async function saveProfile(next: Profile) {
   const id = accountId()
@@ -348,19 +371,47 @@ export async function deleteMyAccount(password?: string) {
   // signed this browser in as somebody else.
   if (accountId() !== id) throw new Error(WRONG_ACCOUNT)
 
-  // From here on nothing may write this account again. Cleared if the erase
-  // fails outright, because the profile is then still there and somebody left
-  // on the screen should be able to go on using it.
+  // From here on nothing may write this account again.
   leaving = id
   try {
     await live.eraseStudent(id)
   } catch (e) {
-    leaving = null
+    // Cleared only when nothing was erased, which is the case this exists
+    // for: the account is untouched and somebody left on the screen should be
+    // able to go on using it. The half way throw is the opposite, and reading
+    // it off the message is the same coupling STUDENT_FACING already has, with
+    // the same test holding the two files together. Rows have gone by then,
+    // the profile document may have gone with them, and the student has been
+    // told to press the button again, so the guard has to hold until they do
+    // or a live panel writes a profile back in between.
+    const halfWay = e instanceof Error && e.message.startsWith(PART_ERASED)
+    if (!halfWay) leaving = null
     throw e
+  }
+
+  // Said on the login card, because the screen that did the deleting is gone
+  // by the time there is anything to say. Written here rather than after the
+  // call for the reason removeSignIn gives about its own flag: deleteUser
+  // signs the client out itself, so the listener fires and App swaps in the
+  // login card while that call is still waiting. The login card reads this on
+  // the way up, which is already past by the time deleteMyAccount returns, so
+  // setting it there announced nothing and left the flag behind to greet the
+  // next login card in this tab instead.
+  try {
+    sessionStorage.setItem(DELETED, '1')
+  } catch {
+    // A private window with storage refused. The delete still happens, and
+    // the only thing lost is the confirmation.
   }
 
   const gone = await removeSignIn()
   if (!gone.ok) {
+    try {
+      // Nothing was deleted in the end, so nothing may announce it.
+      sessionStorage.removeItem(DELETED)
+    } catch {
+      // Refused the same way it was refused above, with nothing written.
+    }
     // One of the two places this can stop half way. eraseStudent reports the
     // other one, between the schedule and the profile, and both of them name
     // the half that happened: "your account was not deleted" is a lie once

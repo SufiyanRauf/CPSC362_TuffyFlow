@@ -16,6 +16,30 @@ export function toMinutes(hhmm: string) {
   return Number(h) * 60 + Number(m)
 }
 
+// Whether the leave time on a parking result has already gone.
+//
+// The scorer works arrive_by out against the minute the ranking was asked for,
+// and answers null for a class today whose leave time has passed (the last
+// branch of arrive_by in api/scoring.py). The ranking is cached for the hour
+// though, so a time that passed since the ask comes back unchanged: a page
+// opened at 8:05 for a 9:00 class still read "Be at lot by 8:42 AM" at 8:50,
+// and the countdown beside it had already moved on to "Starts in 10 min". This
+// is the scorer's own test asked again against the clock, and the parking
+// screen and the dashboard both tick every minute, so they re-ask it.
+//
+// A null arrive_by already means the scorer found no sensible time to give, on
+// any day, and that has always read as "Leave now" on the card. The day test
+// below is only about the times it did give: a null dayOffset means the next
+// class is not known yet, and a later day means the time is not today's, so
+// neither is second-guessed against today's clock.
+export function leaveTimeGone(
+  arriveBy: string | null, dayOffset: number | null, nowMinutes: number,
+) {
+  if (!arriveBy) return true
+  if (dayOffset !== 0) return false
+  return toMinutes(arriveBy) <= nowMinutes
+}
+
 // Outside the function, because constructing one of these costs far more than
 // formatting with it and the options never change. UpcomingEvents calls
 // campusDate once per event to work out which ones are today, so it was paying

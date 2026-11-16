@@ -60,19 +60,14 @@ export default function DeleteAccount() {
     setNote('')
     try {
       await deleteMyAccount(provider === 'password' ? password : undefined)
-      // Nothing to say here on success, because this screen is already gone:
-      // the session has ended and the app has swapped in the login card. The
-      // login card is where it gets said, and this is how it finds out. Left
-      // in sessionStorage rather than in a module, so it survives the reload
-      // that signing out can cause, and read once and removed there.
-      //
-      // Not setState, so there is nothing to run after the unmount.
-      try {
-        sessionStorage.setItem('tuffyflow.deleted', '1')
-      } catch {
-        // the same private-window case the draft allows for. The worst of it
-        // is a missing confirmation, so there is nothing to report.
-      }
+      // Nothing to do here on success, and nothing to say: this screen is
+      // already gone. The session has ended and the app has swapped in the
+      // login card, which is where it gets said. deleteMyAccount leaves the
+      // word for it in sessionStorage, and leaves it there before the sign
+      // out rather than after, because the login card has already mounted and
+      // read it by the time this line runs. It was written here once, which
+      // meant the confirmation never appeared and the flag sat waiting to
+      // greet the next login card in this tab instead.
     } catch (e) {
       setNote(studentFacing(
         e instanceof Error ? e.message : '',
@@ -127,18 +122,18 @@ export default function DeleteAccount() {
               : 'border border-flame-ink text-flame-ink hover:bg-tint-parking')
           }
         >
-          {busy
-            ? (provider === 'password' ? 'Deleting…' : 'Waiting for Google…')
-            : 'Delete account'}
+          {busy ? 'Deleting…' : 'Delete account'}
         </button>
 
         {/* The popup can open behind the window, and the paragraph that warns
-            about it has scrolled past by now. Nothing is being deleted while
-            it is open, so the button does not claim otherwise either. */}
+            about it has scrolled past by now. It used to end "Nothing has been
+            deleted yet", which is true while the window is open and a lie for
+            the rest of the time it was on screen: busy covers proving who you
+            are, then the schedule, then the account, and it said that all the
+            way through. Neither this nor the button claims a step now. */}
         {busy && provider !== 'password' && (
           <p className="mt-2 text-sm text-ink-soft">
-            Finish in the Google window to confirm it is you. Nothing has been
-            deleted yet.
+            If a Google window is open, finish there to confirm it is you.
           </p>
         )}
 

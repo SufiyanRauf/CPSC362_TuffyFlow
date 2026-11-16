@@ -59,7 +59,34 @@ const db = getFirestore()
 // 320, so everything goes through this rather than counting by hand.
 const BATCH_LIMIT = 500
 
+// The counts the SQL seed asserts, kept here because this is the file that
+// actually runs now. db/seed_events.sql raises if it writes anything other
+// than 12 events, and it does that because a club rename once dropped eleven
+// of the twelve without a single error: the event join is by name, and a name
+// that matches nothing writes the event with an empty club_id rather than
+// failing. That guard did not come across with the move to Firestore, so it
+// is here.
+const EXPECTED = { clubs: 320, spots: 24, events: 12 }
+
 async function write(name, rows) {
+  const want = EXPECTED[name]
+  if (want !== undefined && rows.length !== want) {
+    throw new Error(
+      `${name}: expected ${want} rows and have ${rows.length}. `
+      + 'A club or building name no longer matches, or the source data moved.')
+  }
+  // The count on its own cannot catch what this guard is for. buildEvents
+  // maps over twelve literals, so twelve rows come out whether or not the
+  // host names matched; an unmatched one writes club_id: '' instead of
+  // disappearing. The SQL this was ported from used an inner join, which
+  // dropped the row and made counting enough. This is the same check for a
+  // join that does not drop.
+  const orphans = rows.filter((row) => row.club_id === '')
+  if (orphans.length > 0) {
+    throw new Error(
+      `${name}: ${orphans.length} row(s) name a club that does not exist: `
+      + `${orphans.map((row) => row.club_name).join(', ')}.`)
+  }
   for (let from = 0; from < rows.length; from += BATCH_LIMIT) {
     const batch = db.batch()
     for (const row of rows.slice(from, from + BATCH_LIMIT)) {
@@ -72,8 +99,8 @@ async function write(name, rows) {
 }
 
 // Occupancy is folded onto the lot it belongs to, as day then hour then
-// percentage. As documents of its own it is 1,344 of them, and Firestore
-// charges by the document read, so every parking screen would be 1,344 reads
+// percentage. As documents of its own it is 1,232 of them, and Firestore
+// charges by the document read, so every parking screen would be 1,232 reads
 // for twelve lots' worth of numbers.
 function lotsWithOccupancy() {
   const byLot = new Map(parkingLots.map((lot) => [lot.id, {}]))

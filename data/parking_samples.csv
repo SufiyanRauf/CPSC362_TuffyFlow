@@ -1,7 +1,9 @@
 # Readings from the campus parking availability board.
 # The names below are the board's own labels, which are not the names the lots
 # carry in the app: the board still writes the structures without "Parking
-# Structure" and reports S8 and S10 as one row. See db/seed.sql for the mapping.
+# Structure" and reports S8 and S10 as one row. The mapping from these labels
+# to the lot ids is the BOARD table at the top of tests/parking_curve.test.mjs,
+# which is what reads this file.
 # Campus: 800 N. State College Blvd, Fullerton CA 92831.
 # Take a few at different times and days. Weekday mornings matter most.
 #
@@ -31,7 +33,7 @@
 # The two Tuesday readings are the first taken in the evening, and the first on
 # a Tuesday. The 18:46 one was taken after the evening curve had been fitted to
 # the 18:14 one, so it is the same kind of check the 13:57 Thursday reading is:
-# every lot came back within 4.2 points, mean 2.2, before the fit was
+# every lot came back within 4.2 points, mean 2.06, before the fit was
 # re-centred on the pair. Occupancy is falling across the two, which is what
 # the evening decay assumes. Eastside South reads 1321 free both times, the
 # same twenty cars in 1341 spaces.
@@ -40,8 +42,11 @@
 # the third in a row to read exactly 1321 free, now on a different day and at
 # midday rather than in the evening, with Nutwood at 95.9 percent, Eastside
 # North at 90.9 and State College at 90.5. Nobody passes up 1321 free spaces
-# next to a structure that full. It was the fullest thing on campus at 87.9
-# percent on 1 October and at 35.6 on 30 October, so it closed somewhere
+# next to a structure that full. It was the fullest thing on campus at 13:11
+# on 1 October, at 87.9 percent against Eastside North's 85.7, though by 13:57
+# North had gone past it at 88.4. By 30 October it was third at 35.6, behind
+# Nutwood at 45.7 and S8 and S10 at 41.4. It
+# closed somewhere
 # between 30 October and 3 November. It carries no figures at all now and is
 # marked as not taking cars, so it is left out of parking recommendations
 # rather than ranked on a stand-in.
@@ -58,8 +63,8 @@
 # what the refit rests on. Monday to Thursday now carries a measured level per
 # lot at 11:00, 13:00 and 18:00 rather than one shared curve with per lot
 # offsets. The readings would not fit that arrangement: between 13:00 and
-# 18:00 the three structures fall 40 to 50 points and S8 and S10 drops six, so
-# they are not the same shape at different heights. Eastside South read 1321
+# 18:00 Nutwood falls 51 points, Eastside North 38 and State College 36 while
+# S8 and S10 drops 4, so they are not the same shape at different heights. Eastside South read 1321
 # free for the fourth time, now across three days.
 #
 # Everything before 3 November describes the campus as it was with Eastside

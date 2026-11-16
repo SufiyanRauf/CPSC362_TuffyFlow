@@ -52,9 +52,10 @@ export default function StructureFill() {
   // the hour, so asking again every minute was sixty times the reads for the
   // same answer.
   //
-  // Clamped the same way the loader clamps it, because between 22:00 and
-  // 06:00 the raw hour changes eight times while the row being shown is the
-  // same one every time.
+  // Clamped the same way the loader clamps it: the readings stop at 21:00, so
+  // every hour from 22:00 shows the 21:00 row and every hour before 06:00
+  // shows the 06:00 one. Eight raw hours, two rows, and the swap at midnight
+  // is why the campus date has to be in the key as well.
   const data = useAsync(fillNow, [countedHour(useCampusHour()), useDataVersion()])
 
   return (

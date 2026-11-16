@@ -141,3 +141,21 @@ test('a stored row needs no date of its own', () => {
   assert.equal(onCampus(starts_at), '2026-12-17, 09:30')
   assert.equal(onCampus(ends_at), '2026-12-17, 10:15')
 })
+
+test('a day offset steps whole calendar days, across a clock change too', () => {
+  // The stepping is done in UTC on purpose, and the comment in eventDates.ts
+  // says so, but nothing pinned it: swapping setUTCDate for setDate passed
+  // every test here. It survived because every date these tests pin uses an
+  // offset that does not step over a daylight saving change, and the rest
+  // check only the time of day, that the event is upcoming, or the order.
+  //
+  // 2027-03-14 is the spring change. An offset that steps across it has to
+  // land on the calendar day, not twenty three hours later.
+  const row = { id: 'dst', day_offset: 2, at: '16:00', duration_minutes: 60 }
+  const [dated] = datedEvents([row], new Date('2027-03-13T19:00:00Z'))
+  assert.equal(onCampus(dated.starts_at), '2027-03-15, 16:00')
+
+  // And the autumn one, which moves the offset the other way.
+  const [back] = datedEvents([row], new Date('2026-10-31T19:00:00Z'))
+  assert.equal(onCampus(back.starts_at), '2026-11-02, 16:00')
+})

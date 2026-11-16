@@ -16,7 +16,7 @@
 
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { after, before, describe, it } from 'node:test'
+import { after, before, beforeEach, describe, it } from 'node:test'
 import {
   assertFails, assertSucceeds, initializeTestEnvironment,
 } from '@firebase/rules-unit-testing'
@@ -184,8 +184,33 @@ describe('one student against another', () => {
 })
 
 describe('a student’s own profile', () => {
+  // Alex's document, put back before each of these rather than left to
+  // whichever test ran last. Every assertFails below is an update, and an
+  // update against a document that is not there is refused for being missing,
+  // not for breaking the rule under test: it passes either way, including with
+  // the rule deleted. That was the state of this block, because the only thing
+  // creating the document was the first test in it and the last test here
+  // deletes it. Run with --test-name-pattern, or reordered, and eight of these
+  // asserted nothing at all. The same trap the create test below describes.
+  //
+  // With the Admin SDK, like the campus in before(), so setting it up cannot
+  // be refused by the rules these tests are about.
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await setDoc(doc(admin.firestore(), 'profiles', ALEX), freshProfile())
+    })
+  })
+
   it('can be created, but only empty', async () => {
-    await assertSucceeds(setDoc(doc(alex(), 'profiles', ALEX), freshProfile()))
+    // On a uid of its own, because beforeEach has given Alex a document and
+    // the same write against one of those is an update, which proves nothing
+    // about creating. Deleted again afterwards so the create stays available
+    // to a second run.
+    const uid = 'arrival-uid'
+    await assertSucceeds(setDoc(doc(newcomer(uid), 'profiles', uid), freshProfile()))
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await deleteDoc(doc(admin.firestore(), 'profiles', uid))
+    })
   })
 
   it('cannot be created with any one of the five fields already filled in', async () => {
@@ -314,6 +339,23 @@ describe('a student’s own schedule', () => {
 
   it('takes a sensible class', async () => {
     await assertSucceeds(addDoc(mine(alex()), aClass()))
+  })
+
+  it('refuses a document id longer than the app could ever build', async () => {
+    // Every field inside a meeting is capped and the id was not, so the one
+    // part of the document a caller fully controls was the one part with no
+    // bound on it. A rule cannot count documents and cannot rate limit, so
+    // the number of meetings is still the student's to choose; the size of
+    // each one is not. meetingId() builds ids like CPSC-362-1-113000.
+    const db = alex()
+    await assertSucceeds(
+      setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'CPSC-362-1-113000'), aClass()))
+    await assertSucceeds(
+      setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'z'.repeat(64)), aClass()))
+    await assertFails(
+      setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'z'.repeat(65)), aClass()))
+    await assertFails(
+      setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'z'.repeat(1000)), aClass()))
   })
 
   it('can be read back and cleared', async () => {

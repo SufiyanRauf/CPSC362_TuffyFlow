@@ -394,7 +394,7 @@ function Details({ saved }: { saved: Profile }) {
                 : `${form.noise_pref} of 5, ${noiseWords[form.noise_pref]}`}
             </span>
           </div>
-          {/* The number is a ceiling and read as a target. api/scoring.py:347
+          {/* The number is a ceiling and read as a target. api/scoring.py:405
               gives anywhere at or under it a full mark and only takes marks off
               above it, so a 3 is not a request for background noise, it is the
               most noise you will put up with. Nothing on the screen said which
@@ -409,7 +409,7 @@ function Details({ saved }: { saved: Profile }) {
                     onChange={(v) => set('interests', v)} hintId={tagsNoteId} />
           {/* Two problems, one sentence each, and both fields point at this.
               The first: nothing treats the two lists differently. ClubsView and
-              api/scoring.py:393 both union them, so a student can spend real
+              api/scoring.py:451 both union them, so a student can spend real
               time deciding which box software engineering belongs in and change
               nothing by it. The fields stay because the deck promises both.
               The second: the match is set intersection against the 29 tags the
@@ -433,7 +433,7 @@ function Details({ saved }: { saved: Profile }) {
                     onChange={(v) => set('career_goals', v)} hintId={tagsNoteId} />
         </Row>
         {/* Last, and it used to be second. Its only reader is the line under
-            the name in TopBar.tsx:105. It is not in the scorer at all, so on a
+            the name in TopBar.tsx:110. It is not in the scorer at all, so on a
             card whose heading says this is what the recommendations are matched
             against it was sitting above four fields that really are. */}
         <Row label="Major">

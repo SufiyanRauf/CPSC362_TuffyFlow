@@ -106,14 +106,24 @@ const parkingLots: ParkingLot[] = [
 // never had, so the two no longer match. This is the live copy.
 // Hours 6 to 21, clamped to 0..99.
 //
-// The six counted facilities are measured, from data/parking_samples.csv:
-// Thursday 1 October 2026 13:11 for the weekday figure and Sunday 20 September
-// 2026 12:23 for the weekend one. Both reproduce their reading to within a
-// point. The two shapes are not the same curve scaled down. On a weekday
-// Eastside fills to about 88 percent because it is closest to the academic
-// buildings, while on a Sunday every structure is under 4 percent except
-// S8 and S10 at 59, which sit by the stadium and the gym. State College is
-// the highest of the four, at almost exactly 4.
+// The six counted facilities are measured, from data/parking_samples.csv. The
+// weekday figures come from 4 and 5 November, in WEEKDAY_MEASURED below, and
+// the weekend one from Sunday 20 September 2026 12:23. This block used to name
+// Thursday 1 October 13:11 as the weekday anchor and claim it reproduced to
+// within a point. It no longer does either: the closure on 3 November took
+// 1341 spaces off the board and moved those drivers into these four, so the
+// grid now sits about 42 points away from that October reading on Nutwood and
+// State College. The test lists both 1 October readings as NOT_FITTED for
+// exactly that reason, and the paragraph below about the closure is the one
+// that explains it.
+//
+// The two shapes are not the same curve scaled down. On a weekday Eastside
+// fills to about 88 percent because it is closest to the academic buildings,
+// while on a Sunday every structure is at 4 percent or under except S8 and
+// S10 at 59, which sit by the stadium and the gym. State College is the
+// highest of the four at 4.01, which is just over, and the CSV header owns up
+// to the same slip: this said "under 4 percent" until the figures were
+// recomputed.
 //
 // The weekend has since been read a second time, at 21:40 on Sunday 8
 // November, seven weeks after the first and nine hours later in the day. It
@@ -139,12 +149,19 @@ const parkingLots: ParkingLot[] = [
 // Far fewer classes run here on Fridays.
 //
 // Eastside South is deliberately absent, and that is the most important line
-// in this block. It has now read exactly 1321 free ten times, from two
-// different people, across four days and from 10:07 in the morning to 21:40
-// at night, the last of them on a Sunday three days after the one before.
-// A counter
-// that never moves over a span like that is a closed gate, not a quiet
-// structure. Both Tuesday readings put it at 1.49 percent,
+// in this block. It reads exactly 1321 free in every reading this project is
+// allowed to use: five of them, in data/parking_samples.csv, across four days
+// from 11:59 in the morning to 21:40 at night, the last on a Sunday three days
+// after the one before. A counter that never moves over a span like that is a
+// closed gate, not a quiet structure.
+//
+// This used to say ten readings from two people starting at 10:07. Five of
+// those ten, and the whole morning end of that range, exist only in the
+// spreadsheet the CSV header excludes for provenance, so citing them put
+// harvested figures behind a conclusion in the README. The conclusion does not
+// need them: four days of an unmoving counter, one of them a midday when
+// Nutwood was 95.9 percent full, is the same finding on readings nobody can
+// question. Both Tuesday readings put it at 1.49 percent,
 // twenty cars in 1341 spaces, and it is the only facility that did not change
 // at all between them: 190 cars left campus in those 32 minutes and none of
 // them left Eastside South. At the same moment 1016 drivers were parked in
@@ -228,14 +245,18 @@ const LOT_DEMAND: Record<
 // last three hours are not measured and say so below.
 //
 // This replaced a shared base plus offsets because the readings showed a shape
-// that arrangement cannot hold. Between 13:00 and 18:00 the three structures
-// fall 40 to 50 points while S8 and S10 drops six, so they are not one curve
+// that arrangement cannot hold. Between 13:00 and 18:00 Nutwood falls 51
+// points, Eastside North 38 and State College 36, while S8 and S10 drops 4,
+// so they are not one curve
 // at different heights, and forcing them to be one left the model 24 points
 // out at 13:00 and 42 points out on Nutwood alone.
 //
 // The closure is why these are all November numbers. Before it, Nutwood sat
 // near 50 percent at this hour and Eastside South was the fullest structure on
-// campus; 1341 spaces came off the board and those drivers are in these four
+// campus at 13:11 on 1 October, at 87.9 against Eastside North's 85.7. By
+// 13:57 North had gone past it, 88.4 to 87.9, which is why the hour has to be
+// named: over that afternoon as a whole the claim is not true.
+// 1341 spaces came off the board and those drivers are in these four
 // now. Readings taken before 3 November describe a campus that no longer
 // exists, so they are kept in data/parking_samples.csv as a record and are not
 // fitted to.
@@ -290,11 +311,11 @@ function weekdayLevel(lotId: string, hour: number): number | null {
 // residence halls park in and those cars sit still all weekend, but it is not
 // something anybody here has measured.
 //
-// Worth noticing across both tables: S8 and S10 has never been read below 45
-// percent at any hour of any day, while the structures empty to 1. About a
-// thousand cars live in these two lots whatever the time, which is also why
-// they fall six points between 13:00 and 18:00 on a weekday while the
-// structures fall forty to fifty.
+// Worth noticing across both tables: S8 and S10 has dropped below 45 percent
+// exactly once, 41.44 at 11:51 on the Friday, while the structures empty to 1.
+// About a thousand cars live in these two lots whatever the time, which is
+// also why the pair falls 4 points between 13:00 and 18:00 on a weekday while
+// Nutwood falls 51, Eastside North 38 and State College 36.
 const WEEKEND_MEASURED: Record<string, Record<number, number>> = {
   'lot-s8':  { 12: 59, 21: 46 },
   'lot-s10': { 12: 59, 21: 46 },
@@ -337,7 +358,7 @@ function buildAvailability(): LotAvailability[] {
               : afternoon(hour)
         // A lot with no entry at all has no honest figure at any hour, so it
         // drops out of the grid entirely rather than carrying a number.
-        if (demand === null) continue
+        if (!demand) continue
         const offset = weekend
           ? demand.weekend
           : friday
@@ -345,7 +366,6 @@ function buildAvailability(): LotAvailability[] {
             : evening ? demand.evening : demand.weekday
         // An absent offset means we have no honest figure for this lot at this
         // hour, so no row is written and the scorer says so.
-        if (offset === null || offset === undefined) continue
         // 17:00 is a handoff, not a measurement, and switching base and offsets
         // together made it a step: State College jumped 36 points and the
         // resident lots 35, in one hour, on no evidence. Averaging the two
@@ -357,9 +377,18 @@ function buildAvailability(): LotAvailability[] {
         const measured = weekend
           ? weekendLevel(lot.id, hour)
           : friday ? null : weekdayLevel(lot.id, hour)
-        const level = measured !== null
-          ? measured
-          : evening && hour === 17
+        // An absent offset means we have no honest figure for this lot at this
+        // hour, so no row is written and the scorer says so. Asked here rather
+        // than before measured, which is where it used to be: a board lot
+        // takes its level from the measured curve and never reads offset, so
+        // an offset of null threw away a figure that had been photographed
+        // twice. Only a lot with neither has nothing to say.
+        let level: number
+        if (measured !== null) {
+          level = measured
+        } else {
+          if (offset === null || offset === undefined) continue
+          level = evening && hour === 17
             // The midpoint of the two hours either side, each taken from the
             // branch that genuinely owns it: 16:00 is the last hour the
             // afternoon shape describes, and 18:00 is the measured evening
@@ -371,6 +400,7 @@ function buildAvailability(): LotAvailability[] {
             ? ((afternoon(16) + demand.weekday)
                + (eveningBase[18] + offset)) / 2
             : base + offset
+        }
         rows.push({
           lot_id: lot.id, day_of_week: day, hour,
           // floor 1, ceiling 99: never claim a lot is literally empty or full.

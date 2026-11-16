@@ -1,7 +1,7 @@
 import { useAsync } from '../lib/useAsync'
 import { getBuildings, getEvents } from '../lib/campusData'
 import { getRecommendations } from '../lib/recommend'
-import { useCampusHour } from '../lib/useMinuteTick'
+import { useMinuteTick } from '../lib/useMinuteTick'
 import { useDataVersion } from '../lib/useDataVersion'
 import Panel from './Panel'
 import { CAMPUS_TZ, campusDate } from '../lib/time'
@@ -67,7 +67,8 @@ export default function UpcomingEvents() {
   // recommendations and a request to the scorer, so it was the expensive part
   // of refetching every minute: 115 documents and a POST, to notice that an
   // event starting at half past had started.
-  const events = useAsync(upcoming, [useCampusHour(), useDataVersion()])
+  // On the minute, for the reason EventsView gives.
+  const events = useAsync(upcoming, [useMinuteTick(), useDataVersion()])
 
   return (
     <Panel source={events} empty="Nothing coming up.">

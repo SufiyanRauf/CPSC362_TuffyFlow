@@ -7,7 +7,7 @@ import Panel from './Panel'
 import PageHeader from './PageHeader'
 import { noiseText, noiseWords, spotKindLabels } from '../lib/labels'
 import { campusNow } from '../lib/recommend'
-import { useCampusHour } from '../lib/useMinuteTick'
+import { useMinuteTick } from '../lib/useMinuteTick'
 
 // The screen does two jobs, somewhere to work and somewhere to eat, so the
 // control that picks between them says exactly that. It used to be a dropdown
@@ -87,7 +87,11 @@ export default function SpotsView() {
   // Subscribed to the tick like every other screen that shows something
   // time dependent. Read once it never changed again, so a tab left open
   // across midnight kept yesterday's "Closed today" badges.
-  useCampusHour()
+  // On the minute, not the hour: whether a place is open and which class
+  // the walk is measured from both move inside one, and the ranking is
+  // keyed on the minute now. Asking on the hour would have pinned this
+  // screen to an answer up to fifty nine minutes old.
+  useMinuteTick()
   const today = campusNow().dayOfWeek
 
   // The filtering moved up here out of the panel below, because the status

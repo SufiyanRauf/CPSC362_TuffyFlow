@@ -115,11 +115,30 @@ def is_row(line):
 
 
 def is_divider(line):
-    return bool(re.fullmatch(r'\s*\|[\s:|-]+\|\s*', line))
+    # A dash is required. Without one this also matched "| | |", the
+    # deliberately blank header the two metadata tables at the top of
+    # TEST_CASES.md use, so the blank header and the real |---|---| were both
+    # thrown away and the first data row was promoted to a column heading with
+    # a rule under it: "Course  CPSC 362, Foundations of Software Engineering"
+    # printed as a title over University, Professor, Semester, Team and
+    # Contact.
+    return bool(re.fullmatch(r'\s*\|[\s:|-]*-[\s:|-]*\|\s*', line))
 
 
 def cells(line):
-    return [inline(c).strip() for c in line.strip().strip('|').split('|')]
+    # Split on pipes that are not escaped. A cell may legitimately contain a
+    # \| and one does: PROF-07's third assertion holds the alternation
+    # /end > .*start\|start < .*end/. Splitting on the raw character gave that
+    # row seven cells in a six column table, which shifted every value one
+    # place right, labelled the verdict with a fragment of the regex and left
+    # the real "Pass" as an orphan line with no label at all.
+    raw = line.strip()
+    if raw.startswith('|'):
+        raw = raw[1:]
+    if raw.endswith('|') and not raw.endswith('\\|'):
+        raw = raw[:-1]
+    return [inline(c.replace('\\|', '|')).strip()
+            for c in re.split(r'(?<!\\)\|', raw)]
 
 
 def table(rows):
@@ -127,6 +146,14 @@ def table(rows):
     grid = [cells(r) for r in rows if not is_divider(r)]
     if not grid:
         return []
+    # A blank header means a key and value table with no column names, which
+    # is what the metadata tables are. Keeping it printed an empty line with a
+    # row of dashes under it, so it is dropped and nothing is ruled.
+    headed = any(c for c in grid[0])
+    if not headed:
+        grid = grid[1:]
+        if not grid:
+            return []
     width = max(len(r) for r in grid)
     grid = [r + [''] * (width - len(r)) for r in grid]
     widest = [max(len(r[i]) for r in grid) for i in range(width)]
@@ -136,13 +163,13 @@ def table(rows):
         for n, row in enumerate(grid):
             out.append('  '.join(
                 cell.ljust(widest[i]) for i, cell in enumerate(row)).rstrip())
-            if n == 0:
+            if n == 0 and headed:
                 out.append('  '.join('-' * widest[i] for i in range(width)))
         return out
 
     # Too wide for a grid. The header names the fields, so each following
     # row becomes a labelled block and nothing has to line up.
-    head, body = grid[0], grid[1:]
+    head, body = (grid[0], grid[1:]) if headed else ([''] * width, grid)
     label = max(len(h) for h in head) + 2
     out = []
     for row in body:

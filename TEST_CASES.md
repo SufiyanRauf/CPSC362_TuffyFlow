@@ -10,9 +10,9 @@ Tuffy Flow, a campus companion for California State University, Fullerton.
 | Semester | Fall 2026 |
 | Team | Sufiyan Rauf, Bhavy Patel, Phillip Bryan |
 | Contact | sufiyan24@csu.fullerton.edu |
-| Generated | 2026-11-14 |
+| Generated | 2026-11-16 |
 
-### The machine these were run on
+## The machine these were run on
 
 | | |
 |---|---|
@@ -29,19 +29,19 @@ refuses to write the file if a suite will not run, if a test runs that it
 could not find in the source, if the same test name is defined twice, or
 if any requirement below is left with nothing checking it.
 
-**179 cases, all passing, run on 2026-11-14.**
+**191 cases, all passing, run on 2026-11-16.**
 
 | Suite | Cases | Covers | Command |
 |---|---|---|---|
-| Ranking engine | 86 | Parking, Campus spots, Events | `.venv/bin/python -m pytest tests/test_scoring.py` |
-| Scoring endpoint | 15 | Parking, Campus spots and Events, through the HTTP layer | `.venv/bin/python -m pytest tests/test_api.py` |
-| Security rules | 36 | Student profile, Weekly schedule, and read-only access to the campus | `npm run test:rules` |
-| Event dating | 9 | Event dates and times | `npm run test:dates` |
-| Clock formatting | 7 | The screens that read a stored time through src/lib/time.ts | `npm run test:dates` |
+| Ranking engine | 89 | Parking, Campus spots, Events | `.venv/bin/python -m pytest tests/test_scoring.py` |
+| Scoring endpoint | 17 | Parking, Campus spots and Events, through the HTTP layer | `.venv/bin/python -m pytest tests/test_api.py` |
+| Security rules | 37 | Student profile, Weekly schedule, and read-only access to the campus | `npm run test:rules` |
+| Event dating | 10 | Event dates and times | `npm run test:dates` |
+| Clock formatting | 9 | The screens that read a stored time through src/lib/time.ts | `npm run test:dates` |
 | Parking occupancy curve | 7 | Parking | `npm run test:parking` |
 | Profile screen rules | 7 | Student profile, Weekly schedule | `npm run test:profile` |
-| Account messages | 5 | Student profile | `npm run test:auth` |
-| Club ranking | 7 | Club matching | `npm run test:clubs` |
+| Account messages | 7 | Student profile | `npm run test:auth` |
+| Club ranking | 8 | Club matching | `npm run test:clubs` |
 
 ## The four features, and the requirements behind them
 
@@ -52,15 +52,15 @@ here, or listed twice, stops the script.
 
 | Feature | Requirements | Cases |
 |---|---|---|
-| Parking | FR-3, NFR-5 | 28 |
-| Campus study spots | FR-4 | 19 |
-| Clubs | FR-6 | 7 |
-| Events | FR-5 | 26 |
-| All four, and what they rest on | FR-1, FR-2, FR-7, FR-8, NFR-1, NFR-2, NFR-3, NFR-4, NFR-6, NFR-7, NFR-8 | 112 |
+| Parking | FR-3, NFR-5 | 29 |
+| Campus study spots | FR-4 | 20 |
+| Clubs | FR-6 | 8 |
+| Events | FR-5 | 29 |
+| All four, and what they rest on | FR-1, FR-2, FR-7, FR-8, NFR-1, NFR-2, NFR-3, NFR-4, NFR-6, NFR-7, NFR-8 | 119 |
 
 ## What is not tested, and why
 
-Worth saying plainly, because "179 cases, all passing" invites the reader
+Worth saying plainly, because "191 cases, all passing" invites the reader
 to assume more than it should. There are no automated tests for the
 React screens, the sign in flow or the map. The logic those screens
 depend on was deliberately moved out of them, into `src/lib` and `api/`,
@@ -126,24 +126,24 @@ and neither is worth hiding.
 
 | Requirement | What it means | Cases | Count |
 |---|---|---|---|
-| FR-1 | A student can record and change a profile holding their name, major, interests, career goals, permit type and noise preference, and can delete it. | SEC-11 to SEC-22, SEC-33 to SEC-36, PROF-01 to PROF-05 | 21 |
-| FR-2 | A student can add a class to a weekly schedule, read the schedule back, and remove a class from it. | SEC-23 to SEC-32, PROF-06 to PROF-07 | 12 |
-| FR-3 | The app offers parking lots for the class the student is heading to, ordered by how far the walk is and how full the lot usually is at that hour, and says when to leave. | SC-08 to SC-13, SC-18 to SC-19, SC-25 to SC-26, SC-36, SC-38, SC-48, SC-50, SC-60 to SC-61, SC-82, SC-84, API-03 | 19 |
-| FR-4 | The app offers campus study spots that are open at the time the student is looking, measured from where they already are that day, and ordered by walk, noise and power. | SC-33 to SC-35, SC-39, SC-42 to SC-43, SC-46, SC-51 to SC-52, SC-55 to SC-56, SC-67, SC-70, SC-74 to SC-77, SC-79, SC-83 | 19 |
-| FR-5 | The app offers campus events that match what the student is interested in, are still to come, and do not clash with a class that day. | SC-27 to SC-32, SC-40, SC-53, SC-62 to SC-67, SC-80 to SC-81, API-11, DATE-01 to DATE-09 | 26 |
-| FR-6 | The app orders registered clubs by how well they match the interests the student entered, putting a rarely shared interest above a common one. | CLUB-01 to CLUB-07 | 7 |
+| FR-1 | A student can record and change a profile holding their name, major, interests, career goals, permit type and noise preference, and can delete it. | SEC-11 to SEC-22, SEC-34 to SEC-37, PROF-01 to PROF-05 | 21 |
+| FR-2 | A student can add a class to a weekly schedule, read the schedule back, and remove a class from it. | SEC-23 to SEC-33, PROF-06 to PROF-07 | 13 |
+| FR-3 | The app offers parking lots for the class the student is heading to, ordered by how far the walk is and how full the lot usually is at that hour, and says when to leave. | SC-08 to SC-13, SC-18 to SC-19, SC-25 to SC-26, SC-36, SC-38, SC-48, SC-50, SC-60 to SC-61, SC-82, SC-84, API-03, API-17 | 20 |
+| FR-4 | The app offers campus study spots that are open at the time the student is looking, measured from where they already are that day, and ordered by walk, noise and power. | SC-33 to SC-35, SC-39, SC-42 to SC-43, SC-46, SC-51 to SC-52, SC-55 to SC-56, SC-67, SC-70, SC-74 to SC-77, SC-79, SC-83, SC-89 | 20 |
+| FR-5 | The app offers campus events that match what the student is interested in, are still to come, and do not clash with a class that day. | SC-27 to SC-32, SC-40, SC-53, SC-62 to SC-67, SC-80 to SC-81, SC-87 to SC-88, API-11, DATE-01 to DATE-10 | 29 |
+| FR-6 | The app orders registered clubs by how well they match the interests the student entered, putting a rarely shared interest above a common one. | CLUB-01 to CLUB-08 | 8 |
 | FR-7 | The campus data is readable to a student who has signed in, and to nobody else. | SEC-01 to SEC-05 | 5 |
 | FR-8 | Every recommendation is measured from the class the student is next heading to, or was last at, rather than from a fixed point on campus. | SC-29 to SC-31, SC-36 to SC-39, SC-41 to SC-48, SC-80 to SC-81 | 17 |
 | NFR-1 | A student can read and write their own profile and schedule and nobody else's, and no signed in student can change the campus data. | SEC-01 to SEC-02, SEC-04 to SEC-10 | 9 |
-| NFR-2 | Every value the app stores is bounded and type checked by the database rules themselves, so a client that skips the screen still cannot write a bad one. | SEC-01 to SEC-02, SEC-05 to SEC-13, SEC-15 to SEC-21, SEC-26 to SEC-32, SEC-34 to SEC-35 | 27 |
-| NFR-3 | A malformed request to the scoring endpoint is refused with a 422 that names the field and never repeats the value it rejected, and a well formed one never produces a server error. | SC-54, SC-57 to SC-59, SC-69, SC-71, SC-73, SC-78, API-01 to API-15 | 23 |
-| NFR-4 | Every time and date the student reads is campus time, and stays correct across daylight saving and the turn of the year. | DATE-01 to DATE-09, CLK-01 to CLK-07 | 16 |
+| NFR-2 | Every value the app stores is bounded and type checked by the database rules themselves, so a client that skips the screen still cannot write a bad one. | SEC-01 to SEC-02, SEC-05 to SEC-13, SEC-15 to SEC-21, SEC-24, SEC-27 to SEC-33, SEC-35 to SEC-36 | 28 |
+| NFR-3 | A malformed request to the scoring endpoint is refused with a 422 that names the field and never repeats the value it rejected, and a well formed one never produces a server error. | SC-54, SC-57 to SC-59, SC-69, SC-71, SC-73, SC-78, API-01 to API-17 | 25 |
+| NFR-4 | Every time and date the student reads is campus time, and stays correct across daylight saving and the turn of the year. | DATE-01 to DATE-10, CLK-01 to CLK-09 | 19 |
 | NFR-5 | The occupancy figures reproduce the board readings they were fitted to, and where there is no reading for an hour the app says so rather than presenting a guess as a measurement. | SC-14 to SC-15, PARK-01 to PARK-07 | 9 |
-| NFR-6 | Ranking a whole campus of candidates costs well under a second, and the cost grows with the number of candidates rather than faster. | SC-55, SC-62, SC-85 to SC-86 | 4 |
+| NFR-6 | Ranking a whole campus of candidates costs well under a second, and the cost grows with the number of candidates rather than faster. | SC-85 to SC-86 | 2 |
 | NFR-7 | With no profile, no schedule, or nothing left after filtering, every screen says so plainly instead of failing or inventing a recommendation. | SC-14, SC-24, SC-54, SC-62, SC-70, SC-75, API-14 to API-15 | 8 |
-| NFR-8 | When something goes wrong with a student's own account the app tells them what happened, in words they can act on, and never tells them an action did not happen when part of it did; and deleting an account leaves nothing of theirs behind. | AUTH-01 to AUTH-05 | 5 |
+| NFR-8 | When something goes wrong with a student's own account the app tells them what happened, in words they can act on, and never tells them an action did not happen when part of it did; and deleting an account leaves nothing of theirs behind. | AUTH-01 to AUTH-07 | 7 |
 
-16 of the 179 cases trace to no requirement on their own. They are the
+16 of the 191 cases trace to no requirement on their own. They are the
 shared arithmetic every feature sits on, which is worth testing and is
 not worth claiming as a requirement: SC-01 to SC-07, SC-16 to SC-17, SC-20 to SC-23, SC-49, SC-68, SC-72.
 
@@ -179,7 +179,7 @@ calls, stops the script.
 
 ---
 
-## Ranking engine (86 cases)
+## Ranking engine (89 cases)
 
 Mostly pure functions over dicts, so the whole file runs in about half a second. A dozen of them do reach for the request models in api/recommend.py, because the bounds on a field are worth checking where they are declared, and one shells out to Node to read the real campus rows. No database either way.
 
@@ -243,14 +243,14 @@ Command: `.venv/bin/python -m pytest tests/test_scoring.py`
 | SC-52 | FR-4 | `_empty_profile_context()` | An unset noise preference still says how loud the spot is | `'silent' in out[0]['reasons']` | Pass |
 | SC-53 | FR-5 | `_empty_profile_context()` | Events still rank for a profile with no interests | `len(out) == 1`; `0 < out[0]['match_percent'] < 100` | Pass |
 | SC-54 | NFR-3, NFR-7 |  | The request model takes a profile with nothing filled in | `profile.permit_type is None`; `profile.noise_pref is None`; `profile.interests == []` | Pass |
-| SC-55 | FR-4, NFR-6 | `_empty_profile_context()` | An unset noise preference does not cost a spot anything | `without[0]['match_percent'] == with_pref[0]['match_percent'] == 100` | Pass |
+| SC-55 | FR-4 | `_empty_profile_context()` | An unset noise preference does not cost a spot anything | `without[0]['match_percent'] == with_pref[0]['match_percent'] == 100` | Pass |
 | SC-56 | FR-4 | `_empty_profile_context()` | An unset noise preference does not hand the ranking to outlets | `scores['silent'] == 67`; `scores['loud'] == 100` | Pass |
 | SC-57 | NFR-3 |  | The noise bounds still bite when a preference is given | `recommend.Profile(noise_pref=refused) raises pydantic.ValidationError for every value in (0, 6)`; `recommend.Profile(noise_pref=3).noise_pref == 3` | Pass |
 | SC-58 | NFR-3 |  | The model takes an explicit null and not just a missing key | `profile.permit_type is None`; `profile.noise_pref is None`; `profile.interests == [] and profile.career_goals == []` | Pass |
 | SC-59 | NFR-3 |  | A permit that is not one of the four is refused | `recommend.Profile(permit_type='staff') raises pydantic.ValidationError` | Pass |
 | SC-60 | FR-3 | `_parking_context(hour=10, rows=[{'lot_id': 'near-empty', 'day_of_week': 1, 'hour': 10, 'typical_pct_full': 41}])` | The parking result carries the fullness as a number | `results['near-empty']['pct_full'] == 41`; `results['far-empty']['pct_full'] is None` | Pass |
 | SC-61 | FR-3 | `_empty_profile_context()` | Only parking carries a fullness | `recommend._result(out[0], 'spot')['pct_full'] is None` | Pass |
-| SC-62 | FR-5, NFR-6, NFR-7 | `_empty_profile_context()` | A profile with nothing on it does not cost an event anything | `without[0]['match_percent'] == with_interests[0]['match_percent'] == 100` | Pass |
+| SC-62 | FR-5, NFR-7 | `_empty_profile_context()` | A profile with nothing on it does not cost an event anything | `without[0]['match_percent'] == with_interests[0]['match_percent'] == 100` | Pass |
 | SC-63 | FR-5 | `_empty_profile_context()` | Tags we cannot judge do not score like tags that are wrong | `scores['wanted'] == 100`; `scores['elsewhere'] < scores['untagged'] < scores['wanted']`; `scores['untagged'] == 70`; `scores['elsewhere'] == 40` | Pass |
 | SC-64 | FR-5 | `_empty_profile_context()` | An event that matches outranks one with no tags at all | `[r['item']['id'] for r in out] == ['matches-two', 'untagged']` | Pass |
 | SC-65 | FR-5 | `_empty_profile_context()` | A brand new account does not see every event at the same low score | `scores['tonight'] == 100`; `40 < scores['next-week'] < 100` | Pass |
@@ -260,7 +260,7 @@ Command: `.venv/bin/python -m pytest tests/test_scoring.py`
 | SC-69 | NFR-3 | `_a_spot(opens_at=refused)` | A time that is not a time is refused | `recommend.Spot(**_a_spot(opens_at=refused)) raises pydantic.ValidationError for every value in ('9:00', 'not a time', '08', '24:00', '07:60')`; `recommend.Spot(**_a_spot(opens_at='07:00')).opens_at == '07:00'`; `recommend.Spot(**_a_spot(opens_at='07:00:00')).opens_at == '07:00:00'` | Pass |
 | SC-70 | FR-4, NFR-7 | `_a_spot(opens_at='')` | Empty hours and missing hours mean the same thing | `recommend.Spot(**_a_spot(opens_at='')).opens_at is None`; `recommend.Spot(**_a_spot()).opens_at is None` | Pass |
 | SC-71 | NFR-3 | `_a_spot(lat=refused)` | A coordinate that is not on earth is refused | `recommend.Spot(**_a_spot(lat=refused)) raises pydantic.ValidationError for every value in (float('inf'), float('-inf'), float('nan'), 91.0, -91.0)`; `recommend.Spot(**_a_spot(lat=33.88)).lat == 33.88` | Pass |
-| SC-72 | -- |  | A factor that returns not a number scores zero not a perfect match | `out[0]['match_percent'] == 0` | Pass |
+| SC-72 | -- |  | A factor that returns not a number scores zero not a perfect match | `out[0]['match_percent'] == 0`; `over = scoring.rank([{'id': 'x', 'name': 'X'}], [], {'only': too_much}, {'only': 1.0}, 1, {})`; `over[0]['match_percent'] == 100`; `under = scoring.rank([{'id': 'x', 'name': 'X'}], [], {'only': too_little}, {'only': 1.0}, 1, {})` (3 assertions in all) | Pass |
 | SC-73 | NFR-3 |  | A body with infinity in it gets a reason not a crash | `reply.status_code == 422`; `body = reply.body.decode()`; `'dest_lat' in body`; `'finite' in body` (4 assertions in all) | Pass |
 | SC-74 | FR-4 | `_spots_context(now_minutes=720)` | Somewhere shut today is not recommended whatever the clock says | `out == []` | Pass |
 | SC-75 | FR-4, NFR-7 | `_spots_context()` | Hours we never knew are not a reason to rule somewhere out | `len(out) == 1` | Pass |
@@ -275,10 +275,13 @@ Command: `.venv/bin/python -m pytest tests/test_scoring.py`
 | SC-84 | FR-3 | `_parking_context()` | A walk of an hour is offered and anything longer is not | `scoring.walk_minutes(scoring.haversine(hour_away['lat'], hour_away['lng'], CS_LAT, CS_LNG)) == 60`; `scoring.walk_minutes(scoring.haversine(further['lat'], further['lng'], CS_LAT, CS_LNG)) == 61`; `ctx = _parking_context()`; `cfg = scoring.parking_config(ctx)` (3 assertions in all) | Pass |
 | SC-85 | NFR-6 | `_parking_context()` | A whole campus is ranked well inside a second | `len(out) == 5`; `spent < 1.0` | Pass |
 | SC-86 | NFR-6 | `_parking_context()` | Ranking cost grows with the list and not faster | `large < small * 40` | Pass |
+| SC-87 | FR-5 | `_empty_profile_context(minutes=720)` | An event tomorrow morning is still offered this afternoon | `len(out) == 1` | Pass |
+| SC-88 | FR-5 | `_empty_profile_context(minutes=700)` | An event starting this very minute is not offered | `offered(701) == 1`; `offered(700) == 0`; `offered(699) == 0` | Pass |
+| SC-89 | FR-4 | `_empty_profile_context()` | The noise penalty falls a quarter for every level over the preference | `scores == [1.0, 1.0, 0.75, 0.5, 0.25]` | Pass |
 
 ---
 
-## Scoring endpoint (15 cases)
+## Scoring endpoint (17 cases)
 
 These go through the FastAPI app rather than calling the handler, so the request model and the error handler are in the test too.
 
@@ -303,10 +306,12 @@ Command: `.venv/bin/python -m pytest tests/test_api.py`
 | API-13 | NFR-3 | `_a_body()` | The row caps sit well above a real campus | `reply.status_code == 200`; `len(reply.json()['spots']) == 20`; `flood = [dict(spot, id='s%d' % i) for i in range(recommend.MANY + 1)]`; `reply = client.post(PATH, json=_a_body(spots=flood))` (4 assertions in all) | Pass |
 | API-14 | NFR-3, NFR-7 | `_a_body(lots=[], availability=[], spots=[], events=[], class_meetings=[])` | An empty campus is an empty answer rather than an error | `reply.status_code == 200`; `reply.json() == {'parking': [], 'spots': [], 'events': []}` | Pass |
 | API-15 | NFR-3, NFR-7 | `_a_body(profile={'permit_type': None, 'noise_pref': None, 'interests': None, 'career_goals': None})` | A brand new account posts successfully with nothing on its profile | `reply.status_code == 200`; `body = reply.json()`; `body['parking'] == []`; `len(body['spots']) == 1` | Pass |
+| API-16 | NFR-3 | `_a_body()` | A spot kind that is not one of the four is refused | `client.post(PATH, json=body).status_code == 422`; `body['spots'][0]['kind'] = good`; `client.post(PATH, json=body).status_code == 200` | Pass |
+| API-17 | FR-3, NFR-3 | `_a_body()` | Every card carries its own category and only parking carries arrive by | `set(card) == expected`; `card['category'] == category`; `card['arrive_by'] is None`; `card['pct_full'] is None` | Pass |
 
 ---
 
-## Security rules (36 cases)
+## Security rules (37 cases)
 
 Run against Firebase's Firestore emulator on this machine. Nothing in this suite touches the real project. Needs firebase-tools and a JDK on the path, and a passing run prints a wall of red PERMISSION_DENIED lines, because most of these cases are refusals that are supposed to happen. Nine are the other way round, checking that the owner is still let through, because a rule that refuses everybody passes every refusal test there is.
 
@@ -326,7 +331,7 @@ Command: `npm run test:rules`
 | SEC-08 | NFR-1, NFR-2 | `one student against another` | Cannot write the other’s profile | `assertFails(updateDoc(doc(alex(), 'profiles', JORDAN), { major: 'Changed' }))`; `assertFails(setDoc(doc(alex(), 'profiles', JORDAN), freshProfile('Impostor')))`; `assertFails(deleteDoc(doc(alex(), 'profiles', JORDAN)))` | Pass |
 | SEC-09 | NFR-1, NFR-2 | `one student against another` | Cannot create a profile at somebody else’s uid | `assertFails(setDoc(doc(alex(), 'profiles', 'river-uid'), freshProfile('Impostor')))` | Pass |
 | SEC-10 | NFR-1, NFR-2 | `one student against another` | Cannot read or touch the other’s schedule | `assertFails(getDocs(theirs))`; `assertFails(addDoc(theirs, aClass()))`; `assertFails(deleteDoc(doc(db, 'profiles', JORDAN, 'class_meetings', 'secret')))` | Pass |
-| SEC-11 | FR-1, NFR-2 | `a student’s own profile` | Can be created, but only empty | `assertSucceeds(setDoc(doc(alex(), 'profiles', ALEX), freshProfile()))` | Pass |
+| SEC-11 | FR-1, NFR-2 | `a student’s own profile` | Can be created, but only empty | `assertSucceeds(setDoc(doc(newcomer(uid), 'profiles', uid), freshProfile()))` | Pass |
 | SEC-12 | FR-1, NFR-2 | `a student’s own profile` | Cannot be created with any one of the five fields already filled in | `assertFails(setDoc(doc(newcomer(uid), 'profiles', uid), { ...freshProfile('New Student'), [field]: filled[field], }))` | Pass |
 | SEC-13 | FR-1, NFR-2 | `a student’s own profile` | Cannot carry a field nobody asked for | `assertFails(setDoc(doc(alex(), 'profiles', ALEX), { ...freshProfile(), payload: 'x'.repeat(1000), }))` | Pass |
 | SEC-14 | FR-1 | `a student’s own profile` | Can be updated with sensible values | `assertSucceeds(setDoc(doc(db, 'profiles', ALEX), freshProfile()))`; `assertSucceeds(updateDoc(doc(db, 'profiles', ALEX), { major: 'Computer Science', permit_type: 'student', noise_pref: 2, interests: ['ai'], career_goals: [], full_name: 'Alex Nguyen', }))` | Pass |
@@ -339,23 +344,24 @@ Command: `npm run test:rules`
 | SEC-21 | FR-1, NFR-2 | `a student’s own profile` | Refuses a noise level outside one to five | `assertFails(updateDoc(doc(db, 'profiles', ALEX), { noise_pref: 0 }))`; `assertFails(updateDoc(doc(db, 'profiles', ALEX), { noise_pref: 9 }))` | Pass |
 | SEC-22 | FR-1 | `a student’s own profile` | Can be deleted, because somebody has to be able to leave | `assertSucceeds(deleteDoc(doc(alex(), 'profiles', ALEX)))` | Pass |
 | SEC-23 | FR-2 | `a student’s own schedule` | Takes a sensible class | `assertSucceeds(addDoc(mine(alex()), aClass()))` | Pass |
-| SEC-24 | FR-2 | `a student’s own schedule` | Can be read back and cleared | `assertSucceeds(getDocs(mine(db)))`; `assertSucceeds(setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'x'), aClass()))`; `assertSucceeds(deleteDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'x')))` | Pass |
-| SEC-25 | FR-2 | `a student’s own schedule` | Lets the owner fetch one meeting on its own | `assertSucceeds(getDoc(doc(alex(), 'profiles', ALEX, 'class_meetings', ref.id)))` | Pass |
-| SEC-26 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a time without seconds, so the end > start test stays honest | `assertFails(addDoc(mine(alex()), aClass({ start_time: '09:30', end_time: '09:30:00' })))`; `assertFails(addDoc(mine(alex()), aClass({ end_time: '12:45' })))` | Pass |
-| SEC-27 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a time that is not a time | `assertFails(addDoc(mine(alex()), aClass({ start_time: '9:00' })))`; `assertFails(addDoc(mine(alex()), aClass({ end_time: 'banana' })))`; `assertFails(addDoc(mine(alex()), aClass({ start_time: '24:00:00' })))` | Pass |
-| SEC-28 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a class that ends before it starts | `assertFails(addDoc(mine(alex()), aClass({ end_time: '09:00:00' })))` | Pass |
-| SEC-29 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a day outside the week | `assertFails(addDoc(mine(alex()), aClass({ day_of_week: 7 })))`; `assertFails(addDoc(mine(alex()), aClass({ day_of_week: -1 })))` | Pass |
-| SEC-30 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a class with no course code or no building | `assertFails(addDoc(mine(alex()), aClass({ course_code: '' })))`; `assertFails(addDoc(mine(alex()), aClass({ building_id: '' })))` | Pass |
-| SEC-31 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a course code or a building id one character over the cap | `assertFails(addDoc(mine(db), aClass({ course_code: 'C'.repeat(33) })))`; `assertFails(addDoc(mine(db), aClass({ building_id: 'b'.repeat(65) })))` | Pass |
-| SEC-32 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a field nobody asked for | `assertFails(addDoc(mine(alex()), aClass({ junk: 'x'.repeat(1000) })))` | Pass |
-| SEC-33 | FR-1 | `a student deleting their own account` | Can clear the schedule and then the profile, and nothing is left | `assertSucceeds(setDoc(doc(db, 'profiles', LEAVER), freshProfile('Riley Park')))`; `assertSucceeds(addDoc(schedule, aClass()))`; `assertSucceeds(addDoc(schedule, aClass({ course_code: 'MATH 338', day_of_week: 3 })))`; `const listed = await assertSucceeds(getDocs(schedule))` (11 assertions in all) | Pass |
-| SEC-34 | FR-1, NFR-2 | `a student deleting their own account` | Cannot be done to somebody else | `assertFails(batch.commit())` | Pass |
-| SEC-35 | FR-1, NFR-2 | `a student deleting their own account` | Cannot be done to somebody else by the profile delete alone | `assertFails(deleteDoc(doc(alex(), 'profiles', JORDAN)))` | Pass |
-| SEC-36 | FR-1 | `a student deleting their own account` | Can clear a class meeting left behind with no profile above it | `const orphan = await assertSucceeds(addDoc(schedule, aClass()))`; `assertSucceeds(deleteDoc(doc(db, 'profiles', LEAVER)))`; `const listed = await assertSucceeds(getDocs(schedule))`; `assert.equal(listed.size, 1)` (6 assertions in all) | Pass |
+| SEC-24 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a document id longer than the app could ever build | `assertSucceeds( setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'CPSC-362-1-113000'), aClass()))`; `assertSucceeds( setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'z'.repeat(64)), aClass()))`; `assertFails( setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'z'.repeat(65)), aClass()))`; `assertFails( setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'z'.repeat(1000)), aClass()))` | Pass |
+| SEC-25 | FR-2 | `a student’s own schedule` | Can be read back and cleared | `assertSucceeds(getDocs(mine(db)))`; `assertSucceeds(setDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'x'), aClass()))`; `assertSucceeds(deleteDoc(doc(db, 'profiles', ALEX, 'class_meetings', 'x')))` | Pass |
+| SEC-26 | FR-2 | `a student’s own schedule` | Lets the owner fetch one meeting on its own | `assertSucceeds(getDoc(doc(alex(), 'profiles', ALEX, 'class_meetings', ref.id)))` | Pass |
+| SEC-27 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a time without seconds, so the end > start test stays honest | `assertFails(addDoc(mine(alex()), aClass({ start_time: '09:30', end_time: '09:30:00' })))`; `assertFails(addDoc(mine(alex()), aClass({ end_time: '12:45' })))` | Pass |
+| SEC-28 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a time that is not a time | `assertFails(addDoc(mine(alex()), aClass({ start_time: '9:00' })))`; `assertFails(addDoc(mine(alex()), aClass({ end_time: 'banana' })))`; `assertFails(addDoc(mine(alex()), aClass({ start_time: '24:00:00' })))` | Pass |
+| SEC-29 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a class that ends before it starts | `assertFails(addDoc(mine(alex()), aClass({ end_time: '09:00:00' })))` | Pass |
+| SEC-30 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a day outside the week | `assertFails(addDoc(mine(alex()), aClass({ day_of_week: 7 })))`; `assertFails(addDoc(mine(alex()), aClass({ day_of_week: -1 })))` | Pass |
+| SEC-31 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a class with no course code or no building | `assertFails(addDoc(mine(alex()), aClass({ course_code: '' })))`; `assertFails(addDoc(mine(alex()), aClass({ building_id: '' })))` | Pass |
+| SEC-32 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a course code or a building id one character over the cap | `assertFails(addDoc(mine(db), aClass({ course_code: 'C'.repeat(33) })))`; `assertFails(addDoc(mine(db), aClass({ building_id: 'b'.repeat(65) })))` | Pass |
+| SEC-33 | FR-2, NFR-2 | `a student’s own schedule` | Refuses a field nobody asked for | `assertFails(addDoc(mine(alex()), aClass({ junk: 'x'.repeat(1000) })))` | Pass |
+| SEC-34 | FR-1 | `a student deleting their own account` | Can clear the schedule and then the profile, and nothing is left | `assertSucceeds(setDoc(doc(db, 'profiles', LEAVER), freshProfile('Riley Park')))`; `assertSucceeds(addDoc(schedule, aClass()))`; `assertSucceeds(addDoc(schedule, aClass({ course_code: 'MATH 338', day_of_week: 3 })))`; `const listed = await assertSucceeds(getDocs(schedule))` (11 assertions in all) | Pass |
+| SEC-35 | FR-1, NFR-2 | `a student deleting their own account` | Cannot be done to somebody else | `assertFails(batch.commit())` | Pass |
+| SEC-36 | FR-1, NFR-2 | `a student deleting their own account` | Cannot be done to somebody else by the profile delete alone | `assertFails(deleteDoc(doc(alex(), 'profiles', JORDAN)))` | Pass |
+| SEC-37 | FR-1 | `a student deleting their own account` | Can clear a class meeting left behind with no profile above it | `const orphan = await assertSucceeds(addDoc(schedule, aClass()))`; `assertSucceeds(deleteDoc(doc(db, 'profiles', LEAVER)))`; `const listed = await assertSucceeds(getDocs(schedule))`; `assert.equal(listed.size, 1)` (6 assertions in all) | Pass |
 
 ---
 
-## Event dating (9 cases)
+## Event dating (10 cases)
 
 The daylight saving arithmetic, which is the part of the event screen that has no second chance to be right.
 
@@ -374,10 +380,11 @@ Command: `npm run test:dates`
 | DATE-07 | FR-5, NFR-4 |  | Events come back in order whatever order they arrive in | `assert.deepEqual(times, [...times].sort(), 'not in time order')`; `assert.equal(rows.length, events.length)` | Pass |
 | DATE-08 | FR-5, NFR-4 |  | A row that cannot be dated is dropped, not fatal | `assert.deepEqual(rows.map((e) => e.id), ['ok', 'ok2'])`; `assert.deepEqual(quietly(() => datedEvents([broken])), [], JSON.stringify(broken.at ?? broken))` | Pass |
 | DATE-09 | FR-5, NFR-4 |  | A stored row needs no date of its own | `assert.equal(onCampus(starts_at), '2026-12-17, 09:30')`; `assert.equal(onCampus(ends_at), '2026-12-17, 10:15')` | Pass |
+| DATE-10 | FR-5, NFR-4 |  | A day offset steps whole calendar days, across a clock change too | `assert.equal(onCampus(dated.starts_at), '2027-03-15, 16:00')`; `assert.equal(onCampus(back.starts_at), '2026-11-02, 16:00')` | Pass |
 
 ---
 
-## Clock formatting (7 cases)
+## Clock formatting (9 cases)
 
 time.ts turns a stored time into something a student reads, and five screens call these functions, so one broken branch here is wrong on all five at once. Three more files import time.ts for the campus timezone alone and are untouched by it; the two event screens format their own dates with Intl and are covered by Event dating instead.
 
@@ -394,6 +401,8 @@ Command: `npm run test:dates`
 | CLK-05 | NFR-4 |  | clockRange keeps both when the range crosses noon or midnight | `assert.equal(clockRange('11:30:00', '12:45:00'), '11:30 AM\u201312:45 PM')`; `assert.equal(clockRange('23:00:00', '00:30:00'), '11:00 PM\u201312:30 AM')` | Pass |
 | CLK-06 | NFR-4 |  | toMinutes counts from midnight | `assert.equal(toMinutes('09:30'), 570)`; `assert.equal(toMinutes('11:30:00'), 690)`; `assert.equal(toMinutes('00:00'), 0)` | Pass |
 | CLK-07 | NFR-4 |  | clockRange hands back values that are not times | `assert.equal(clockRange('TBA', 'TBA'), 'TBA\u2013TBA')`; `assert.equal(clockRange('', ''), '\u2013')`; `assert.equal(clockRange('now', 'now'), 'now\u2013now')` | Pass |
+| CLK-08 | NFR-4 |  | A leave time that has gone reads as now, to the minute | `assert.equal(leaveTimeGone('08:37', 0, 516), false, 'a minute before')`; `assert.equal(leaveTimeGone('08:37', 0, 517), true, 'the exact minute')`; `assert.equal(leaveTimeGone('08:37', 0, 521), true, 'after')`; `assert.equal(leaveTimeGone(null, 0, 60), true)` (7 assertions in all) | Pass |
+| CLK-09 | NFR-4 |  | The campus date comes from the campus, not the machine and not UTC | `assert.equal(campusDate(new Date('2026-11-17T01:00:00Z')), '2026-11-16')`; `assert.equal(campusDate(new Date('2026-11-16T20:00:00Z')), '2026-11-16')`; `assert.equal(campusDate(new Date('2026-11-01T08:30:00Z')), '2026-11-01')`; `assert.equal(campusDate(new Date('2026-06-15T06:00:00Z')), '2026-06-14')` | Pass |
 
 ---
 
@@ -419,7 +428,7 @@ Command: `npm run test:parking`
 
 ## Profile screen rules (7 cases)
 
-The two rules the profile screen applies before it writes anything, which have to agree with db/firestore.rules and until now agreed with it by a comment saying so. They were inside ProfileView.tsx, the largest file in the project and the one with no tests; they are in src/lib/profileEdits.ts now, the way clubRanking.ts came out of ClubsView.tsx. Two of these cases read the rules file and fail if the numbers drift apart.
+The three rules the profile screen applies before it writes anything, which have to agree with db/firestore.rules and until now agreed with it by a comment saying so. They were inside ProfileView.tsx, the largest file in the project and the one with no tests; they are in src/lib/profileEdits.ts now, the way clubRanking.ts came out of ClubsView.tsx. Two of these cases read the rules file and fail if the numbers drift apart.
 
 Covers: Student profile, Weekly schedule.  
 File: `tests/profile_edits.test.mjs`  
@@ -427,19 +436,19 @@ Command: `npm run test:profile`
 
 | ID | Traces to | Precondition | What it checks | Expected result | Result |
 |---|---|---|---|---|---|
-| PROF-01 | FR-1 |  | The tag ceilings match the ones the database enforces |  | Pass |
+| PROF-01 | FR-1 |  | The tag ceilings match the ones the database enforces | `assert.ok(perTag, 'could not find the per tag length in db/firestore.rules')`; `assert.equal(Number(perTag[1]), LONGEST_TAG, 'the screen caps a tag at a different length from the rules')`; `assert.ok(perList, 'could not find the tag list cap in db/firestore.rules')`; `assert.equal(Number(perList[1]), MOST_TAGS, 'the screen allows a different number of tags from the rules')` | Pass |
 | PROF-02 | FR-1 |  | A typed interest becomes something the campus data can match | `assert.equal(tagSlug(' Machine Learning '), 'machine-learning')`; `assert.equal(tagSlug('AI'), 'ai')`; `assert.equal(tagSlug('rock & roll'), 'rock-roll')`; `assert.equal(tagSlug('--trimmed--'), 'trimmed')` (5 assertions in all) | Pass |
 | PROF-03 | FR-1 |  | Punctuation on its own produces no tag rather than an empty one | `assert.equal(tagSlug(draft), '', `${JSON.stringify(draft)} made a tag`)` | Pass |
 | PROF-04 | FR-1 |  | A typed interest is stored as the word the data actually uses | `assert.equal(tagFor('Singing'), 'music')`; `assert.equal(tagFor('theatre'), 'arts')`; `assert.equal(tagFor('robotics'), 'robotics')` | Pass |
-| PROF-05 | FR-1 |  | No tag the screen will store is longer than the database allows | `assert.ok(tagSlug(typed).length <= LONGEST_TAG)`; `assert.ok(tagFor(typed).length <= LONGEST_TAG, 'an alias expanded a tag past what the rules accept')` | Pass |
+| PROF-05 | FR-1 |  | No tag the screen will store is longer than the database allows | `assert.ok(values.length > 50, `only found ${values.length} aliases to check`)`; `assert.deepEqual(tooLong, [], 'an alias expands a typed tag past what the rules accept')`; `assert.ok(tagSlug(typed).length <= typed.length, typed)` | Pass |
 | PROF-06 | FR-2 |  | A class says the first thing wrong with it and only that | `assert.equal(classProblem(...ok), '')`; `assert.match(classProblem('', '09:00', '10:15', 'b-cs'), /course code/)`; `assert.match(classProblem(' ', '09:00', '10:15', 'b-cs'), /course code/)`; `assert.match(classProblem('CPSC 362', '', '10:15', 'b-cs'), /both times/)` (7 assertions in all) | Pass |
-| PROF-07 | FR-2 |  | A class cannot end before or when it starts | `assert.match(classProblem('CPSC 362', '10:15', '09:00', 'b-cs'), /after/)`; `assert.match(classProblem('CPSC 362', '09:00', '09:00', 'b-cs'), /after/)`; `assert.match(rules, /end > .*start\|start < .*end/, 'db/firestore.rules no longer requires the end after the start')` | Pass |
+| PROF-07 | FR-2 |  | A class cannot end before or when it starts | `assert.match(classProblem('CPSC 362', '10:15', '09:00', 'b-cs'), /after/)`; `assert.match(classProblem('CPSC 362', '09:00', '09:00', 'b-cs'), /after/)`; `assert.match(comments, /data\.end_time > data\.start_time/, 'db/firestore.rules no longer requires the end after the start')` | Pass |
 
 ---
 
-## Account messages (5 cases)
+## Account messages (7 cases)
 
-Whether what the sign in code says ever reaches the person reading the screen. session.ts turns a Firebase error code into a sentence, and firestoreData.ts keeps the list of sentences allowed through to a panel; the two agreed by hand until the agreement slipped, and the sentence for picking the wrong Google account while deleting an account was written, was reachable, and was being swallowed. These read both files and make a new branch be classified as one or the other.
+Whether what the sign in code says ever reaches the person reading the screen. session.ts turns a Firebase error code into a sentence, and firestoreData.ts keeps the list of sentences allowed through to a panel; the two agreed by hand until the agreement slipped, and the sentence for picking the wrong Google account while deleting an account was written, was reachable, and was being swallowed. These read all three files and make a new branch be classified as one or the other.
 
 Covers: Student profile.  
 File: `tests/auth_messages.test.mjs`  
@@ -450,12 +459,14 @@ Command: `npm run test:auth`
 | AUTH-01 | NFR-8 |  | Every sentence the auth code can say is either allowed through or listed | `assert.ok(allowed.length > 5, 'the allowed list came back too short to be real')`; `assert.ok(said.length >= 12, `only found ${said.length} sentences in plainly()`)`; `assert.deepEqual(undecided, [], 'nobody decided where these go. Add each to STUDENT_FACING in ' + 'src/lib/firestoreData.ts if a panel can show it, or to LOGIN_CARD_ONLY ' + 'in this test if only the login card can.')` | Pass |
 | AUTH-02 | NFR-8 |  | The list of login card sentences has nothing stale on it | `assert.ok(said.includes(sentence), `LOGIN_CARD_ONLY still lists ${JSON.stringify(sentence)}, which plainly() ` + 'no longer says. Remove it.')` | Pass |
 | AUTH-03 | NFR-8 |  | The half way messages say which half, and are allowed through | `assert.ok(allowed.some((prefix) => half.startsWith(prefix)), `${half} is not allowed through to the screen`)`; `assert.match(campus, /but the account itself is still/, 'campusData no longer reports the account surviving the row delete')`; `assert.match(campus, /\+ gone\.message/, 'the reason removeSignIn gave is being dropped again')` | Pass |
-| AUTH-04 | NFR-8 |  | Nothing may write an account that is being erased | `assert.equal(guards.length, 3, 'the three writers in campusData.ts no longer all check the leaving guard')`; `assert.match(campus, /live\.getOrCreateProfile\(id, accountName\(\), id !== leaving\)/, 'getOrCreateProfile may create a profile for an account being erased')` | Pass |
-| AUTH-05 | NFR-8 |  | The schedule is paged until it comes back empty | `assert.match(data, /fs\.query\(schedule, fs\.limit\(PAGE\)\)/, 'eraseStudent no longer pages the schedule')`; `assert.match(data, /if \(page\.empty\) break/, 'eraseStudent no longer stops on an empty page, so it cannot be looping')` | Pass |
+| AUTH-04 | NFR-8 |  | Nothing may write an account that is being erased | `assert.equal(guards.length, 3, 'the three writers in campusData.ts no longer all check the leaving guard')`; `assert.match(campus, /live\.getOrCreateProfile\(id, accountName\(\), \(\) => id !== leaving\)/, 'getOrCreateProfile may create a profile for an account being erased')`; `assert.match(data, /if \(!mayCreate\(\)\) return \{ id: userId, \.\.\.fresh \}/, 'getOrCreateProfile is deciding whether it may create before its own read')`; `assert.match(campus, /subscribeToSession\(\(\) => \{\s*\n\s*if \(leaving && accountId\(\) !== leaving\) leaving = null/, 'the leaving guard can now outlive the session that set it')` | Pass |
+| AUTH-05 | NFR-8 |  | The schedule is paged until it comes back empty | `assert.match(data, /fs\.query\(schedule, fs\.limit\(PAGE\)\)/, 'eraseStudent no longer pages the schedule')`; `assert.match(data, /if \(page\.empty\) \{\s*\n\s*emptied = true/, 'eraseStudent no longer stops on an empty page, so it cannot be looping')`; `assert.match(data, /if \(!emptied\) throw new Error/, 'running out of passes deletes the profile over the rows that are left')` | Pass |
+| AUTH-06 | NFR-8 |  | The delete is announced before the sign out, not after | `assert.ok(set > 0, 'campusData no longer leaves the word for the login card')`; `assert.ok(out > 0, 'campusData no longer ends the session')`; `assert.ok(set < out, 'the delete is announced after the sign out, so the login card misses it')`; `assert.match(campus, /sessionStorage\.removeItem\(DELETED\)/, 'a delete that did not finish still announces itself as done')` | Pass |
+| AUTH-07 | NFR-8 |  | The half way guard and the sentence it reads agree | `assert.ok(guard, 'campusData no longer names the half way sentence')`; `assert.ok(thrown, 'firestoreData no longer throws a half way sentence')`; `assert.ok(thrown[1].startsWith(guard[1]), `the guard looks for ${guard[1]} and the throw says ${thrown[1]}`)`; `assert.match(campus, /if \(!halfWay\) leaving = null/, 'the leaving guard is being cleared on a half way erase again')` | Pass |
 
 ---
 
-## Club ranking (7 cases)
+## Club ranking (8 cases)
 
 The order the club list comes out in, which is the whole point of that screen and the one thing on it worth testing.
 
@@ -472,3 +483,4 @@ Command: `npm run test:clubs`
 | CLUB-05 | FR-6 |  | Interests outside the tag list match nothing | `assert.equal(clubRanking(clubs, new Set(['underwater-basket-weaving'])).canMatch, false)`; `assert.equal(clubRanking(clubs, new Set()).canMatch, false)`; `assert.equal(clubRanking(clubs, new Set(['ai'])).canMatch, true)`; `assert.equal(clubRanking(clubs, new Set(['nonsense', 'music'])).canMatch, true)` | Pass |
 | CLUB-06 | FR-6 |  | With nothing shared the order is the alphabet | `assert.deepEqual(order(list, new Set(['robotics'])), ['Apple', 'Mango', 'Zebra'])` | Pass |
 | CLUB-07 | FR-6 |  | A tie is broken by name, so the list never reshuffles | `assert.deepEqual(order(list, mine), ['Alpha', 'Beta'])`; `assert.deepEqual(order([...list].reverse(), mine), ['Alpha', 'Beta'])` | Pass |
+| CLUB-08 | FR-6 |  | Every event names a club that exists | `assert.deepEqual(orphans.map((e) => `${e.title} -> ${e.club_name}`), [], 'these events name a club that is not in the club list')`; `assert.equal(e.club_name, byId.get(e.club_id), `${e.title} shows a stale club name`)` | Pass |

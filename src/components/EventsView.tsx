@@ -8,7 +8,7 @@ import Pill from './Pill'
 import { ClockIcon, PinIcon, UsersIcon, WalkIcon } from './icons'
 import { CAMPUS_TZ, campusDate } from '../lib/time'
 import { useDataVersion } from '../lib/useDataVersion'
-import { useCampusHour } from '../lib/useMinuteTick'
+import { useMinuteTick } from '../lib/useMinuteTick'
 
 // The two things the walk factor can say. The card prints the minutes itself,
 // so this is only here to carry what they are measured from. It used to have a
@@ -113,7 +113,9 @@ export default function EventsView() {
   // built from the day they are read, and nothing bumps the data version on
   // the clock, so on [version] alone a tab left open kept listing events that
   // were over and still said tomorrow the morning after.
-  const hour = useCampusHour()
+  // On the minute. An event that started since the last hour mark has to
+  // leave the list, and the ranking is keyed on the minute now.
+  const hour = useMinuteTick()
   const events = useAsync(rankedEvents, [version, hour])
   const next = useAsync(findNextClass, [version, hour])
 

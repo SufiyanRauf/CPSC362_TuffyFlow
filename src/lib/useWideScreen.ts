@@ -16,11 +16,14 @@ export function useWideScreen() {
     // matchMedia is missing in some test environments, and a server has no
     // window at all. Assuming narrow is the safe way to be wrong: the rail is
     // the extra, not the app.
-    () => typeof window !== 'undefined' && window.matchMedia(WIDE).matches,
+    // The guard is on matchMedia, not on window: a test environment that
+    // defines window without it threw here, inside useState's initialiser,
+    // which is nowhere near the breakpoint this file is about.
+    () => typeof window?.matchMedia === 'function' && window.matchMedia(WIDE).matches,
   )
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window?.matchMedia !== 'function') return
     const query = window.matchMedia(WIDE)
     const onChange = () => setWide(query.matches)
     onChange()

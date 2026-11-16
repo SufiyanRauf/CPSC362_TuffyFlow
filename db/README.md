@@ -23,7 +23,8 @@ project was built on before it moved to Firestore. Nothing runs them any more.
 
 They are kept rather than deleted for two reasons. They are where the campus
 data was first written down, with its sources named row by row, and the README's
-provenance table points at them. And they are the clearest record of how the
+provenance table names the sources they cite. And they are the clearest
+record of how the
 access rules were worked out, which is the part of this project worth being
 able to explain: eight tables, twelve row level security policies, and a check
 at the end of the file that refuses to pass if any of it did not run.
@@ -31,12 +32,15 @@ at the end of the file that refuses to pass if any of it did not run.
 If you are reading those to understand the data, they are accurate with four
 exceptions, all of them in `src/lib/campusRows.ts`, which is the live copy.
 Occupancy diverged twice: on 2026-10-30 when Friday got its own curve, and on
-2026-11-03 when weekday evenings got theirs, which together move about a third
-of the grid and remove twenty cells outright, because Eastside South carries no
-evening figure at all. Ten clubs' interest tags were revised after
-`seed_clubs.sql` was written. And the demo account's interests read
-`algorithms` here and `robotics` live, which matters because no club carries
-`algorithms`. If you are
+2026-11-03 when weekday evenings got theirs, which together change 660 of the
+1,344 cells and remove another 112 outright. Eastside South closed, so it
+carries no row at any hour of any day rather than the evening-only gap this
+paragraph used to describe. The SQL files still give it the highest weekday
+offset of any lot and still explain that it fills because it is closest to the
+academic buildings, which is the one place they are most misleading. Ten
+clubs' interest tags were revised after `seed_clubs.sql` was written. And the
+demo account's interests read `algorithms` here and `robotics` live, which
+matters because no club carries `algorithms`. If you are
 reading them to understand what the app talks to, read `firestore.rules`
 instead.
 
@@ -49,15 +53,15 @@ which is most of the bulk of `seed_clubs.sql`, plus `clubs.status`,
 two shape changes below are the ones that were decisions rather than drops.
 
 Occupancy used to be its own table, twelve lots by seven days by sixteen hours,
-which is 1,344 rows. Firestore charges per document read, so that shape would
-have made every look at the parking screen 1,344 reads for twelve lots' worth
+which is 1,344 rows, of which 1,232 survive the closure of Eastside South.
+Firestore charges per document read, so that shape would have made every look
+at the parking screen 1,232 reads for twelve lots' worth
 of numbers. It is folded onto the lot document instead, as day then hour then
-percentage. Twelve reads instead of 1,344.
+percentage. Twelve reads instead of 1,232.
 
-The live grid is 1,324 rather than 1,344, and the twenty missing cells are
-deliberate: Eastside South has no evening figure, so it writes no row for
-17:00 to 21:00 on Monday to Thursday and the card says it has no typical
-reading for that hour.
+The live grid is 1,232 rather than 1,344, and the 112 missing cells are
+deliberate: Eastside South is closed, so it writes no row at any hour of any
+day and is filtered out before the ranking rather than shown with a stand-in.
 
 Joins do not exist, so the two names a screen reads across a relationship are
 copied onto the row that wants them: a building's name onto every spot, a

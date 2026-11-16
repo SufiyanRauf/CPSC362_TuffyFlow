@@ -358,3 +358,39 @@ def test_a_brand_new_account_posts_successfully_with_nothing_on_its_profile():
     # no permit means no lot can be stood behind, which is not an error
     assert body["parking"] == []
     assert len(body["spots"]) == 1
+
+
+def test_a_spot_kind_that_is_not_one_of_the_four_is_refused():
+    """The same closed set permit_type has, for the same reason.
+
+    src/types.ts declares SpotKind as study, eat, charge or meet and the card
+    renderer switches on it. As a bare str, "nonsense" came back on a card
+    with a 200 and rendered as nothing at all.
+    """
+    body = _a_body()
+    body["spots"][0]["kind"] = "nonsense"
+    assert client.post(PATH, json=body).status_code == 422
+    for good in ("study", "eat", "charge", "meet"):
+        body["spots"][0]["kind"] = good
+        assert client.post(PATH, json=body).status_code == 200, good
+
+
+def test_every_card_carries_its_own_category_and_only_parking_carries_arrive_by():
+    """The contract src/types.ts reads, which nothing checked.
+
+    Only the top level key set was asserted, so swapping the category passed
+    to _result for the events list put "spot" on every event card and the
+    whole suite stayed green. The parking-only fields are the other half:
+    asking for them on a spot filled arrive_by in on a card that has nowhere
+    to show it.
+    """
+    body = client.post(PATH, json=_a_body()).json()
+    expected = {"id", "category", "title", "match_percent", "reasons", "lat",
+                "lng", "kind", "walk_minutes", "pct_full", "arrive_by"}
+    for slot, category in (("parking", "parking"), ("spots", "spot"), ("events", "event")):
+        for card in body[slot]:
+            assert set(card) == expected, (slot, sorted(set(card) ^ expected))
+            assert card["category"] == category, (slot, card["category"])
+            if slot != "parking":
+                assert card["arrive_by"] is None, (slot, card["arrive_by"])
+                assert card["pct_full"] is None, (slot, card["pct_full"])

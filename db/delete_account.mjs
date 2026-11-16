@@ -41,7 +41,15 @@ async function main() {
   let user
   try {
     user = await auth.getUserByEmail(email)
-  } catch {
+  } catch (e) {
+    // Only the one code means what the message says. A revoked key, a
+    // disabled Identity Toolkit API or a dead network all arrived here too,
+    // and all of them printed "no account with that email", which reads as
+    // "already deleted" and stops the operator looking any further.
+    if (e?.code !== 'auth/user-not-found') {
+      console.error(`Could not look up ${email} in ${key.project_id}: ${e?.message ?? e}`)
+      exit(1)
+    }
     console.error(`No account with the email ${email} in project ${key.project_id}`)
     exit(1)
   }

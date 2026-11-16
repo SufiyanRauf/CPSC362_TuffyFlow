@@ -89,7 +89,7 @@ SUITES = [
          file='tests/profile_edits.test.mjs',
          kind='node', command='npm run test:profile',
          covers='Student profile, Weekly schedule',
-         note='The two rules the profile screen applies before it writes '
+         note='The three rules the profile screen applies before it writes '
               'anything, which have to agree with db/firestore.rules and '
               'until now agreed with it by a comment saying so. They were '
               'inside ProfileView.tsx, the largest file in the project and '
@@ -107,7 +107,7 @@ SUITES = [
               'sentences allowed through to a panel; the two agreed by hand '
               'until the agreement slipped, and the sentence for picking the '
               'wrong Google account while deleting an account was written, '
-              'was reachable, and was being swallowed. These read both files '
+              'was reachable, and was being swallowed. These read all three files '
               'and make a new branch be classified as one or the other.'),
     dict(prefix='CLUB', title='Club ranking', file='tests/club_ranking.test.mjs',
          kind='node', command='npm run test:clubs',
@@ -162,7 +162,7 @@ REQUIREMENTS = [
               'usually is at that hour, and says when to leave.',
          rules=[('SC', None,
                  ('lot', 'parking', 'permit', 'fullness', 'arrive', 'offered'),
-                 ('at nowhere is dropped', 'is refused')),
+                 ('at nowhere is dropped', 'is refused', 'an event')),
                 ('API', None, ('parking',), None)]),
     dict(id='FR-4',
          text='The app offers campus study spots that are open at the time the '
@@ -228,7 +228,7 @@ REQUIREMENTS = [
          text='Ranking a whole campus of candidates costs well under a second, '
               'and the cost grows with the number of candidates rather than '
               'faster.',
-         rules=[('SC', None, ('ranked', 'cost'), None)]),
+         rules=[('SC', None, ('ranked', 'cost'), ('does not cost',))]),
     dict(id='NFR-7',
          text='With no profile, no schedule, or nothing left after filtering, '
               'every screen says so plainly instead of failing or inventing a '
@@ -438,9 +438,43 @@ ITEM = re.compile(r"^\s*(?:it|test)\(\s*(['\"])(.+?)\1")
 EXPECT = re.compile(r'\b(assertFails|assertSucceeds|assert\.\w+)\(')
 
 
+# A string, a regex literal and a trailing comment, so braces inside them are
+# not counted as structure. tests/profile_edits.test.mjs holds the regex
+# /function aTag\(value\)[^}]*?size\(\) <= (\d+)/s, and the } in that character
+# class closed the test body before a single assertion had been read: PROF-01
+# went into TEST_CASES.md with an empty expected result and a verdict of Pass,
+# which is the one thing this document is not allowed to do. Two more cells
+# were mangled the same way, one ending in a stray }) }) and one carrying three
+# lines of source comment.
+STRINGS = re.compile(r"""'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`""")
+REGEXES = re.compile(r'/(?:\\.|\[(?:\\.|[^\]\\])*\]|[^/\n\\\[])+/[a-z]*')
+
+
+def code_only(line):
+    """The line with its strings, comment and regex literals taken out."""
+    line = STRINGS.sub("''", line)
+    cut = line.find('//')
+    if cut >= 0:
+        line = line[:cut]
+    return REGEXES.sub('RE', line)
+
+
+def a_comment(line):
+    """A line that is only a comment, which is never part of an assertion."""
+    bare = line.strip()
+    return bare.startswith('//') or bare.startswith('*') or bare.startswith('/*')
+
+
 def balance(line):
     """How far this line opens brackets without closing them."""
-    return sum(line.count(c) for c in '([{') - sum(line.count(c) for c in ')]}')
+    bare = code_only(line)
+    return sum(bare.count(c) for c in '([{') - sum(bare.count(c) for c in ')]}')
+
+
+def balance_braces(line):
+    """Braces only, for tracking how deep in a describe or a test we are."""
+    bare = code_only(line)
+    return bare.count('{') - bare.count('}')
 
 
 def node_cases(path):
@@ -468,13 +502,13 @@ def node_cases(path):
         if item:
             # the body of this test, to the line whose closing brace returns
             # to the depth the test opened at
-            start_depth = depth + line.count('{') - line.count('}')
+            start_depth = depth + balance_braces(line)
             body = []
             j = i + 1
             d = start_depth
             while j < len(lines) and d > depth:
                 body.append(lines[j])
-                d += lines[j].count('{') - lines[j].count('}')
+                d += balance_braces(lines[j])
                 j += 1
             # A call spread over several lines has to be gathered to its
             # closing bracket, or the cell ends on "{" and loses the fields
@@ -494,6 +528,8 @@ def node_cases(path):
                 open_brackets = balance(text)
                 while open_brackets > 0 and k + 1 < len(body):
                     k += 1
+                    if a_comment(body[k]):
+                        continue
                     text += ' ' + body[k].strip()
                     open_brackets += balance(body[k])
                 if text.startswith('await '):
@@ -502,7 +538,7 @@ def node_cases(path):
                 k += 1
             out.append(dict(key=item.group(2), checks=humanise(item.group(2)),
                             setup=subject, expected=expected))
-        depth += line.count('{') - line.count('}')
+        depth += balance_braces(line)
         if depth_of_subject is not None and depth <= depth_of_subject:
             subject = ''
             depth_of_subject = None
@@ -687,6 +723,22 @@ def main():
                 'others would be printed with a result they never earned: %s'
                 % (suite['title'], 'a test is' if len(twice) == 1 else 'tests are',
                    ', '.join(twice[:5])))
+        # A case with nothing in its expected-result column. The verdict says
+        # Pass and the document shows no evidence for it, which is the same
+        # lie as a guessed result wearing a different hat: a reader is told a
+        # behaviour was checked and given no way to see what was checked.
+        # PROF-01 shipped like this, on one of the two cases README.md holds
+        # up as the client-and-database drift check, because the body parser
+        # stopped at a } inside a regex. The parser is fixed; this is what
+        # stops the next parser bug reaching the page quietly.
+        blank = sorted(c['key'] for c in cases if not c.get('expected'))
+        if blank:
+            raise SystemExit(
+                '%s: %d case(s) would be printed with a verdict and no '
+                'expected result, so the document would claim a check it does '
+                'not show: %s. Either the test has no assertion, or the parser '
+                'could not read its body.'
+                % (suite['title'], len(blank), ', '.join(blank[:5])))
         rows = []
         for n, case in enumerate(cases, start=1):
             verdict = results.get(case['key'], '')
@@ -827,7 +879,7 @@ def main():
     w('| Contact | sufiyan24@csu.fullerton.edu |')
     w('| Generated | %s |' % today)
     w('')
-    w('### The machine these were run on')
+    w('## The machine these were run on')
     w('')
     w('| | |')
     w('|---|---|')

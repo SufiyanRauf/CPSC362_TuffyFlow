@@ -120,9 +120,15 @@ export type Spot = {
 // no page of their own, and the next import would bring them in.
 export type Club = {
   id: string
-  // The organization's own id on TitanLink, where these rows were scraped
-  // from. Kept so a row can be traced back to the page it came from and so a
-  // later import can match on it. Nothing reads it yet.
+  // The organization's own id in the TitanLink directory, which is where
+  // these rows' names, summaries and categories were read from on 1 October
+  // 2026. Which organizations are in the list comes from Student Life and
+  // Leadership's re-registration roster instead, because the directory's
+  // "Active" only means the page is still up. Kept so a row can be traced
+  // back to the entry it came from and so a later import can match on it.
+  // Nothing reads it, and nothing fetches it at runtime: the rows ship in
+  // src/lib/campusRows.ts. See db/seed_clubs.sql for how the two were
+  // joined.
   titanlink_id: string | null
   name: string
   summary: string | null

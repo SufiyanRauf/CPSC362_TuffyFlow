@@ -19,7 +19,7 @@ export function personName(fullName: string | null, email: string) {
   return local || 'Your account'
 }
 
-// The same five words api/scoring.py:340 uses when it explains a spot pick on
+// The same five words api/scoring.py:398 uses when it explains a spot pick on
 // the dashboard. A bare "noise 5 of 5" does not tell a student that Panda
 // Express is no place to write an essay, and the words were already written,
 // they just never reached the screen.

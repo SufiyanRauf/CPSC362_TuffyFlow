@@ -241,7 +241,17 @@ service cloud.firestore {
         // the owner being refused their own document is a trap for whoever
         // writes the next screen.
         allow get, list, delete: if isMe(uid);
-        allow create, update: if isMe(uid) && aMeeting(request.resource.data);
+        // The id is capped as well as the fields. A rule cannot count
+        // documents and cannot rate limit, so a signed in student can write
+        // as many meetings as they like and burn the project's shared daily
+        // quota; that part is not expressible here and the app reports it
+        // when it happens. What is expressible is the size of what gets
+        // written, and without this the id itself was unbounded while every
+        // field inside the document was capped. meetingId() builds ids like
+        // CPSC-362-1-113000, so 64 is far more than the app ever needs.
+        allow create, update: if isMe(uid)
+          && aMeeting(request.resource.data)
+          && id.size() <= 64;
       }
     }
   }

@@ -56,13 +56,24 @@ test('a typed interest is stored as the word the data actually uses', () => {
 })
 
 test('no tag the screen will store is longer than the database allows', () => {
-  // The box has a maxLength, but a paste can still be trimmed and hyphenated
-  // into something longer than it started. This is the case that would reach
-  // the rules and be refused.
-  const typed = 'a'.repeat(LONGEST_TAG)
-  assert.ok(tagSlug(typed).length <= LONGEST_TAG)
-  assert.ok(tagFor(typed).length <= LONGEST_TAG,
-    'an alias expanded a tag past what the rules accept')
+  // tagSlug only ever shortens: it collapses runs of non-alphanumerics to one
+  // hyphen and trims, so its output cannot be longer than its input. The real
+  // hazard is the other direction, an alias that EXPANDS what was typed into
+  // something past the cap, and that is a property of the alias table rather
+  // than of any one string. This used to pass 'aaaa...' through tagFor, which
+  // is not an alias key, so it asserted 32 <= 32 and could not fail.
+  const aliases = readFileSync(
+    new URL('../src/lib/labels.ts', import.meta.url), 'utf8')
+  const table = aliases.slice(aliases.indexOf('tagAliases'))
+  const values = [...table.matchAll(/:\s*'([a-z0-9-]+)'/g)].map((m) => m[1])
+  assert.ok(values.length > 50, `only found ${values.length} aliases to check`)
+  const tooLong = values.filter((v) => v.length > LONGEST_TAG)
+  assert.deepEqual(tooLong, [],
+    'an alias expands a typed tag past what the rules accept')
+  // And the slug itself never grows.
+  for (const typed of ['a'.repeat(LONGEST_TAG), 'Software   Engineering!!', '  ai  ']) {
+    assert.ok(tagSlug(typed).length <= typed.length, typed)
+  }
 })
 
 test('a class says the first thing wrong with it and only that', () => {
@@ -81,7 +92,11 @@ test('a class says the first thing wrong with it and only that', () => {
 test('a class cannot end before or when it starts', () => {
   assert.match(classProblem('CPSC 362', '10:15', '09:00', 'b-cs'), /after/)
   assert.match(classProblem('CPSC 362', '09:00', '09:00', 'b-cs'), /after/)
-  // The rules say the same thing: data.end > data.start.
-  assert.match(rules, /end > .*start|start < .*end/,
+  // The rules say the same thing. Matched on the rule itself: the pattern
+  // here used to be /end > .*start/, which also matches the comment four
+  // lines above the rule in that file, so deleting the rule and leaving the
+  // comment behind kept this passing.
+  const comments = rules.replace(/^\s*\/\/.*$/gm, '')
+  assert.match(comments, /data\.end_time > data\.start_time/,
     'db/firestore.rules no longer requires the end after the start')
 })

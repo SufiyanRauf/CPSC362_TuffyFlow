@@ -1,7 +1,8 @@
 import type { NextClass, Recommendation } from '../types'
 import { ArrowRightIcon, WalkIcon } from './icons'
-import { DAYS, clockText } from '../lib/time'
+import { DAYS, clockText, leaveTimeGone } from '../lib/time'
 import { directionsUrl } from '../lib/maps'
+import { campusNow } from '../lib/recommend'
 
 type NextClassCardProps = {
   nextClass: NextClass
@@ -54,6 +55,11 @@ export default function NextClassCard({ nextClass, lot, onOpenProfile, rankingRe
 
   const { value, label } = countdown(
     nextClass.minutes_until, nextClass.day_offset, nextClass.day_of_week,
+  )
+  // Asked here rather than taken from arrive_by being null, because the
+  // ranking this came from is cached for the hour and the clock is not.
+  const leaveNow = leaveTimeGone(
+    lot?.arrive_by ?? null, nextClass.day_offset, campusNow().minutes,
   )
   // From the number on the result rather than by picking the sentence that
   // happens to contain a percent sign. The parking screen used to do the same
@@ -109,13 +115,13 @@ export default function NextClassCard({ nextClass, lot, onOpenProfile, rankingRe
           <div className="flex flex-wrap items-center gap-5">
             <div className="text-right">
               {/* same words as the parking rows, because it is the same number */}
-              <Eyebrow>{lot.arrive_by ? 'Be at lot by' : 'Leave'}</Eyebrow>
+              <Eyebrow>{leaveNow ? 'Leave' : 'Be at lot by'}</Eyebrow>
               {/* text-xl, one step under the lot title above, the same
                   relationship the parking rows use. At text-2xl the clock
                   was the biggest thing in the block and the lot it applies
                   to read as its caption. */}
               <p className="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums tracking-tight text-titan">
-                {lot.arrive_by ? clockText(lot.arrive_by) : 'now'}
+                {!lot.arrive_by || leaveNow ? 'now' : clockText(lot.arrive_by)}
               </p>
             </div>
 

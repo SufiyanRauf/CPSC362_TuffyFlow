@@ -80,7 +80,19 @@ function nextClassFrom(meetings: ClassMeeting[], buildings: Building[]) {
     return { meeting: m, until: daysAhead * 1440 + start - minutes, start, daysAhead }
   })
 
-  upcoming.sort((a, b) => a.until - b.until)
+  upcoming.sort((a, b) => (
+    a.until - b.until
+    // Two meetings tie exactly when they share a day and a start time, and
+    // the duplicate guard only blocks the same course twice, so "CPSC 362 Mon
+    // 11:30" and "MATH 338 Mon 11:30" both sit here. Array.sort is stable, so
+    // without this the winner was whatever order the rows arrived in, and the
+    // two sources differ: Firestore hands them back in document id order and
+    // the sample rows in insertion order. A different winner is a different
+    // building, a different parking ranking and a different leave time, so
+    // the same schedule ranked differently before and after a sign in.
+    // api/scoring.py settled its own version of this with an explicit key.
+    || a.meeting.course_code.localeCompare(b.meeting.course_code, 'en')
+  ))
   const next = upcoming[0]
   if (!next) return null
 
@@ -291,12 +303,23 @@ async function loadRecommendations(): Promise<RecommendResponse> {
 // lists the same way and for the same reason, which is that Firestore charges
 // by the document read and the free tier is about 50,000 a day.
 //
-// Keyed on dataVersion() and the campus hour together. dataVersion() is the
+// Keyed on dataVersion() and the campus minute together. dataVersion() is the
 // app's signal that the rows behind a screen have moved on, so a write or a
-// sign in cannot be served a ranking from before it, and the hour is what the
-// ranking is worked out against: which occupancy row to read, which events
-// have not started yet, how long until the class. The hour rather than the
-// minute because that is what the screens already depend on.
+// sign in cannot be served a ranking from before it.
+//
+// The minute, not the hour. The hour was wrong because four things the answer
+// depends on move within one: which class the spot walks are measured from
+// (anchor_for in api/scoring.py, a three hour window either side), whether a
+// place is open (43 of the stored opening times are not on the hour), whether
+// an event has started, and the leave time. On the demo schedule the anchor
+// flips at 13:23 between CPSC 362 and MATH 338, so an answer cached at 13:00
+// told a student the top spot was "right by Computer Science" until 14:00,
+// for a walk they were not going to take. That is the same failure
+// anchor_for's own docstring was written to prevent.
+//
+// What it costs is one POST per minute per open tab and no Firestore reads at
+// all: the six loaders below are memoised on dataVersion, and lotDocs() holds
+// the occupancy, so only the ranking itself is asked again.
 //
 // The campus date is in the key as well, because the hour on its own is 0 to
 // 23 and repeats. A tab left open overnight asked at the same clock hour the
@@ -322,12 +345,12 @@ export async function getRecommendations(): Promise<RecommendResponse> {
   const [meetings, buildings] = await Promise.all([getClassMeetings(), getBuildings()])
   const next = nextClassFrom(meetings, buildings)
   const today = campusParts(new Date())
-  // The hour stays in as well, because the spot ranking asks whether somewhere
-  // is open right now, which moves without the class moving.
+  // JSON.stringify rather than a join, because course_code is free text and
+  // a colon in it made the parts of this key ambiguous.
   const forClass = next
-    ? `${next.course_code}:${next.day_offset}:${next.start_minutes}`
+    ? JSON.stringify([next.course_code, next.day_offset, next.start_minutes])
     : 'none'
-  const asked = `${dataVersion()}:${today.date}:${Math.floor(today.minutes / 60)}:${forClass}`
+  const asked = `${dataVersion()}:${today.date}:${today.minutes}:${forClass}`
   if (asked !== rankedFor) {
     rankedFor = asked
     ranked = null

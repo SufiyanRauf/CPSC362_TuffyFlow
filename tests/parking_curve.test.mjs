@@ -1,5 +1,5 @@
 // The occupancy curve had no test at all. It is the only data the parking
-// screen shows, 1324 rows of it, and a change to the evening shape rewrote 220
+// screen shows, 1232 rows of it, and a change to the evening shape rewrote 220
 // of them without anything turning red. These read the board readings back out
 // of data/parking_samples.csv, so adding a reading to that file is enough to
 // check the curve against it, and a refit that drifts away from a reading it
@@ -111,10 +111,10 @@ test('the readings we have not fitted to are still genuinely off', () => {
 })
 
 test('a lot that is not taking cars is kept out of the grid entirely', () => {
-  // Eastside South read exactly 1321 free ten times, across four days and
-  // from two people, including middays where every other structure was over
-  // 90 percent full and a Sunday night three days after the one before it.
-  // A structure
+  // Eastside South reads exactly 1321 free in all five readings in
+  // data/parking_samples.csv, across four days, including a midday where
+  // every other structure was over 90 percent full and a Sunday night three
+  // days after the one before it. A structure
   // nobody can get into has no typical occupancy, so it carries no rows at
   // any hour of any day.
   const closed = parkingLots.filter((l) => l.taking_cars === false)

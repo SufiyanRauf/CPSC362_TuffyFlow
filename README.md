@@ -14,11 +14,11 @@ it does, and it is what we show in class.
 
 **If you have just cloned this**, you need no credentials to build it, run it
 or run the tests. `npm install` then `npm run dev` serves the whole app on the
-bundled sample campus, and View demo works. None of the 179 tests need
-credentials either, though they do not all run off `npm install` alone: the 37
-date, clock, club, parking and profile tests do, the 101 Python ones want a
-virtualenv,
-and the 36 security rules tests want `firebase-tools` and a JDK. Running it locally below
+bundled sample campus, and View demo works. None of the 191 tests need
+credentials either, though they do not all run off `npm install` alone: the 48
+date, clock, club, parking, profile and account message tests do, the 106
+Python ones want a virtualenv,
+and the 37 security rules tests want `firebase-tools` and a JDK. Running it locally below
 has each. Only signing in and saving anything need your own
 Firebase project.
 
@@ -77,15 +77,15 @@ Recommended Parking:
 Eastside North Parking Structure
 
 Estimated Walk: 3 minutes
-Expected fullness: usually about 99% full when you would arrive
+Expected fullness: usually about 91% full when you would arrive
 
 Suggested Arrival Time:
-11:07 AM
+11:08 AM
 ```
 
 That lot is nearly full at that hour and still wins, because the walk counts
 for more than the fullness does. The ranking is explaining a trade, not
-claiming the lot is empty. The 99 is our own fitted pattern for that hour, not
+claiming the lot is empty. The 91 is our own fitted pattern for that hour, not
 a live count: see Parking occupancy below for what is measured and what is
 not.
 
@@ -187,9 +187,12 @@ engine. They are ranked in the browser, by `src/lib/clubRanking.ts`, because
 the problem is a different shape: 320 clubs with no coordinate and no meeting
 time, so there is no walk to measure and no clash to filter on. What decides
 the order is how rare a shared interest is. Counting shared tags put the
-American Choral Directors Association first for a student interested in AI and
-data science, because "career" sits on 105 of the 320 clubs and counted the
-same as "ai", which sits on one. Weighting each shared tag by how rare it is
+American Choral Directors Association first for a student interested in AI,
+software engineering, data science, music and career development. It shares
+nothing with the first three; it wins on two common tags, "career" and
+"music", and an alphabetical tie against a club that also shares two. The
+count cannot tell them apart because "career" sits on 105 of the 320 clubs and
+counted the same as "ai", which sits on one. Weighting each shared tag by how rare it is
 puts Data Science and Machine Learning first instead. Rarity is not a factor
 the engine above can express, so the engine covers three of the four
 recommendations rather than all four.
@@ -232,9 +235,12 @@ Both are free on Firebase's Spark plan for the ways we sign people in.
 
 ## What is real and what is ours
 
-No campus data is fetched at runtime, so every row of it ships inside the
-repository. (The map tiles and the web font do come from the network, and they
-are the only two things that do.) That
+Nothing is fetched from CSUF or any third party at runtime, so every campus
+row ships inside the repository. (It still crosses the network twice over: the
+map tiles and the web font come from their own hosts, the ranking is a POST to
+our scorer, and a signed in student reads the campus back out of our own
+Firestore rather than out of the bundle. What none of that does is ask CSUF
+for anything.) That
 is not the same as everything being made up. A good deal of it was read off
 CSUF's own pages and is reproduced as published; the rest we estimated, and the
 two are kept apart on purpose.
@@ -243,6 +249,7 @@ two are kept apart on purpose.
 |---|---|
 | Building names, codes and coordinates, from the campus map `locations.json`, 1 Oct 2026 | Class schedules and the demo student profile |
 | Parking lot names, coordinates and permit types, from the parking map at `parking.fullerton.edu`, 9 Oct 2026 | Typical parking occupancy for the six lots CSUF does not count |
+| | Student Union Way's coordinate, which that map marks without giving one, read off satellite imagery |
 | Capacities of the four structures, from the parking availability board | |
 | Nine parking readings on seven days, in `data/parking_samples.csv` | |
 | 320 clubs: the Student Life and Leadership registered list of 22 Sep 2026, joined to the TitanLink directory for names, summaries, categories and IDs, read 1 Oct 2026 | Club interest tags, which are our own vocabulary and not a TitanLink field |
@@ -274,23 +281,28 @@ on a Saturday.
 
 Availability is a typical pattern by day and hour, never a live reading. CSUF
 publishes current counts for six facilities, the four structures plus S8 and S10
-as one combined row, and we read that board nine times across seven days. The Sunday
-reading, the first Thursday one, the Friday one and the first Tuesday one set
-the per lot numbers, first written down in `db/seed.sql` and now carried in
-`src/lib/campusRows.ts`. The curve reproduces every lot in every reading it is fitted to within 2.11
+as one combined row, and we read that board nine times across seven days. Both Sunday
+ones, the Friday one, both Tuesday ones, the Wednesday one and the 5 November
+Thursday one set the per lot numbers, first written down in `db/seed.sql` and now
+carried in `src/lib/campusRows.ts`. The curve reproduces every lot in every reading it is fitted to within 2.11
 points, mean 0.57. The two readings from 1 October are deliberately not among
-them: Eastside South was the fullest structure on campus that afternoon and
-closed a month later, so a curve that still matched those and the November
+them: Eastside South was the fullest structure on campus at 13:11 that day,
+though Eastside North had passed it by 13:57, and it closed a month later, so a curve that still matched those and the November
 ones would be describing two campuses at once. They are named in the test file
-with that reason, and a test fails if they ever start matching.
+with that reason, and a test fails if every lot in one of them starts
+matching. One already does: Eastside North at 13:57 is 1.6 points off. What
+keeps the test honest is Nutwood, 42 points out.
 
-Only one of the six is a genuine check on the fit rather than an input to it.
-The second Thursday reading came after the curve was already drawn and was
-never used to redraw it, so it is a real hold out. The second Tuesday reading
-arrived after the evening curve was fitted and did test it, within 4.2 points,
-but the fit was then re-centred on both Tuesday readings, so neither is held
-out now and both sit a point or two off rather than exactly on. That is why
-the evening is the least supported part of the model.
+Nothing is held out any more, and that is worth saying plainly rather than
+leaving the reader to work it out. The second Tuesday reading arrived after
+the evening curve was fitted and did test it, within 4.2 points, but the fit
+was then re-centred on both Tuesday readings, so both are inputs now and both
+sit a point or two off rather than exactly on. Every other reading the curve
+is measured against is an input to it as well. The two from 1 October are the
+only ones outside the fit, and they are excluded rather than held out: the
+test requires them to stay more than three points off, because a curve that
+matched them and the November ones would be describing two campuses at once.
+That is why the evening is the least supported part of the model.
 
 Nine readings on seven days, so it is worth being plain about what they do and
 do not support. The two evening ones are why weekday evenings have a shape of
@@ -300,8 +312,9 @@ taken within the same hour on a single Tuesday, so 18:00 is measured and
 altogether, and not only in the evening. It started as an evening exclusion,
 because on that Tuesday it did not take or release a single car in half an
 hour while 190 left the rest of campus. It has since read exactly 1321 free
-ten times across four days, from two people, at hours from 10:07 to 21:40,
-including middays when every other structure was over 90 percent full. It is
+in all five readings in `data/parking_samples.csv`, across four days and from
+11:59 to 21:40, including a midday when Nutwood, Eastside North and State
+College were all over 90 percent full. It is
 marked as not taking cars and is filtered out of parking recommendations at
 every hour rather than ranked on a stand-in. `DECISIONS.md` has the detail. The Friday one is why Friday has a shape of its own: the single
 weekday curve, fitted to the Thursday, said Eastside North was 99 percent full
@@ -314,14 +327,15 @@ the board at all and their figures are guesses.
 
 The weekday and weekend shapes turned out to be genuinely different rather than
 one curve scaled down, and Monday to Thursday would not fit a shared shape at
-all: between 13:00 and 18:00 the three open structures fall forty to fifty
-points while S8 and S10 drops six. Those four days now carry a measured level
+all: between 13:00 and 18:00 Nutwood falls 51 points, Eastside North 38 and
+State College 36, while S8 and S10 drops 4. Those four days now carry a measured level
 per lot at 11:00, 13:00 and 18:00 rather than one curve with a per lot offset.
 On the Friday reading Eastside North was the emptiest structure on campus at 18
 percent, which is the opposite of its weekday order and is why Friday is
-separate. On both Sunday readings every structure was at 4 percent or under
-except S8 and S10, at 59 percent at midday and 46 at half past nine at night,
-which are next to the stadium and the gym.
+separate. On both Sunday readings every structure was within a point of 4
+percent or below, State College highest at 4.01, which is just over, except S8
+and S10, at 59 percent at midday and 46 at twenty to ten at night, which are
+next to the stadium and the gym.
 
 We are not reading the board live in this version. It is a web page rather than
 an API, so parsing it would break without warning if the page changed, and we
@@ -339,8 +353,9 @@ project.
 
 The application has four parts.
 
-* The browser runs the interface. The only thing it keeps is the session, so
-  that a reload does not sign you out.
+* The browser runs the interface. It keeps the session, so that a reload does
+  not sign you out, and two small things in session storage: an unsaved
+  profile form, and one word for the login card after a delete.
 * The database holds every row and decides who can read what.
 * The scoring service is a Python function that ranks candidates.
 * Vercel serves the site and runs the scoring function.
@@ -350,7 +365,8 @@ which. A student with an account gets their own rows out of Firestore. The
 demo, and anyone running this without a project of their own, gets the same
 rows from `src/lib/campusRows.ts`, which is what the seed script loads. The
 choice is made in `src/lib/campusData.ts`, so no screen has to work out where a
-row came from. Two of them do ask who is signed in, but only to choose their wording:
+row came from. Three of them do ask who is signed in. Two use it only to
+choose their wording:
 the profile screen says whether changes are saved to an account, and the top
 bar says which account you are in.
 
@@ -405,19 +421,20 @@ Completed:
 
 * Project concept, initial presentation and UI prototype
 * Database schema, security policies and seed data
-* The ranking engine, in Python, with 86 tests, and the endpoint it is
-  served behind, with 15 more that go through the app itself
+* The ranking engine, in Python, with 89 tests, and the endpoint it is
+  served behind, with 17 more that go through the app itself
 * The club ranking, pulled out of the screen into `src/lib/clubRanking.ts`,
-  with 7 tests
-* The access rules, with 36 tests against Firebase's emulator
-* The event dates and the clock formatting, with 16 tests that need neither Java nor a project
-* The parking occupancy curve, with 7 tests read straight from the board
-  readings in `data/parking_samples.csv`
+  with 8 tests
+* The access rules, with 37 tests against Firebase's emulator
+* The event dates and the clock formatting, with 19 tests that need neither Java nor a project
+* The parking occupancy curve, with 7 tests, three of them read straight from
+  the board readings in `data/parking_samples.csv`
 * The profile screen's own rules, pulled out of the screen into
   `src/lib/profileEdits.ts`, with 7 tests, two of which read
   `db/firestore.rules` so the client and the database cannot drift apart
-* Whether what the sign in code says reaches the screen, with 5 tests that
-  read `session.ts` and `firestoreData.ts` and fail if a sentence is written
+* Whether what the sign in code says reaches the screen, with 7 tests that
+  read `session.ts`, `firestoreData.ts` and `campusData.ts`, and fail if a
+  sentence is written
   but swallowed
 * Dashboard, parking, spots, clubs, events and profile screens
 * Sign up, log in, Google sign in and sign out, all working against the live
@@ -480,7 +497,7 @@ npm run typecheck   # tsc over the whole front end, strict, no unused locals
 npm run build       # typecheck plus the production bundle
 ```
 
-[TEST_CASES.md](TEST_CASES.md) lists all 179 of them by id, with the numbered
+[TEST_CASES.md](TEST_CASES.md) lists all 191 of them by id, with the numbered
 requirement each one traces to, the fixture it sets up, the assertions it makes
 and whether it passed. It opens with the sixteen requirements, eight functional
 and eight not, and a matrix tracing each to the cases that check it.
@@ -493,7 +510,8 @@ defined twice, or if a requirement ends up with no case behind it. Those
 refusals are the point: the document is only worth reading if it cannot
 claim a pass that did not happen.
 
-There are seven sets of tests. The ranking engine and the endpoint in front of
+There are seven commands, covering the nine suites TEST_CASES.md lists. The
+ranking engine and the endpoint in front of
 it, which is the part with the logic worth testing:
 
 ```bash
@@ -526,7 +544,8 @@ blocks. Those are the refusals the tests are asserting, not failures. Read the
 They check what the rules actually do rather than whether they are present: a
 logged out visitor sees nothing, an anonymous sign in counts as nobody, one
 student cannot read or write another's profile or schedule, the campus is read
-only from a browser, a profile can only be created empty, and a class with a
+only from a browser, a profile can only be created with a name and nothing
+else on it, and a class with a
 malformed time or a field nobody asked for is refused.
 
 The event dates have a suite of their own, and it needs no Java and no
@@ -536,7 +555,9 @@ project, just Node 22.18 or newer:
 npm run test:dates
 ```
 
-They read the dates at five points in the future, including either side of the
+They read the dates at five fixed points, two of them now in the past, which
+is the whole idea: an event is stored as an offset so that no date in the test
+can go stale. They include either side of the
 November clock change, and check that every event is still upcoming, still
 lands at the campus time its row asks for, and still runs for as long as it
 says. `src/lib/eventDates.ts` explains what went wrong to make them worth
@@ -553,7 +574,8 @@ and it used to live inside the component where nothing could reach it. It is in
 `src/lib/clubRanking.ts` now. The tests pin the case that forced the current
 design: one rare shared interest has to outrank several common ones, because
 counting shared tags put a choral society above the software engineering clubs
-for a student who asked for software engineering.
+for a student whose interests included music and career development alongside
+them.
 
 The parking occupancy curve has the fifth set:
 
@@ -561,12 +583,13 @@ The parking occupancy curve has the fifth set:
 npm run test:parking
 ```
 
-Those read the board readings straight out of `data/parking_samples.csv` and
-check the curve against them, so adding a reading to that file is enough to
-test the model against it. They also pin the one place the seed deliberately
-has no answer: Eastside South carries no evening figure, because the evening
-reading caught it not taking cars at all, and a card that says it has no
-reading for that hour is the honest version of that.
+Three of them read the board readings straight out of
+`data/parking_samples.csv` and check the curve against them, so adding a
+reading to that file is enough to test the model against it. The other four
+pin the shape of the seed itself and do carry numbers written into the test.
+They also pin what the seed deliberately has no answer for: Eastside South
+carries no figure at any hour, because the readings caught it not taking cars
+at all, so it is left out of the grid rather than ranked on a stand-in.
 
 The profile screen's own rules are the sixth:
 
@@ -585,7 +608,8 @@ What the sign in code says is the seventh:
 npm run test:auth
 ```
 
-Those read `src/lib/session.ts` and `src/lib/firestoreData.ts` and check that
+Those read `src/lib/session.ts`, `src/lib/firestoreData.ts` and
+`src/lib/campusData.ts`, and check that
 every sentence the auth code can produce either reaches the screen or is
 listed as belonging to the login card. The sentence for picking the wrong
 Google account while deleting an account was written, was reachable, and was
@@ -674,7 +698,8 @@ That key is the one real secret in this project. It ignores every rule in
 There is no demo account to set up. Firebase has no free way to run code when
 somebody signs up, so the app writes a student's profile document itself the
 first time they sign in, and the profile screen opens with a short list of what
-is still missing: the permit, the noise preference and the class schedule.
+is still missing: the permit, the noise preference, the class schedule, and an
+interest or a career goal, which is how clubs and events get matched.
 
 A student who forgets their password uses Forgot password? on the log in card,
 which has Firebase email them a reset link. The card says the same thing
@@ -709,10 +734,12 @@ document and every class in it behind, at a path nothing can reach.
 
 ## Course Information
 
-Course: CPSC 362: Foundations of Software Engineering
-University: California State University, Fullerton
-Professor: Mehdi Peiravi
-Semester: Fall 2026
+| | |
+|---|---|
+| Course | CPSC 362: Foundations of Software Engineering |
+| University | California State University, Fullerton |
+| Professor | Mehdi Peiravi |
+| Semester | Fall 2026 |
 
 ---
 

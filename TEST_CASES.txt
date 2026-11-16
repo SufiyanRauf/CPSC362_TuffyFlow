@@ -1,4 +1,4 @@
-Generated from TEST_CASES.md on 2026-11-14.
+Generated from TEST_CASES.md on 2026-11-16.
 Both this file and TEST_CASES.md are generated. The source is the
 test files themselves, read and run by:
     python3 tools/gen_test_cases.py
@@ -9,19 +9,17 @@ Test cases
 Tuffy Flow, a campus companion for California State University, Fullerton.
 
 Course      CPSC 362, Foundations of Software Engineering
-----------  ---------------------------------------------
 University  California State University, Fullerton
 Professor   Mehdi Peiravi
 Semester    Fall 2026
 Team        Sufiyan Rauf, Bhavy Patel, Phillip Bryan
 Contact     sufiyan24@csu.fullerton.edu
-Generated   2026-11-14
+Generated   2026-11-16
 
 The machine these were run on
-.............................
+-----------------------------
 
 Operating system  Darwin 24.6.0 (arm64)
-----------------  -----------------------------------------------------------
 Python            3.14.6, in the project's own .venv
 Node              v24.17.0
 Java              only for the rules suite, which runs the Firestore emulator
@@ -33,30 +31,30 @@ keeps this document from drifting. It refuses to write the file if a suite will 
 if a test runs that it could not find in the source, if the same test name is defined
 twice, or if any requirement below is left with nothing checking it.
 
-179 cases, all passing, run on 2026-11-14.
+191 cases, all passing, run on 2026-11-16.
 
 Suite:   Ranking engine
-Cases:   86
+Cases:   89
 Covers:  Parking, Campus spots, Events
 Command: .venv/bin/python -m pytest tests/test_scoring.py
 
 Suite:   Scoring endpoint
-Cases:   15
+Cases:   17
 Covers:  Parking, Campus spots and Events, through the HTTP layer
 Command: .venv/bin/python -m pytest tests/test_api.py
 
 Suite:   Security rules
-Cases:   36
+Cases:   37
 Covers:  Student profile, Weekly schedule, and read-only access to the campus
 Command: npm run test:rules
 
 Suite:   Event dating
-Cases:   9
+Cases:   10
 Covers:  Event dates and times
 Command: npm run test:dates
 
 Suite:   Clock formatting
-Cases:   7
+Cases:   9
 Covers:  The screens that read a stored time through src/lib/time.ts
 Command: npm run test:dates
 
@@ -71,12 +69,12 @@ Covers:  Student profile, Weekly schedule
 Command: npm run test:profile
 
 Suite:   Account messages
-Cases:   5
+Cases:   7
 Covers:  Student profile
 Command: npm run test:auth
 
 Suite:   Club ranking
-Cases:   7
+Cases:   8
 Covers:  Club matching
 Command: npm run test:clubs
 
@@ -89,28 +87,28 @@ A requirement that is missing from here, or listed twice, stops the script.
 
 Feature:      Parking
 Requirements: FR-3, NFR-5
-Cases:        28
+Cases:        29
 
 Feature:      Campus study spots
 Requirements: FR-4
-Cases:        19
+Cases:        20
 
 Feature:      Clubs
 Requirements: FR-6
-Cases:        7
+Cases:        8
 
 Feature:      Events
 Requirements: FR-5
-Cases:        26
+Cases:        29
 
 Feature:      All four, and what they rest on
 Requirements: FR-1, FR-2, FR-7, FR-8, NFR-1, NFR-2, NFR-3, NFR-4, NFR-6, NFR-7, NFR-8
-Cases:        112
+Cases:        119
 
 What is not tested, and why
 ---------------------------
 
-Worth saying plainly, because "179 cases, all passing" invites the reader to assume more
+Worth saying plainly, because "191 cases, all passing" invites the reader to assume more
 than it should. There are no automated tests for the React screens, the sign in flow or
 the map. The logic those screens depend on was deliberately moved out of them, into
 src/lib and api/, so that it could be tested without a browser harness, and that is what
@@ -167,43 +165,43 @@ Requirement:   FR-1
 What it means: A student can record and change a profile holding their name, major,
                interests, career goals, permit type and noise preference, and can delete
                it.
-Cases:         SEC-11 to SEC-22, SEC-33 to SEC-36, PROF-01 to PROF-05
+Cases:         SEC-11 to SEC-22, SEC-34 to SEC-37, PROF-01 to PROF-05
 Count:         21
 
 Requirement:   FR-2
 What it means: A student can add a class to a weekly schedule, read the schedule back,
                and remove a class from it.
-Cases:         SEC-23 to SEC-32, PROF-06 to PROF-07
-Count:         12
+Cases:         SEC-23 to SEC-33, PROF-06 to PROF-07
+Count:         13
 
 Requirement:   FR-3
 What it means: The app offers parking lots for the class the student is heading to,
                ordered by how far the walk is and how full the lot usually is at that
                hour, and says when to leave.
 Cases:         SC-08 to SC-13, SC-18 to SC-19, SC-25 to SC-26, SC-36, SC-38, SC-48,
-               SC-50, SC-60 to SC-61, SC-82, SC-84, API-03
-Count:         19
+               SC-50, SC-60 to SC-61, SC-82, SC-84, API-03, API-17
+Count:         20
 
 Requirement:   FR-4
 What it means: The app offers campus study spots that are open at the time the student
                is looking, measured from where they already are that day, and ordered by
                walk, noise and power.
 Cases:         SC-33 to SC-35, SC-39, SC-42 to SC-43, SC-46, SC-51 to SC-52, SC-55 to
-               SC-56, SC-67, SC-70, SC-74 to SC-77, SC-79, SC-83
-Count:         19
+               SC-56, SC-67, SC-70, SC-74 to SC-77, SC-79, SC-83, SC-89
+Count:         20
 
 Requirement:   FR-5
 What it means: The app offers campus events that match what the student is interested
                in, are still to come, and do not clash with a class that day.
-Cases:         SC-27 to SC-32, SC-40, SC-53, SC-62 to SC-67, SC-80 to SC-81, API-11,
-               DATE-01 to DATE-09
-Count:         26
+Cases:         SC-27 to SC-32, SC-40, SC-53, SC-62 to SC-67, SC-80 to SC-81, SC-87 to
+               SC-88, API-11, DATE-01 to DATE-10
+Count:         29
 
 Requirement:   FR-6
 What it means: The app orders registered clubs by how well they match the interests the
                student entered, putting a rarely shared interest above a common one.
-Cases:         CLUB-01 to CLUB-07
-Count:         7
+Cases:         CLUB-01 to CLUB-08
+Count:         8
 
 Requirement:   FR-7
 What it means: The campus data is readable to a student who has signed in, and to nobody
@@ -227,22 +225,22 @@ Requirement:   NFR-2
 What it means: Every value the app stores is bounded and type checked by the database
                rules themselves, so a client that skips the screen still cannot write a
                bad one.
-Cases:         SEC-01 to SEC-02, SEC-05 to SEC-13, SEC-15 to SEC-21, SEC-26 to SEC-32,
-               SEC-34 to SEC-35
-Count:         27
+Cases:         SEC-01 to SEC-02, SEC-05 to SEC-13, SEC-15 to SEC-21, SEC-24, SEC-27 to
+               SEC-33, SEC-35 to SEC-36
+Count:         28
 
 Requirement:   NFR-3
 What it means: A malformed request to the scoring endpoint is refused with a 422 that
                names the field and never repeats the value it rejected, and a well
                formed one never produces a server error.
-Cases:         SC-54, SC-57 to SC-59, SC-69, SC-71, SC-73, SC-78, API-01 to API-15
-Count:         23
+Cases:         SC-54, SC-57 to SC-59, SC-69, SC-71, SC-73, SC-78, API-01 to API-17
+Count:         25
 
 Requirement:   NFR-4
 What it means: Every time and date the student reads is campus time, and stays correct
                across daylight saving and the turn of the year.
-Cases:         DATE-01 to DATE-09, CLK-01 to CLK-07
-Count:         16
+Cases:         DATE-01 to DATE-10, CLK-01 to CLK-09
+Count:         19
 
 Requirement:   NFR-5
 What it means: The occupancy figures reproduce the board readings they were fitted to,
@@ -254,8 +252,8 @@ Count:         9
 Requirement:   NFR-6
 What it means: Ranking a whole campus of candidates costs well under a second, and the
                cost grows with the number of candidates rather than faster.
-Cases:         SC-55, SC-62, SC-85 to SC-86
-Count:         4
+Cases:         SC-85 to SC-86
+Count:         2
 
 Requirement:   NFR-7
 What it means: With no profile, no schedule, or nothing left after filtering, every
@@ -268,10 +266,10 @@ What it means: When something goes wrong with a student's own account the app te
                what happened, in words they can act on, and never tells them an action
                did not happen when part of it did; and deleting an account leaves
                nothing of theirs behind.
-Cases:         AUTH-01 to AUTH-05
-Count:         5
+Cases:         AUTH-01 to AUTH-07
+Count:         7
 
-16 of the 179 cases trace to no requirement on their own. They are the shared arithmetic
+16 of the 191 cases trace to no requirement on their own. They are the shared arithmetic
 every feature sits on, which is worth testing and is not worth claiming as a
 requirement: SC-01 to SC-07, SC-16 to SC-17, SC-20 to SC-23, SC-49, SC-68, SC-72.
 
@@ -357,7 +355,7 @@ What it builds: _a_body with its one class meeting replaced, for the cases about
 
 ----------------------------------------------------------------------
 
-Ranking engine (86 cases)
+Ranking engine (89 cases)
 -------------------------
 
 Mostly pure functions over dicts, so the whole file runs in about half a second. A dozen
@@ -760,7 +758,7 @@ Expected result: profile.permit_type is None; profile.noise_pref is None;
 Result:          Pass
 
 ID:              SC-55
-Traces to:       FR-4, NFR-6
+Traces to:       FR-4
 Precondition:    _empty_profile_context()
 What it checks:  An unset noise preference does not cost a spot anything
 Expected result: without[0]['match_percent'] == with_pref[0]['match_percent'] == 100
@@ -811,7 +809,7 @@ Expected result: recommend._result(out[0], 'spot')['pct_full'] is None
 Result:          Pass
 
 ID:              SC-62
-Traces to:       FR-5, NFR-6, NFR-7
+Traces to:       FR-5, NFR-7
 Precondition:    _empty_profile_context()
 What it checks:  A profile with nothing on it does not cost an event anything
 Expected result: without[0]['match_percent'] == with_interests[0]['match_percent'] ==
@@ -898,7 +896,11 @@ Result:          Pass
 ID:              SC-72
 Traces to:       --
 What it checks:  A factor that returns not a number scores zero not a perfect match
-Expected result: out[0]['match_percent'] == 0
+Expected result: out[0]['match_percent'] == 0; over = scoring.rank([{'id': 'x', 'name':
+                 'X'}], [], {'only': too_much}, {'only': 1.0}, 1, {});
+                 over[0]['match_percent'] == 100; under = scoring.rank([{'id': 'x',
+                 'name': 'X'}], [], {'only': too_little}, {'only': 1.0}, 1, {}) (3
+                 assertions in all)
 Result:          Pass
 
 ID:              SC-73
@@ -1023,9 +1025,30 @@ What it checks:  Ranking cost grows with the list and not faster
 Expected result: large < small * 40
 Result:          Pass
 
+ID:              SC-87
+Traces to:       FR-5
+Precondition:    _empty_profile_context(minutes=720)
+What it checks:  An event tomorrow morning is still offered this afternoon
+Expected result: len(out) == 1
+Result:          Pass
+
+ID:              SC-88
+Traces to:       FR-5
+Precondition:    _empty_profile_context(minutes=700)
+What it checks:  An event starting this very minute is not offered
+Expected result: offered(701) == 1; offered(700) == 0; offered(699) == 0
+Result:          Pass
+
+ID:              SC-89
+Traces to:       FR-4
+Precondition:    _empty_profile_context()
+What it checks:  The noise penalty falls a quarter for every level over the preference
+Expected result: scores == [1.0, 1.0, 0.75, 0.5, 0.25]
+Result:          Pass
+
 ----------------------------------------------------------------------
 
-Scoring endpoint (15 cases)
+Scoring endpoint (17 cases)
 ---------------------------
 
 These go through the FastAPI app rather than calling the handler, so the request model
@@ -1157,9 +1180,26 @@ Expected result: reply.status_code == 200; body = reply.json(); body['parking'] 
                  len(body['spots']) == 1
 Result:          Pass
 
+ID:              API-16
+Traces to:       NFR-3
+Precondition:    _a_body()
+What it checks:  A spot kind that is not one of the four is refused
+Expected result: client.post(PATH, json=body).status_code == 422;
+                 body['spots'][0]['kind'] = good; client.post(PATH,
+                 json=body).status_code == 200
+Result:          Pass
+
+ID:              API-17
+Traces to:       FR-3, NFR-3
+Precondition:    _a_body()
+What it checks:  Every card carries its own category and only parking carries arrive by
+Expected result: set(card) == expected; card['category'] == category; card['arrive_by']
+                 is None; card['pct_full'] is None
+Result:          Pass
+
 ----------------------------------------------------------------------
 
-Security rules (36 cases)
+Security rules (37 cases)
 -------------------------
 
 Run against Firebase's Firestore emulator on this machine. Nothing in this suite touches
@@ -1261,7 +1301,8 @@ ID:              SEC-11
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Can be created, but only empty
-Expected result: assertSucceeds(setDoc(doc(alex(), 'profiles', ALEX), freshProfile()))
+Expected result: assertSucceeds(setDoc(doc(newcomer(uid), 'profiles', uid),
+                 freshProfile()))
 Result:          Pass
 
 ID:              SEC-12
@@ -1364,6 +1405,18 @@ Expected result: assertSucceeds(addDoc(mine(alex()), aClass()))
 Result:          Pass
 
 ID:              SEC-24
+Traces to:       FR-2, NFR-2
+Precondition:    a student's own schedule
+What it checks:  Refuses a document id longer than the app could ever build
+Expected result: assertSucceeds( setDoc(doc(db, 'profiles', ALEX, 'class_meetings',
+                 'CPSC-362-1-113000'), aClass())); assertSucceeds( setDoc(doc(db,
+                 'profiles', ALEX, 'class_meetings', 'z'.repeat(64)), aClass()));
+                 assertFails( setDoc(doc(db, 'profiles', ALEX, 'class_meetings',
+                 'z'.repeat(65)), aClass())); assertFails( setDoc(doc(db, 'profiles',
+                 ALEX, 'class_meetings', 'z'.repeat(1000)), aClass()))
+Result:          Pass
+
+ID:              SEC-25
 Traces to:       FR-2
 Precondition:    a student's own schedule
 What it checks:  Can be read back and cleared
@@ -1373,7 +1426,7 @@ Expected result: assertSucceeds(getDocs(mine(db))); assertSucceeds(setDoc(doc(db
                  'x')))
 Result:          Pass
 
-ID:              SEC-25
+ID:              SEC-26
 Traces to:       FR-2
 Precondition:    a student's own schedule
 What it checks:  Lets the owner fetch one meeting on its own
@@ -1381,7 +1434,7 @@ Expected result: assertSucceeds(getDoc(doc(alex(), 'profiles', ALEX, 'class_meet
                  ref.id)))
 Result:          Pass
 
-ID:              SEC-26
+ID:              SEC-27
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a time without seconds, so the end > start test stays honest
@@ -1390,7 +1443,7 @@ Expected result: assertFails(addDoc(mine(alex()), aClass({ start_time: '09:30',
                  end_time: '12:45' })))
 Result:          Pass
 
-ID:              SEC-27
+ID:              SEC-28
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a time that is not a time
@@ -1399,14 +1452,14 @@ Expected result: assertFails(addDoc(mine(alex()), aClass({ start_time: '9:00' })
                  assertFails(addDoc(mine(alex()), aClass({ start_time: '24:00:00' })))
 Result:          Pass
 
-ID:              SEC-28
+ID:              SEC-29
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a class that ends before it starts
 Expected result: assertFails(addDoc(mine(alex()), aClass({ end_time: '09:00:00' })))
 Result:          Pass
 
-ID:              SEC-29
+ID:              SEC-30
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a day outside the week
@@ -1414,7 +1467,7 @@ Expected result: assertFails(addDoc(mine(alex()), aClass({ day_of_week: 7 })));
                  assertFails(addDoc(mine(alex()), aClass({ day_of_week: -1 })))
 Result:          Pass
 
-ID:              SEC-30
+ID:              SEC-31
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a class with no course code or no building
@@ -1422,7 +1475,7 @@ Expected result: assertFails(addDoc(mine(alex()), aClass({ course_code: '' })));
                  assertFails(addDoc(mine(alex()), aClass({ building_id: '' })))
 Result:          Pass
 
-ID:              SEC-31
+ID:              SEC-32
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a course code or a building id one character over the cap
@@ -1430,14 +1483,14 @@ Expected result: assertFails(addDoc(mine(db), aClass({ course_code: 'C'.repeat(3
                  assertFails(addDoc(mine(db), aClass({ building_id: 'b'.repeat(65) })))
 Result:          Pass
 
-ID:              SEC-32
+ID:              SEC-33
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a field nobody asked for
 Expected result: assertFails(addDoc(mine(alex()), aClass({ junk: 'x'.repeat(1000) })))
 Result:          Pass
 
-ID:              SEC-33
+ID:              SEC-34
 Traces to:       FR-1
 Precondition:    a student deleting their own account
 What it checks:  Can clear the schedule and then the profile, and nothing is left
@@ -1448,21 +1501,21 @@ Expected result: assertSucceeds(setDoc(doc(db, 'profiles', LEAVER), freshProfile
                  assertSucceeds(getDocs(schedule)) (11 assertions in all)
 Result:          Pass
 
-ID:              SEC-34
+ID:              SEC-35
 Traces to:       FR-1, NFR-2
 Precondition:    a student deleting their own account
 What it checks:  Cannot be done to somebody else
 Expected result: assertFails(batch.commit())
 Result:          Pass
 
-ID:              SEC-35
+ID:              SEC-36
 Traces to:       FR-1, NFR-2
 Precondition:    a student deleting their own account
 What it checks:  Cannot be done to somebody else by the profile delete alone
 Expected result: assertFails(deleteDoc(doc(alex(), 'profiles', JORDAN)))
 Result:          Pass
 
-ID:              SEC-36
+ID:              SEC-37
 Traces to:       FR-1
 Precondition:    a student deleting their own account
 What it checks:  Can clear a class meeting left behind with no profile above it
@@ -1474,8 +1527,8 @@ Result:          Pass
 
 ----------------------------------------------------------------------
 
-Event dating (9 cases)
-----------------------
+Event dating (10 cases)
+-----------------------
 
 The daylight saving arithmetic, which is the part of the event screen that has no second
 chance to be right.
@@ -1550,9 +1603,16 @@ Expected result: assert.equal(onCampus(starts_at), '2026-12-17, 09:30');
                  assert.equal(onCampus(ends_at), '2026-12-17, 10:15')
 Result:          Pass
 
+ID:              DATE-10
+Traces to:       FR-5, NFR-4
+What it checks:  A day offset steps whole calendar days, across a clock change too
+Expected result: assert.equal(onCampus(dated.starts_at), '2027-03-15, 16:00');
+                 assert.equal(onCampus(back.starts_at), '2026-11-02, 16:00')
+Result:          Pass
+
 ----------------------------------------------------------------------
 
-Clock formatting (7 cases)
+Clock formatting (9 cases)
 --------------------------
 
 time.ts turns a stored time into something a student reads, and five screens call these
@@ -1615,6 +1675,26 @@ What it checks:  clockRange hands back values that are not times
 Expected result: assert.equal(clockRange('TBA', 'TBA'), 'TBA\u2013TBA');
                  assert.equal(clockRange('', ''), '\u2013');
                  assert.equal(clockRange('now', 'now'), 'now\u2013now')
+Result:          Pass
+
+ID:              CLK-08
+Traces to:       NFR-4
+What it checks:  A leave time that has gone reads as now, to the minute
+Expected result: assert.equal(leaveTimeGone('08:37', 0, 516), false, 'a minute before');
+                 assert.equal(leaveTimeGone('08:37', 0, 517), true, 'the exact minute');
+                 assert.equal(leaveTimeGone('08:37', 0, 521), true, 'after');
+                 assert.equal(leaveTimeGone(null, 0, 60), true) (7 assertions in all)
+Result:          Pass
+
+ID:              CLK-09
+Traces to:       NFR-4
+What it checks:  The campus date comes from the campus, not the machine and not UTC
+Expected result: assert.equal(campusDate(new Date('2026-11-17T01:00:00Z')),
+                 '2026-11-16'); assert.equal(campusDate(new
+                 Date('2026-11-16T20:00:00Z')), '2026-11-16');
+                 assert.equal(campusDate(new Date('2026-11-01T08:30:00Z')),
+                 '2026-11-01'); assert.equal(campusDate(new
+                 Date('2026-06-15T06:00:00Z')), '2026-06-14')
 Result:          Pass
 
 ----------------------------------------------------------------------
@@ -1698,11 +1778,12 @@ Result:          Pass
 Profile screen rules (7 cases)
 ------------------------------
 
-The two rules the profile screen applies before it writes anything, which have to agree
-with db/firestore.rules and until now agreed with it by a comment saying so. They were
-inside ProfileView.tsx, the largest file in the project and the one with no tests; they
-are in src/lib/profileEdits.ts now, the way clubRanking.ts came out of ClubsView.tsx.
-Two of these cases read the rules file and fail if the numbers drift apart.
+The three rules the profile screen applies before it writes anything, which have to
+agree with db/firestore.rules and until now agreed with it by a comment saying so. They
+were inside ProfileView.tsx, the largest file in the project and the one with no tests;
+they are in src/lib/profileEdits.ts now, the way clubRanking.ts came out of
+ClubsView.tsx. Two of these cases read the rules file and fail if the numbers drift
+apart.
 
 Covers: Student profile, Weekly schedule.
 File: tests/profile_edits.test.mjs
@@ -1711,6 +1792,12 @@ Command: npm run test:profile
 ID:              PROF-01
 Traces to:       FR-1
 What it checks:  The tag ceilings match the ones the database enforces
+Expected result: assert.ok(perTag, 'could not find the per tag length in
+                 db/firestore.rules'); assert.equal(Number(perTag[1]), LONGEST_TAG, 'the
+                 screen caps a tag at a different length from the rules');
+                 assert.ok(perList, 'could not find the tag list cap in
+                 db/firestore.rules'); assert.equal(Number(perList[1]), MOST_TAGS, 'the
+                 screen allows a different number of tags from the rules')
 Result:          Pass
 
 ID:              PROF-02
@@ -1739,9 +1826,10 @@ Result:          Pass
 ID:              PROF-05
 Traces to:       FR-1
 What it checks:  No tag the screen will store is longer than the database allows
-Expected result: assert.ok(tagSlug(typed).length <= LONGEST_TAG);
-                 assert.ok(tagFor(typed).length <= LONGEST_TAG, 'an alias expanded a tag
-                 past what the rules accept')
+Expected result: assert.ok(values.length > 50, only found ${values.length} aliases to
+                 check); assert.deepEqual(tooLong, [], 'an alias expands a typed tag
+                 past what the rules accept'); assert.ok(tagSlug(typed).length <=
+                 typed.length, typed)
 Result:          Pass
 
 ID:              PROF-06
@@ -1759,22 +1847,22 @@ Traces to:       FR-2
 What it checks:  A class cannot end before or when it starts
 Expected result: assert.match(classProblem('CPSC 362', '10:15', '09:00', 'b-cs'),
                  /after/); assert.match(classProblem('CPSC 362', '09:00', '09:00',
-                 'b-cs'), /after/); assert.match(rules, /end > .*start\
-Result:          start < .*end/, 'db/firestore.rules no longer requires the end after
+                 'b-cs'), /after/); assert.match(comments, /data\.end_time >
+                 data\.start_time/, 'db/firestore.rules no longer requires the end after
                  the start')
-                 Pass
+Result:          Pass
 
 ----------------------------------------------------------------------
 
-Account messages (5 cases)
+Account messages (7 cases)
 --------------------------
 
 Whether what the sign in code says ever reaches the person reading the screen.
 session.ts turns a Firebase error code into a sentence, and firestoreData.ts keeps the
 list of sentences allowed through to a panel; the two agreed by hand until the agreement
 slipped, and the sentence for picking the wrong Google account while deleting an account
-was written, was reachable, and was being swallowed. These read both files and make a
-new branch be classified as one or the other.
+was written, was reachable, and was being swallowed. These read all three files and make
+a new branch be classified as one or the other.
 
 Covers: Student profile.
 File: tests/auth_messages.test.mjs
@@ -1815,8 +1903,14 @@ Traces to:       NFR-8
 What it checks:  Nothing may write an account that is being erased
 Expected result: assert.equal(guards.length, 3, 'the three writers in campusData.ts no
                  longer all check the leaving guard'); assert.match(campus,
-                 /live\.getOrCreateProfile\(id, accountName\(\), id !== leaving\)/,
-                 'getOrCreateProfile may create a profile for an account being erased')
+                 /live\.getOrCreateProfile\(id, accountName\(\), \(\) => id !==
+                 leaving\)/, 'getOrCreateProfile may create a profile for an account
+                 being erased'); assert.match(data, /if \(!mayCreate\(\)\) return \{ id:
+                 userId, \.\.\.fresh \}/, 'getOrCreateProfile is deciding whether it may
+                 create before its own read'); assert.match(campus,
+                 /subscribeToSession\(\(\) => \{\s*\n\s*if \(leaving && accountId\(\)
+                 !== leaving\) leaving = null/, 'the leaving guard can now outlive the
+                 session that set it')
 Result:          Pass
 
 ID:              AUTH-05
@@ -1824,13 +1918,37 @@ Traces to:       NFR-8
 What it checks:  The schedule is paged until it comes back empty
 Expected result: assert.match(data, /fs\.query\(schedule, fs\.limit\(PAGE\)\)/,
                  'eraseStudent no longer pages the schedule'); assert.match(data, /if
-                 \(page\.empty\) break/, 'eraseStudent no longer stops on an empty page,
-                 so it cannot be looping')
+                 \(page\.empty\) \{\s*\n\s*emptied = true/, 'eraseStudent no longer
+                 stops on an empty page, so it cannot be looping'); assert.match(data,
+                 /if \(!emptied\) throw new Error/, 'running out of passes deletes the
+                 profile over the rows that are left')
+Result:          Pass
+
+ID:              AUTH-06
+Traces to:       NFR-8
+What it checks:  The delete is announced before the sign out, not after
+Expected result: assert.ok(set > 0, 'campusData no longer leaves the word for the login
+                 card'); assert.ok(out > 0, 'campusData no longer ends the session');
+                 assert.ok(set < out, 'the delete is announced after the sign out, so
+                 the login card misses it'); assert.match(campus,
+                 /sessionStorage\.removeItem\(DELETED\)/, 'a delete that did not finish
+                 still announces itself as done')
+Result:          Pass
+
+ID:              AUTH-07
+Traces to:       NFR-8
+What it checks:  The half way guard and the sentence it reads agree
+Expected result: assert.ok(guard, 'campusData no longer names the half way sentence');
+                 assert.ok(thrown, 'firestoreData no longer throws a half way
+                 sentence'); assert.ok(thrown[1].startsWith(guard[1]), the guard looks
+                 for ${guard[1]} and the throw says ${thrown[1]}); assert.match(campus,
+                 /if \(!halfWay\) leaving = null/, 'the leaving guard is being cleared
+                 on a half way erase again')
 Result:          Pass
 
 ----------------------------------------------------------------------
 
-Club ranking (7 cases)
+Club ranking (8 cases)
 ----------------------
 
 The order the club list comes out in, which is the whole point of that screen and the
@@ -1894,4 +2012,13 @@ Traces to:       FR-6
 What it checks:  A tie is broken by name, so the list never reshuffles
 Expected result: assert.deepEqual(order(list, mine), ['Alpha', 'Beta']);
                  assert.deepEqual(order([...list].reverse(), mine), ['Alpha', 'Beta'])
+Result:          Pass
+
+ID:              CLUB-08
+Traces to:       FR-6
+What it checks:  Every event names a club that exists
+Expected result: assert.deepEqual(orphans.map((e) => ${e.title} -> ${e.club_name}), [],
+                 'these events name a club that is not in the club list');
+                 assert.equal(e.club_name, byId.get(e.club_id), ${e.title} shows a stale
+                 club name)
 Result:          Pass

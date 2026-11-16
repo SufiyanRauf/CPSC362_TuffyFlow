@@ -24,10 +24,12 @@ export function useMinuteTick() {
 // left open on the dashboard was 176 reads a minute and would eat a day's free
 // quota in under five hours while nobody touched it.
 //
-// What those three actually depend on is the hour: which occupancy row to
-// read, and which events have not started. So they key on this instead, and
-// anything that genuinely needs the minute recomputes from rows it already
-// has.
+// What a screen depends on decides which of the two it takes. Only the
+// fullness bar wants the hour now, because the occupancy row it reads is
+// stored per hour and clamped to the hours the board was read. Everything
+// else takes the minute above: the ranking is keyed on the campus minute, so
+// a screen asking on the hour would sit on an answer up to fifty nine minutes
+// old while the key under it had already moved.
 export function useCampusHour() {
   useMinuteTick()
   return Math.floor(campusNow().minutes / 60)

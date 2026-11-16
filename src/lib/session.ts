@@ -61,7 +61,7 @@ function set(next: Session) {
 // The two halves useSyncExternalStore wants. Neither is exported, because the
 // hook that uses them is right below. dataVersion.ts has to export its pair
 // for the opposite reason: the hook reading it lives in another file.
-function subscribeToSession(listener: () => void) {
+export function subscribeToSession(listener: () => void) {
   listeners.add(listener)
   return () => { listeners.delete(listener) }
 }
@@ -389,6 +389,17 @@ export async function confirmItIsYou(password?: string): Promise<AuthResult> {
     }
     return { ok: true }
   } catch (e) {
+    // plainly() answers for the login card, where the form asked for an
+    // address as well, so its wording names both halves. This form asks for
+    // a password and nothing else, and telling somebody their email did not
+    // match when they never typed one sends them hunting for a problem that
+    // is not there. Firebase returns the one code for a wrong password and
+    // for an address with no account, but the account here is the one
+    // already signed in, so nothing is left for it to mean but the password.
+    const code = (e as { code?: string })?.code ?? ''
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+      return { ok: false, message: 'That password is not right.' }
+    }
     return { ok: false, message: plainly(e) }
   }
 }

@@ -137,11 +137,12 @@ const STUDENT_FACING = [
   // deleting an account, and what campusData says when the last step of
   // that fails. All of them are things only the student can act on.
   'Your profile and schedule were erased',
-  'Your schedule was erased',
+  'Some of your account was erased',
   'That is a different account from the one you are logged in as.',
   'This account has no email address to check a password against.',
   "That email and password don't match an account.",
   'Your password is missing.',
+  'That password is not right.',
   'You closed the Google window',
   'Your browser blocked the Google sign in window.',
   'Too many tries.',
@@ -366,7 +367,7 @@ function emptyProfileFields(fullName: string | null) {
 // name for the components, which is the layer where it is true: they ask for a
 // profile and do not care which of the two happened.
 export async function getOrCreateProfile(
-  userId: string, fullName: string | null, mayCreate = true,
+  userId: string, fullName: string | null, mayCreate: () => boolean = () => true,
 ): Promise<Profile> {
   // One try around the whole body, the way every other call in this file is
   // written. connect() has to be inside it: it was outside once, and a failed
@@ -388,7 +389,11 @@ export async function getOrCreateProfile(
       // deleteMyAccount is working, because a profile written back after the
       // real one was erased belongs to a uid that is about to stop existing,
       // and no student and no rule could reach it afterwards.
-      if (!mayCreate) return { id: userId, ...fresh }
+      // Asked here rather than handed in as an answer from before the read.
+      // A boolean was settled when this call started, and the getDoc in
+      // between is long enough for the delete to have begun since, which put
+      // the write back on the far side of the thing it was meant to stop.
+      if (!mayCreate()) return { id: userId, ...fresh }
       await acknowledged(fs.setDoc(ref, fresh))
       return { id: userId, ...fresh }
     }
@@ -605,6 +610,7 @@ export async function eraseStudent(userId: string) {
     //
     // Bounded, so a page that refuses to go away cannot spin here forever.
     // Twenty passes is eight thousand classes, which is not a timetable.
+    let emptied = false
     for (let pass = 0; pass < 20; pass += 1) {
       const page = await fs.getDocs(fs.query(schedule, fs.limit(PAGE)))
       // The reason getClassMeetings gives. An empty answer out of the cache
@@ -612,19 +618,33 @@ export async function eraseStudent(userId: string) {
       if (page.metadata.fromCache) {
         throw new Error(OFFLINE)
       }
-      if (page.empty) break
+      if (page.empty) {
+        emptied = true
+        break
+      }
       const batch = fs.writeBatch(db)
       for (const row of page.docs) batch.delete(row.ref)
       await acknowledged(batch.commit())
       cleared += page.size
     }
+    // Running out of passes is not the same as finishing. Falling through to
+    // the profile delete would abandon the rows the loop never reached, which
+    // is the one thing the paging exists to prevent, so the bound stops the
+    // work instead of completing it badly. The catch below turns this into
+    // the half way message, which is the truth of it: most of the schedule
+    // has gone and the account is still here.
+    if (!emptied) throw new Error('There are still classes left to clear.')
     await acknowledged(fs.deleteDoc(fs.doc(db, 'profiles', userId)))
   } catch (e) {
     // Which half happened. "Your account was not deleted" is a lie once a
     // class has gone, and the student has no other way of finding that out.
     if (cleared > 0) {
+      // Not "your schedule was erased": cleared counts the pages that went,
+      // and this also catches a schedule that went entirely with the profile
+      // delete failing after it, and a run that stopped between pages with
+      // classes still there. All three are the same instruction.
       throw new Error(
-        'Your schedule was erased, but the rest of your account is still here. '
+        'Some of your account was erased, but the rest is still here. '
         + 'Press Delete account again to finish.',
       )
     }

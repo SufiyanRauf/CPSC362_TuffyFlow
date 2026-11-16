@@ -7,7 +7,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { clubs } from '../src/lib/campusRows.ts'
+import { clubs, events } from '../src/lib/campusRows.ts'
 import { clubRanking, tagCounts } from '../src/lib/clubRanking.ts'
 
 // A club row. The ranking reads only name and tags; the rest are here to
@@ -100,4 +100,23 @@ test('a tie is broken by name, so the list never reshuffles', () => {
   const mine = new Set(['ai'])
   assert.deepEqual(order(list, mine), ['Alpha', 'Beta'])
   assert.deepEqual(order([...list].reverse(), mine), ['Alpha', 'Beta'])
+})
+
+test('every event names a club that exists', () => {
+  // The join is by name, and it does not drop: an event whose host matches
+  // nothing is still written, with an empty club_id and the unmatched name
+  // kept for display. So counting the events cannot catch a rename, which is
+  // what the SQL version relied on when it was an inner join that dropped the
+  // row. Renaming one club today produces twelve events and two orphans.
+  //
+  // Dropping the made up clubs once moved eleven of the twelve this way,
+  // without printing anything.
+  const orphans = events.filter((e) => !e.club_id)
+  assert.deepEqual(orphans.map((e) => `${e.title} -> ${e.club_name}`), [],
+    'these events name a club that is not in the club list')
+  // And the name kept for display is the club's own, not a stale copy.
+  const byId = new Map(clubs.map((c) => [c.id, c.name]))
+  for (const e of events) {
+    assert.equal(e.club_name, byId.get(e.club_id), `${e.title} shows a stale club name`)
+  }
 })
