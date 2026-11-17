@@ -1,11 +1,14 @@
 import { Suspense, lazy } from 'react'
 import { useAsync } from '../lib/useAsync'
-import { getRecommendations, findNextClass, campusNow } from '../lib/recommend'
+import {
+  getRecommendations, findNextClass, campusNow, forThisClass,
+} from '../lib/recommend'
 import Panel from './Panel'
 import PageHeader from './PageHeader'
 import Pill from './Pill'
 import { ArrowRightIcon, ClockIcon, WalkIcon } from './icons'
 import { BUSY_PERCENT, DAYS, clockText, leaveTimeGone } from '../lib/time'
+import { getParkingLots } from '../lib/campusData'
 import { useDataVersion } from '../lib/useDataVersion'
 import { useMinuteTick } from '../lib/useMinuteTick'
 import { directionsUrl } from '../lib/maps'
@@ -77,13 +80,21 @@ export default function ParkingView() {
   // version on the clock, so without a tick in here the ranking and the
   // arrive-by times stayed at whatever they were when the screen was opened.
   const minute = useMinuteTick()
-  const recs = useAsync(getRecommendations, [version, minute])
+  const asked = useAsync(getRecommendations, [version, minute])
   // On the minute, not the hour. Keyed on the hour, this screen kept saying
   // "ranked for CPSC 362, 11:30 AM" with "Be at lot by 11:07 AM" on every row
   // until noon, for a class that started at half past. The ranking is keyed on
   // which class is next, so asking every minute costs nothing until the class
   // actually changes.
   const next = useAsync(findNextClass, [version, minute])
+  // Held back while the rows belong to the class before last. The heading
+  // below reads from next and arrives first; these arrive a POST later.
+  const recs = forThisClass(asked, next)
+  // The lots again, straight out of the campus data this time, so the map has
+  // something to draw when the ranking has nothing. Not keyed on the minute:
+  // where a lot is does not change on the clock. It is a memoised read, so on
+  // a screen that has already asked for the ranking this costs nothing.
+  const lots = useAsync(getParkingLots, [version])
 
   // The "in <building>" half is dropped when we do not know the building,
   // because findNextClass falls back to the word Campus for the name at the
@@ -115,6 +126,45 @@ export default function ParkingView() {
           tone: 'here',
         }
       : null
+
+  // The map used to be built inside the ranking's panel, off the ranked rows,
+  // which meant it disappeared whenever the ranking did. With the scorer not
+  // running, which is what a reader gets from npm run dev alone, this screen
+  // was one error box and nothing else, and the map is the part that has
+  // nothing to do with the scorer: it is lot coordinates and a building.
+  //
+  // So the ranked rows colour it when they are there, and the plain lot list
+  // draws it when they are not. Orange for the pick only exists in the first
+  // case, and the caption says which one the reader is looking at.
+  const ranked = recs.state === 'ready' ? recs.data.parking : null
+  const lotPoints: MapPoint[] = ranked && ranked.length > 0
+    ? ranked.flatMap((lot, i) =>
+        lot.lat !== null && lot.lng !== null
+          ? [{
+              id: lot.id,
+              label: lot.title,
+              lat: lot.lat,
+              lng: lot.lng,
+              tone: (i === 0 ? 'pick' : 'rest') as MapPoint['tone'],
+            }]
+          : [])
+    : lots.state === 'ready'
+      ? lots.data.map((lot) => ({
+          id: lot.id,
+          label: lot.name,
+          lat: lot.lat,
+          lng: lot.lng,
+          tone: 'rest' as MapPoint['tone'],
+        }))
+      : []
+  const points: MapPoint[] = [...(classPoint ? [classPoint] : []), ...lotPoints]
+  // Drawn on whether there are lots, not on whether there is any point at all.
+  // classPoint counts towards points, so with the lot list failing or not back
+  // yet the map was one navy dot under a caption promising pale blue lots, and
+  // it fitted the bounds to that single building first and zoomed out when the
+  // lots arrived. No lots, no map: the list above already says what went
+  // wrong.
+  const ranking = ranked !== null && ranked.length > 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -169,21 +219,7 @@ export default function ParkingView() {
             )
           }
           const marks = badges(data.parking)
-          const points: MapPoint[] = [
-            ...(classPoint ? [classPoint] : []),
-            ...data.parking.flatMap((lot, i) =>
-              lot.lat !== null && lot.lng !== null
-                ? [{
-                    id: lot.id,
-                    label: lot.title,
-                    lat: lot.lat,
-                    lng: lot.lng,
-                    tone: (i === 0 ? 'pick' : 'rest') as MapPoint['tone'],
-                  }]
-                : []),
-          ]
           return (
-            <>
             <ul className="flex flex-col gap-3">
               {data.parking.map((lot, i) => {
                 const pct = lot.pct_full
@@ -306,43 +342,47 @@ export default function ParkingView() {
                 )
               })}
             </ul>
-
-            {/* After the list, not before it. The list is the answer; this is
-                for working out where the answer actually is. */}
-            <Suspense
-              fallback={
-                <p className="rounded-xl border border-rule bg-paper px-4 py-6 text-center text-xs text-ink-faint">
-                  Loading the map…
-                </p>
-              }
-            >
-              <CampusMap
-                points={points}
-                caption={
-                  'Orange is the top pick, pale blue the other lots' +
-                  (classPoint ? ', navy where your class is.' : '.')
-                }
-              />
-            </Suspense>
-            </>
           )
         }}
       </Panel>
 
+      {/* After the list, not before it. The list is the answer; this is for
+          working out where the answer actually is. Outside the panel above,
+          because none of what it draws comes from the scorer. */}
+      {lotPoints.length > 0 && (
+        <Suspense
+          fallback={
+            <p className="rounded-xl border border-rule bg-paper px-4 py-6 text-center text-xs text-ink-faint">
+              Loading the map…
+            </p>
+          }
+        >
+          <CampusMap
+            points={points}
+            caption={
+              (ranking
+                ? 'Orange is the top pick, pale blue the other lots'
+                : 'Pale blue is every lot on campus')
+              + (classPoint ? ', navy where your class is.' : '.')
+            }
+          />
+        </Suspense>
+      )}
+
       <p className="text-xs text-ink-faint">
-        CSUF counts the four structures, and counts S8 and S10 together. We read its board on
-        a Thursday, a Friday, two Sundays and a Tuesday evening and fitted the hour by hour
+        CSUF counts the four structures, and counts S8 and S10 together. We read its board
+        nine times across seven days and fitted the hour by hour
         pattern ourselves, so the shape of the day is our work rather than a published
         figure. Monday to Thursday is measured at three hours, all of them after
         Eastside South closed. The weekend is measured at two, midday and
-        half past nine at night; Friday still rests on one reading taken
+        twenty to ten at night; Friday still rests on one reading taken
         before the closure, so it describes a quieter campus than the one
         outside. Eastside South is left out altogether: five readings across
         four days all say the same 1321 free spaces, including a midday with
         Nutwood, Eastside North and State College all over 90 percent full, so
         it is not taking cars. Checked against readings it was not fitted to, the curve
         runs low in the late afternoon and late evening on a weekday. The
-        employee, resident and hourly lots the board does not count at
+        board does not count the employee, resident and hourly lots at
         all, so those are estimates.
       </p>
     </div>

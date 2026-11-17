@@ -62,7 +62,12 @@ test('every board reading is reproduced by the curve, or has no row at all', () 
       const got = row(id, DAYS[r.day], r.hour)
       // A missing row is allowed and is not a silent pass: it means the seed
       // deliberately claims no typical reading for that lot at that hour, and
-      // the card says so. Eastside South in the evening is the one case.
+      // the card says so. Eastside South is the one lot this skips, and it
+      // skips all nine of its readings, at every hour of every day, because
+      // the closure took its rows out altogether. This said "in the evening"
+      // from when the gap was evening-only. The check further down is what
+      // stops the skip hiding anything: every lot that is open has to carry
+      // rows.
       if (!got) continue
       const off = Math.abs(got.typical_pct_full - r.pct)
       assert.ok(off <= WITHIN,

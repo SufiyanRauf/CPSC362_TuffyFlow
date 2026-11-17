@@ -1,4 +1,4 @@
-Generated from TEST_CASES.md on 2026-11-16.
+Generated from TEST_CASES.md on 2026-11-17.
 Both this file and TEST_CASES.md are generated. The source is the
 test files themselves, read and run by:
     python3 tools/gen_test_cases.py
@@ -14,7 +14,7 @@ Professor   Mehdi Peiravi
 Semester    Fall 2026
 Team        Sufiyan Rauf, Bhavy Patel, Phillip Bryan
 Contact     sufiyan24@csu.fullerton.edu
-Generated   2026-11-16
+Generated   2026-11-17
 
 The machine these were run on
 -----------------------------
@@ -31,20 +31,20 @@ keeps this document from drifting. It refuses to write the file if a suite will 
 if a test runs that it could not find in the source, if the same test name is defined
 twice, or if any requirement below is left with nothing checking it.
 
-191 cases, all passing, run on 2026-11-16.
+194 cases, all passing, run on 2026-11-17.
 
 Suite:   Ranking engine
-Cases:   89
+Cases:   90
 Covers:  Parking, Campus spots, Events
 Command: .venv/bin/python -m pytest tests/test_scoring.py
 
 Suite:   Scoring endpoint
-Cases:   17
+Cases:   18
 Covers:  Parking, Campus spots and Events, through the HTTP layer
 Command: .venv/bin/python -m pytest tests/test_api.py
 
 Suite:   Security rules
-Cases:   37
+Cases:   38
 Covers:  Student profile, Weekly schedule, and read-only access to the campus
 Command: npm run test:rules
 
@@ -87,7 +87,7 @@ A requirement that is missing from here, or listed twice, stops the script.
 
 Feature:      Parking
 Requirements: FR-3, NFR-5
-Cases:        29
+Cases:        30
 
 Feature:      Campus study spots
 Requirements: FR-4
@@ -103,12 +103,12 @@ Cases:        29
 
 Feature:      All four, and what they rest on
 Requirements: FR-1, FR-2, FR-7, FR-8, NFR-1, NFR-2, NFR-3, NFR-4, NFR-6, NFR-7, NFR-8
-Cases:        119
+Cases:        121
 
 What is not tested, and why
 ---------------------------
 
-Worth saying plainly, because "191 cases, all passing" invites the reader to assume more
+Worth saying plainly, because "194 cases, all passing" invites the reader to assume more
 than it should. There are no automated tests for the React screens, the sign in flow or
 the map. The logic those screens depend on was deliberately moved out of them, into
 src/lib and api/, so that it could be tested without a browser harness, and that is what
@@ -165,36 +165,36 @@ Requirement:   FR-1
 What it means: A student can record and change a profile holding their name, major,
                interests, career goals, permit type and noise preference, and can delete
                it.
-Cases:         SEC-11 to SEC-22, SEC-34 to SEC-37, PROF-01 to PROF-05
+Cases:         SEC-12 to SEC-23, SEC-35 to SEC-38, PROF-01 to PROF-05
 Count:         21
 
 Requirement:   FR-2
 What it means: A student can add a class to a weekly schedule, read the schedule back,
                and remove a class from it.
-Cases:         SEC-23 to SEC-33, PROF-06 to PROF-07
+Cases:         SEC-24 to SEC-34, PROF-06 to PROF-07
 Count:         13
 
 Requirement:   FR-3
 What it means: The app offers parking lots for the class the student is heading to,
                ordered by how far the walk is and how full the lot usually is at that
                hour, and says when to leave.
-Cases:         SC-08 to SC-13, SC-18 to SC-19, SC-25 to SC-26, SC-36, SC-38, SC-48,
-               SC-50, SC-60 to SC-61, SC-82, SC-84, API-03, API-17
-Count:         20
+Cases:         SC-08 to SC-13, SC-18 to SC-19, SC-24, SC-26 to SC-27, SC-37, SC-39,
+               SC-49, SC-51, SC-61 to SC-62, SC-83, SC-85, API-03, API-18
+Count:         21
 
 Requirement:   FR-4
 What it means: The app offers campus study spots that are open at the time the student
                is looking, measured from where they already are that day, and ordered by
                walk, noise and power.
-Cases:         SC-33 to SC-35, SC-39, SC-42 to SC-43, SC-46, SC-51 to SC-52, SC-55 to
-               SC-56, SC-67, SC-70, SC-74 to SC-77, SC-79, SC-83, SC-89
+Cases:         SC-34 to SC-36, SC-40, SC-43 to SC-44, SC-47, SC-52 to SC-53, SC-56 to
+               SC-57, SC-68, SC-71, SC-75 to SC-78, SC-80, SC-84, SC-90
 Count:         20
 
 Requirement:   FR-5
 What it means: The app offers campus events that match what the student is interested
                in, are still to come, and do not clash with a class that day.
-Cases:         SC-27 to SC-32, SC-40, SC-53, SC-62 to SC-67, SC-80 to SC-81, SC-87 to
-               SC-88, API-11, DATE-01 to DATE-10
+Cases:         SC-28 to SC-33, SC-41, SC-54, SC-63 to SC-68, SC-81 to SC-82, SC-88 to
+               SC-89, API-11, DATE-01 to DATE-10
 Count:         29
 
 Requirement:   FR-6
@@ -212,29 +212,29 @@ Count:         5
 Requirement:   FR-8
 What it means: Every recommendation is measured from the class the student is next
                heading to, or was last at, rather than from a fixed point on campus.
-Cases:         SC-29 to SC-31, SC-36 to SC-39, SC-41 to SC-48, SC-80 to SC-81
+Cases:         SC-30 to SC-32, SC-37 to SC-40, SC-42 to SC-49, SC-81 to SC-82
 Count:         17
 
 Requirement:   NFR-1
 What it means: A student can read and write their own profile and schedule and nobody
                else's, and no signed in student can change the campus data.
-Cases:         SEC-01 to SEC-02, SEC-04 to SEC-10
-Count:         9
+Cases:         SEC-01 to SEC-02, SEC-04 to SEC-11
+Count:         10
 
 Requirement:   NFR-2
 What it means: Every value the app stores is bounded and type checked by the database
                rules themselves, so a client that skips the screen still cannot write a
                bad one.
-Cases:         SEC-01 to SEC-02, SEC-05 to SEC-13, SEC-15 to SEC-21, SEC-24, SEC-27 to
-               SEC-33, SEC-35 to SEC-36
-Count:         28
+Cases:         SEC-01 to SEC-02, SEC-05 to SEC-14, SEC-16 to SEC-22, SEC-25, SEC-28 to
+               SEC-34, SEC-36 to SEC-37
+Count:         29
 
 Requirement:   NFR-3
 What it means: A malformed request to the scoring endpoint is refused with a 422 that
                names the field and never repeats the value it rejected, and a well
                formed one never produces a server error.
-Cases:         SC-54, SC-57 to SC-59, SC-69, SC-71, SC-73, SC-78, API-01 to API-17
-Count:         25
+Cases:         SC-55, SC-58 to SC-60, SC-70, SC-72, SC-74, SC-79, API-01 to API-18
+Count:         26
 
 Requirement:   NFR-4
 What it means: Every time and date the student reads is campus time, and stays correct
@@ -252,13 +252,13 @@ Count:         9
 Requirement:   NFR-6
 What it means: Ranking a whole campus of candidates costs well under a second, and the
                cost grows with the number of candidates rather than faster.
-Cases:         SC-85 to SC-86
+Cases:         SC-86 to SC-87
 Count:         2
 
 Requirement:   NFR-7
 What it means: With no profile, no schedule, or nothing left after filtering, every
                screen says so plainly instead of failing or inventing a recommendation.
-Cases:         SC-14, SC-24, SC-54, SC-62, SC-70, SC-75, API-14 to API-15
+Cases:         SC-14, SC-25, SC-55, SC-63, SC-71, SC-76, API-14 to API-15
 Count:         8
 
 Requirement:   NFR-8
@@ -269,9 +269,9 @@ What it means: When something goes wrong with a student's own account the app te
 Cases:         AUTH-01 to AUTH-07
 Count:         7
 
-16 of the 191 cases trace to no requirement on their own. They are the shared arithmetic
+16 of the 194 cases trace to no requirement on their own. They are the shared arithmetic
 every feature sits on, which is worth testing and is not worth claiming as a
-requirement: SC-01 to SC-07, SC-16 to SC-17, SC-20 to SC-23, SC-49, SC-68, SC-72.
+requirement: SC-01 to SC-07, SC-16 to SC-17, SC-20 to SC-23, SC-50, SC-69, SC-73.
 
 Set the Python ones up first, which the read me also covers:
 
@@ -355,7 +355,7 @@ What it builds: _a_body with its one class meeting replaced, for the cases about
 
 ----------------------------------------------------------------------
 
-Ranking engine (89 cases)
+Ranking engine (90 cases)
 -------------------------
 
 Mostly pure functions over dicts, so the whole file runs in about half a second. A dozen
@@ -529,6 +529,16 @@ Expected result: [r['item']['id'] for r in forwards] == ['a', 'b']; [r['item']['
 Result:          Pass
 
 ID:              SC-24
+Traces to:       FR-3
+Precondition:    _parking_context()
+What it checks:  Two parking lots tied on score break on the shorter walk
+Expected result: out[0]['score'] == out[1]['score']; [r['item']['id'] for r in out] ==
+                 ['near', 'far']; [r['walk_minutes'] for r in out] == [2, 8]; backwards
+                 = scoring.rank(lots[::-1], cfg['filters'], cfg['factors'],
+                 cfg['weights'], 10, ctx) (4 assertions in all)
+Result:          Pass
+
+ID:              SC-25
 Traces to:       NFR-7
 Precondition:    _parking_context()
 What it checks:  Rank handles nothing to rank and honours top n
@@ -537,14 +547,14 @@ Expected result: scoring.rank([], cfg['filters'], cfg['factors'], cfg['weights']
                  cfg['weights'], 2, ctx)) == 2
 Result:          Pass
 
-ID:              SC-25
+ID:              SC-26
 Traces to:       FR-3
 Precondition:    _parking_context()
 What it checks:  Arrive by is none when it has already passed
 Expected result: scoring.arrive_by(out[0]['item'], ctx, out[0]['walk_minutes']) is None
 Result:          Pass
 
-ID:              SC-26
+ID:              SC-27
 Traces to:       FR-3
 Precondition:    _parking_context()
 What it checks:  Arrive by is none when the minute to leave is this minute
@@ -552,14 +562,14 @@ Expected result: scoring.arrive_by(lot, ctx, 5) is None; ctx['now_minutes'] = 66
                  scoring.arrive_by(lot, ctx, 5) == '11:10'
 Result:          Pass
 
-ID:              SC-27
+ID:              SC-28
 Traces to:       FR-5
 What it checks:  Event tag overlap uses sets not counts
 Expected result: out[0]['match_percent'] == 100; 'matches career and
                  software-engineering' in out[0]['reasons']
 Result:          Pass
 
-ID:              SC-28
+ID:              SC-29
 Traces to:       FR-5
 What it checks:  An event is scored over its own tags not the smaller set
 Expected result: scores['all-ai'] == 100; scores['half-ai'] == 70; reasons =
@@ -567,20 +577,20 @@ Expected result: scores['all-ai'] == 100; scores['half-ai'] == 70; reasons =
                  reasons['half-ai']
 Result:          Pass
 
-ID:              SC-29
+ID:              SC-30
 Traces to:       FR-5, FR-8
 What it checks:  Event clashing with a class is filtered out
 Expected result: out == []
 Result:          Pass
 
-ID:              SC-30
+ID:              SC-31
 Traces to:       FR-5, FR-8
 What it checks:  A class on a later day still blocks an event
 Expected result: scoring.rank(events, cfg['filters'], cfg['factors'], cfg['weights'], 5,
                  ctx) == []
 Result:          Pass
 
-ID:              SC-31
+ID:              SC-32
 Traces to:       FR-5, FR-8
 What it checks:  An event running past midnight still clashes with a class
 Expected result: scoring.rank(overnight, cfg['filters'], cfg['factors'], cfg['weights'],
@@ -590,52 +600,52 @@ Expected result: scoring.rank(overnight, cfg['filters'], cfg['factors'], cfg['we
                  cfg['weights'], 5, ctx)) == 1
 Result:          Pass
 
-ID:              SC-32
+ID:              SC-33
 Traces to:       FR-5
 What it checks:  Sooner always scores strictly better
 Expected result: all((sooner > later for sooner, later in zip(scores, scores[1:])))
 Result:          Pass
 
-ID:              SC-33
+ID:              SC-34
 Traces to:       FR-4
 What it checks:  A quieter spot is never worse than a louder one
 Expected result: out[0]['item']['id'] == 'silent'
 Result:          Pass
 
-ID:              SC-34
+ID:              SC-35
 Traces to:       FR-4
 What it checks:  Spot in the building you are already in says so
 Expected result: any(('right by Pollak Library' in r for r in out[0]['reasons']))
 Result:          Pass
 
-ID:              SC-35
+ID:              SC-36
 Traces to:       FR-4
 What it checks:  Closed spot is filtered out
 Expected result: out == []
 Result:          Pass
 
-ID:              SC-36
+ID:              SC-37
 Traces to:       FR-3, FR-8
 Precondition:    _parking_context(rows=rows, day=5, day_offset=3)
 What it checks:  Fullness reads the class day not today
 Expected result: scoring.lot_fullness(lot, ctx) == (95, True)
 Result:          Pass
 
-ID:              SC-37
+ID:              SC-38
 Traces to:       FR-8
 Precondition:    _parking_context(day=6, day_offset=2)
 What it checks:  Class day wraps past saturday
 Expected result: scoring.class_day(ctx) == 1
 Result:          Pass
 
-ID:              SC-38
+ID:              SC-39
 Traces to:       FR-3, FR-8
 Precondition:    _parking_context(day_offset=1)
 What it checks:  Arrive by stands for a class on another day
 Expected result: scoring.arrive_by(lot, ctx, 5) is not None
 Result:          Pass
 
-ID:              SC-39
+ID:              SC-40
 Traces to:       FR-4, FR-8
 Precondition:    _week_context(FRIDAY, 990)
 What it checks:  Spot walk is measured from todays class not the next one
@@ -643,7 +653,7 @@ Expected result: out[0]['walk_minutes'] == 0; any(('Titan Hall' in r for r in
                  out[0]['reasons']))
 Result:          Pass
 
-ID:              SC-40
+ID:              SC-41
 Traces to:       FR-5
 Precondition:    _week_context(FRIDAY, 990)
 What it checks:  Event walk is measured from its own day
@@ -651,14 +661,14 @@ Expected result: out[0]['walk_minutes'] is None; not any(('walk' in r for r in
                  out[0]['reasons']))
 Result:          Pass
 
-ID:              SC-41
+ID:              SC-42
 Traces to:       FR-8
 Precondition:    _week_context(FRIDAY, 990)
 What it checks:  A day with no classes has no anchor
 Expected result: scoring.anchor_for(_week_context(FRIDAY, 990), SATURDAY, 600) is None
 Result:          Pass
 
-ID:              SC-42
+ID:              SC-43
 Traces to:       FR-4, FR-8
 Precondition:    _week_context(FRIDAY, 1320)
 What it checks:  A class hours away does not anchor the evening
@@ -666,7 +676,7 @@ Expected result: scoring.anchor_for(ctx, FRIDAY, 1320) is None; scoring.anchor_f
                  FRIDAY, 1095)[2] == 'Titan Hall'
 Result:          Pass
 
-ID:              SC-43
+ID:              SC-44
 Traces to:       FR-4, FR-8
 Precondition:    _week_context(FRIDAY, 1320)
 What it checks:  The anchor window is three hours to the minute
@@ -675,7 +685,7 @@ Expected result: scoring.MAX_ANCHOR_GAP_MINUTES == 180; scoring.anchor_for(ctx, 
                  None
 Result:          Pass
 
-ID:              SC-44
+ID:              SC-45
 Traces to:       FR-8
 Precondition:    _week_context(MONDAY, 600)
 What it checks:  Tie break prefers the class still to come
@@ -683,7 +693,7 @@ Expected result: scoring.anchor_for(ctx, MONDAY, 600)[2] == 'Still to come';
                  scoring.anchor_for(ctx, MONDAY, 600)[2] == 'Still to come'
 Result:          Pass
 
-ID:              SC-45
+ID:              SC-46
 Traces to:       FR-8
 Precondition:    _week_context(MONDAY, 600)
 What it checks:  The anchor does not depend on the order the schedule arrives in
@@ -691,7 +701,7 @@ Expected result: forwards == backwards; forwards[2] in ('Computer Science', 'Tit
                  Hall')
 Result:          Pass
 
-ID:              SC-46
+ID:              SC-47
 Traces to:       FR-4, FR-8
 Precondition:    _week_context(MONDAY, 600)
 What it checks:  A spot with no class that day is neither a perfect walk nor a hopeless
@@ -699,7 +709,7 @@ What it checks:  A spot with no class that day is neither a perfect walk nor a h
 Expected result: worst < neutral < best
 Result:          Pass
 
-ID:              SC-47
+ID:              SC-48
 Traces to:       FR-8
 Precondition:    _week_context(MONDAY, 600)
 What it checks:  Anchor picks the class nearest in time
@@ -707,14 +717,14 @@ Expected result: scoring.anchor_for(ctx, MONDAY, 600)[2] == 'Computer Science';
                  scoring.anchor_for(ctx, MONDAY, 960)[2] == 'Titan Hall'
 Result:          Pass
 
-ID:              SC-48
+ID:              SC-49
 Traces to:       FR-3, FR-8
 Precondition:    _week_context(FRIDAY, 990)
 What it checks:  Parking still measures from the next class
 Expected result: any(('Computer Science' in r for r in out[0]['reasons']))
 Result:          Pass
 
-ID:              SC-49
+ID:              SC-50
 Traces to:       --
 Precondition:    _week_context(FRIDAY, 990)
 What it checks:  The walk reason does not repeat the number
@@ -722,56 +732,56 @@ Expected result: out[0]['walk_minutes'] == 11; 'measured from Titan Hall' in
                  out[0]['reasons']; not any(('min' in r for r in out[0]['reasons']))
 Result:          Pass
 
-ID:              SC-50
+ID:              SC-51
 Traces to:       FR-3
 Precondition:    _empty_profile_context()
 What it checks:  No permit means no lot is recommended
 Expected result: out == []
 Result:          Pass
 
-ID:              SC-51
+ID:              SC-52
 Traces to:       FR-4
 Precondition:    _empty_profile_context()
 What it checks:  An unset noise preference does not order the spots
 Expected result: len(out) == 2; out[0]['match_percent'] == out[1]['match_percent']
 Result:          Pass
 
-ID:              SC-52
+ID:              SC-53
 Traces to:       FR-4
 Precondition:    _empty_profile_context()
 What it checks:  An unset noise preference still says how loud the spot is
 Expected result: 'silent' in out[0]['reasons']
 Result:          Pass
 
-ID:              SC-53
+ID:              SC-54
 Traces to:       FR-5
 Precondition:    _empty_profile_context()
 What it checks:  Events still rank for a profile with no interests
 Expected result: len(out) == 1; 0 < out[0]['match_percent'] < 100
 Result:          Pass
 
-ID:              SC-54
+ID:              SC-55
 Traces to:       NFR-3, NFR-7
 What it checks:  The request model takes a profile with nothing filled in
 Expected result: profile.permit_type is None; profile.noise_pref is None;
                  profile.interests == []
 Result:          Pass
 
-ID:              SC-55
+ID:              SC-56
 Traces to:       FR-4
 Precondition:    _empty_profile_context()
 What it checks:  An unset noise preference does not cost a spot anything
 Expected result: without[0]['match_percent'] == with_pref[0]['match_percent'] == 100
 Result:          Pass
 
-ID:              SC-56
+ID:              SC-57
 Traces to:       FR-4
 Precondition:    _empty_profile_context()
 What it checks:  An unset noise preference does not hand the ranking to outlets
 Expected result: scores['silent'] == 67; scores['loud'] == 100
 Result:          Pass
 
-ID:              SC-57
+ID:              SC-58
 Traces to:       NFR-3
 What it checks:  The noise bounds still bite when a preference is given
 Expected result: recommend.Profile(noise_pref=refused) raises pydantic.ValidationError
@@ -779,20 +789,20 @@ Expected result: recommend.Profile(noise_pref=refused) raises pydantic.Validatio
                  == 3
 Result:          Pass
 
-ID:              SC-58
+ID:              SC-59
 Traces to:       NFR-3
 What it checks:  The model takes an explicit null and not just a missing key
 Expected result: profile.permit_type is None; profile.noise_pref is None;
                  profile.interests == [] and profile.career_goals == []
 Result:          Pass
 
-ID:              SC-59
+ID:              SC-60
 Traces to:       NFR-3
 What it checks:  A permit that is not one of the four is refused
 Expected result: recommend.Profile(permit_type='staff') raises pydantic.ValidationError
 Result:          Pass
 
-ID:              SC-60
+ID:              SC-61
 Traces to:       FR-3
 Precondition:    _parking_context(hour=10, rows=[{'lot_id': 'near-empty', 'day_of_week':
                  1, 'hour': 10, 'typical_pct_full': 41}])
@@ -801,14 +811,14 @@ Expected result: results['near-empty']['pct_full'] == 41;
                  results['far-empty']['pct_full'] is None
 Result:          Pass
 
-ID:              SC-61
+ID:              SC-62
 Traces to:       FR-3
 Precondition:    _empty_profile_context()
 What it checks:  Only parking carries a fullness
 Expected result: recommend._result(out[0], 'spot')['pct_full'] is None
 Result:          Pass
 
-ID:              SC-62
+ID:              SC-63
 Traces to:       FR-5, NFR-7
 Precondition:    _empty_profile_context()
 What it checks:  A profile with nothing on it does not cost an event anything
@@ -816,7 +826,7 @@ Expected result: without[0]['match_percent'] == with_interests[0]['match_percent
                  100
 Result:          Pass
 
-ID:              SC-63
+ID:              SC-64
 Traces to:       FR-5
 Precondition:    _empty_profile_context()
 What it checks:  Tags we cannot judge do not score like tags that are wrong
@@ -824,21 +834,21 @@ Expected result: scores['wanted'] == 100; scores['elsewhere'] < scores['untagged
                  scores['wanted']; scores['untagged'] == 70; scores['elsewhere'] == 40
 Result:          Pass
 
-ID:              SC-64
+ID:              SC-65
 Traces to:       FR-5
 Precondition:    _empty_profile_context()
 What it checks:  An event that matches outranks one with no tags at all
 Expected result: [r['item']['id'] for r in out] == ['matches-two', 'untagged']
 Result:          Pass
 
-ID:              SC-65
+ID:              SC-66
 Traces to:       FR-5
 Precondition:    _empty_profile_context()
 What it checks:  A brand new account does not see every event at the same low score
 Expected result: scores['tonight'] == 100; 40 < scores['next-week'] < 100
 Result:          Pass
 
-ID:              SC-66
+ID:              SC-67
 Traces to:       FR-5
 Precondition:    _empty_profile_context()
 What it checks:  A spot or event at nowhere is dropped the way a lot is
@@ -849,7 +859,7 @@ Expected result: [r['item']['id'] for r in out] == ['real']; events =
                  10, ctx) (2 assertions in all)
 Result:          Pass
 
-ID:              SC-67
+ID:              SC-68
 Traces to:       FR-4, FR-5
 Precondition:    _empty_profile_context()
 What it checks:  The spot and event guard reads the leg their cards print
@@ -859,13 +869,13 @@ Expected result: out == []; cfg = scoring.spot_config(ctx); out =
                  [r['item']['id'] for r in out] == ['real'] (4 assertions in all)
 Result:          Pass
 
-ID:              SC-68
+ID:              SC-69
 Traces to:       --
 What it checks:  The neutral walk stand in sits at the midpoint
 Expected result: scoring.NEUTRAL_WALK == 0.5; scoring.NEUTRAL_WALK == (0.0 + 1.0) / 2
 Result:          Pass
 
-ID:              SC-69
+ID:              SC-70
 Traces to:       NFR-3
 Precondition:    _a_spot(opens_at=refused)
 What it checks:  A time that is not a time is refused
@@ -876,7 +886,7 @@ Expected result: recommend.Spot(**_a_spot(opens_at=refused)) raises
                  recommend.Spot(**_a_spot(opens_at='07:00:00')).opens_at == '07:00:00'
 Result:          Pass
 
-ID:              SC-70
+ID:              SC-71
 Traces to:       FR-4, NFR-7
 Precondition:    _a_spot(opens_at='')
 What it checks:  Empty hours and missing hours mean the same thing
@@ -884,7 +894,7 @@ Expected result: recommend.Spot(**_a_spot(opens_at='')).opens_at is None;
                  recommend.Spot(**_a_spot()).opens_at is None
 Result:          Pass
 
-ID:              SC-71
+ID:              SC-72
 Traces to:       NFR-3
 Precondition:    _a_spot(lat=refused)
 What it checks:  A coordinate that is not on earth is refused
@@ -893,7 +903,7 @@ Expected result: recommend.Spot(**_a_spot(lat=refused)) raises pydantic.Validati
                  -91.0); recommend.Spot(**_a_spot(lat=33.88)).lat == 33.88
 Result:          Pass
 
-ID:              SC-72
+ID:              SC-73
 Traces to:       --
 What it checks:  A factor that returns not a number scores zero not a perfect match
 Expected result: out[0]['match_percent'] == 0; over = scoring.rank([{'id': 'x', 'name':
@@ -903,28 +913,28 @@ Expected result: out[0]['match_percent'] == 0; over = scoring.rank([{'id': 'x', 
                  assertions in all)
 Result:          Pass
 
-ID:              SC-73
+ID:              SC-74
 Traces to:       NFR-3
 What it checks:  A body with infinity in it gets a reason not a crash
 Expected result: reply.status_code == 422; body = reply.body.decode(); 'dest_lat' in
                  body; 'finite' in body (4 assertions in all)
 Result:          Pass
 
-ID:              SC-74
+ID:              SC-75
 Traces to:       FR-4
 Precondition:    _spots_context(now_minutes=720)
 What it checks:  Somewhere shut today is not recommended whatever the clock says
 Expected result: out == []
 Result:          Pass
 
-ID:              SC-75
+ID:              SC-76
 Traces to:       FR-4, NFR-7
 Precondition:    _spots_context()
 What it checks:  Hours we never knew are not a reason to rule somewhere out
 Expected result: len(out) == 1
 Result:          Pass
 
-ID:              SC-76
+ID:              SC-77
 Traces to:       FR-4
 Precondition:    _spots_context(now_minutes=720)
 What it checks:  Open today still gets checked against the clock
@@ -935,7 +945,7 @@ Expected result: len(scoring.rank([spot], cfg['filters'], cfg['factors'],
                  after) == []
 Result:          Pass
 
-ID:              SC-77
+ID:              SC-78
 Traces to:       FR-4
 Precondition:    _spots_context(now_minutes=now_minutes)
 What it checks:  Somewhere that shuts after midnight is open either side of it
@@ -943,14 +953,14 @@ Expected result: offered(1200) == 1; offered(1380) == 1; offered(60) == 1; offer
                  == 1 (6 assertions in all)
 Result:          Pass
 
-ID:              SC-78
+ID:              SC-79
 Traces to:       NFR-3
 What it checks:  The request model defaults closed today to false
 Expected result: recommend.Spot(id='s', name='S', lat=33.88, lng=-117.88, noise_level=1,
                  has_outlets=True).closed_today is False
 Result:          Pass
 
-ID:              SC-79
+ID:              SC-80
 Traces to:       FR-4
 What it checks:  The published hours line up with what the app can offer
 Expected result: out.returncode == 0; counts =
@@ -958,7 +968,7 @@ Expected result: out.returncode == 0; counts =
                  counts['open'] == [7, 24, 24, 24, 24, 21, 9] (5 assertions in all)
 Result:          Pass
 
-ID:              SC-80
+ID:              SC-81
 Traces to:       FR-5, FR-8
 Precondition:    _clash_context(classes=[{'day_of_week': 1, 'start': 600, 'end': 900}])
 What it checks:  An event butting against a class is not a clash
@@ -973,7 +983,7 @@ Expected result: len(scoring.rank(after, cfg['filters'], cfg['factors'], cfg['we
                  assertions in all)
 Result:          Pass
 
-ID:              SC-81
+ID:              SC-82
 Traces to:       FR-5, FR-8
 Precondition:    _clash_context(classes=monday_class)
 What it checks:  A class on another day does not block an event
@@ -981,7 +991,7 @@ Expected result: len(scoring.rank(saturday, cfg['filters'], cfg['factors'],
                  cfg['weights'], 5, ctx)) == 1
 Result:          Pass
 
-ID:              SC-82
+ID:              SC-83
 Traces to:       FR-3
 Precondition:    _parking_context(hour=9, rows=rows)
 What it checks:  Lot fullness reads the hour you are arriving
@@ -992,7 +1002,7 @@ Expected result: scoring.lot_fullness({'id': 'near-empty'}, quiet) == (5, True);
                  in all)
 Result:          Pass
 
-ID:              SC-83
+ID:              SC-84
 Traces to:       FR-4
 Precondition:    _spots_context(now_minutes=at)
 What it checks:  Somewhere is open on its opening and closing minute
@@ -1000,7 +1010,7 @@ Expected result: offered(600) is True; offered(900) is True; offered(599) is Fal
                  offered(901) is False
 Result:          Pass
 
-ID:              SC-84
+ID:              SC-85
 Traces to:       FR-3
 Precondition:    _parking_context()
 What it checks:  A walk of an hour is offered and anything longer is not
@@ -1011,35 +1021,35 @@ Expected result: scoring.walk_minutes(scoring.haversine(hour_away['lat'],
                  scoring.parking_config(ctx) (3 assertions in all)
 Result:          Pass
 
-ID:              SC-85
+ID:              SC-86
 Traces to:       NFR-6
 Precondition:    _parking_context()
 What it checks:  A whole campus is ranked well inside a second
 Expected result: len(out) == 5; spent < 1.0
 Result:          Pass
 
-ID:              SC-86
+ID:              SC-87
 Traces to:       NFR-6
 Precondition:    _parking_context()
 What it checks:  Ranking cost grows with the list and not faster
 Expected result: large < small * 40
 Result:          Pass
 
-ID:              SC-87
+ID:              SC-88
 Traces to:       FR-5
 Precondition:    _empty_profile_context(minutes=720)
 What it checks:  An event tomorrow morning is still offered this afternoon
 Expected result: len(out) == 1
 Result:          Pass
 
-ID:              SC-88
+ID:              SC-89
 Traces to:       FR-5
 Precondition:    _empty_profile_context(minutes=700)
 What it checks:  An event starting this very minute is not offered
 Expected result: offered(701) == 1; offered(700) == 0; offered(699) == 0
 Result:          Pass
 
-ID:              SC-89
+ID:              SC-90
 Traces to:       FR-4
 Precondition:    _empty_profile_context()
 What it checks:  The noise penalty falls a quarter for every level over the preference
@@ -1048,7 +1058,7 @@ Result:          Pass
 
 ----------------------------------------------------------------------
 
-Scoring endpoint (17 cases)
+Scoring endpoint (18 cases)
 ---------------------------
 
 These go through the FastAPI app rather than calling the handler, so the request model
@@ -1190,6 +1200,16 @@ Expected result: client.post(PATH, json=body).status_code == 422;
 Result:          Pass
 
 ID:              API-17
+Traces to:       NFR-3
+Precondition:    _a_body()
+What it checks:  A card carries its own name coordinates and reasons over http
+Expected result: lot['title'] == 'Eastside South'; (lot['lat'], lot['lng']) ==
+                 (33.880356, -117.881687); lot['match_percent'] == 69; lot['reasons'] ==
+                 ['4 min walk to Computer Science', 'usually about 62% full when you
+                 would arrive'] (11 assertions in all)
+Result:          Pass
+
+ID:              API-18
 Traces to:       FR-3, NFR-3
 Precondition:    _a_body()
 What it checks:  Every card carries its own category and only parking carries arrive by
@@ -1199,7 +1219,7 @@ Result:          Pass
 
 ----------------------------------------------------------------------
 
-Security rules (37 cases)
+Security rules (38 cases)
 -------------------------
 
 Run against Firebase's Firestore emulator on this machine. Nothing in this suite touches
@@ -1273,6 +1293,14 @@ Result:          Pass
 ID:              SEC-08
 Traces to:       NFR-1, NFR-2
 Precondition:    one student against another
+What it checks:  Cannot reach every schedule at once with a collection group query
+Expected result: assertFails(getDocs(collectionGroup(alex(), 'class_meetings')));
+                 assertFails(getDocs(collectionGroup(strangers(), 'class_meetings')))
+Result:          Pass
+
+ID:              SEC-09
+Traces to:       NFR-1, NFR-2
+Precondition:    one student against another
 What it checks:  Cannot write the other's profile
 Expected result: assertFails(updateDoc(doc(alex(), 'profiles', JORDAN), { major:
                  'Changed' })); assertFails(setDoc(doc(alex(), 'profiles', JORDAN),
@@ -1280,7 +1308,7 @@ Expected result: assertFails(updateDoc(doc(alex(), 'profiles', JORDAN), { major:
                  'profiles', JORDAN)))
 Result:          Pass
 
-ID:              SEC-09
+ID:              SEC-10
 Traces to:       NFR-1, NFR-2
 Precondition:    one student against another
 What it checks:  Cannot create a profile at somebody else's uid
@@ -1288,7 +1316,7 @@ Expected result: assertFails(setDoc(doc(alex(), 'profiles', 'river-uid'),
                  freshProfile('Impostor')))
 Result:          Pass
 
-ID:              SEC-10
+ID:              SEC-11
 Traces to:       NFR-1, NFR-2
 Precondition:    one student against another
 What it checks:  Cannot read or touch the other's schedule
@@ -1297,7 +1325,7 @@ Expected result: assertFails(getDocs(theirs)); assertFails(addDoc(theirs, aClass
                  'secret')))
 Result:          Pass
 
-ID:              SEC-11
+ID:              SEC-12
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Can be created, but only empty
@@ -1305,7 +1333,7 @@ Expected result: assertSucceeds(setDoc(doc(newcomer(uid), 'profiles', uid),
                  freshProfile()))
 Result:          Pass
 
-ID:              SEC-12
+ID:              SEC-13
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Cannot be created with any one of the five fields already filled in
@@ -1313,7 +1341,7 @@ Expected result: assertFails(setDoc(doc(newcomer(uid), 'profiles', uid), {
                  ...freshProfile('New Student'), [field]: filled[field], }))
 Result:          Pass
 
-ID:              SEC-13
+ID:              SEC-14
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Cannot carry a field nobody asked for
@@ -1321,7 +1349,7 @@ Expected result: assertFails(setDoc(doc(alex(), 'profiles', ALEX), { ...freshPro
                  payload: 'x'.repeat(1000), }))
 Result:          Pass
 
-ID:              SEC-14
+ID:              SEC-15
 Traces to:       FR-1
 Precondition:    a student's own profile
 What it checks:  Can be updated with sensible values
@@ -1331,7 +1359,7 @@ Expected result: assertSucceeds(setDoc(doc(db, 'profiles', ALEX), freshProfile()
                  career_goals: [], full_name: 'Alex Nguyen', }))
 Result:          Pass
 
-ID:              SEC-15
+ID:              SEC-16
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Refuses a permit that is not one of the four
@@ -1339,7 +1367,7 @@ Expected result: assertFails(updateDoc(doc(alex(), 'profiles', ALEX), { permit_t
                  'faculty' }))
 Result:          Pass
 
-ID:              SEC-16
+ID:              SEC-17
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Refuses a bad tag at any of the twelve positions
@@ -1348,7 +1376,7 @@ Expected result: assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: t
                  }))
 Result:          Pass
 
-ID:              SEC-17
+ID:              SEC-18
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Refuses tags that are not a list at all
@@ -1356,7 +1384,7 @@ Expected result: assertFails(updateDoc(doc(db, 'profiles', ALEX), { interests: '
                  assertFails(updateDoc(doc(db, 'profiles', ALEX), { career_goals: 5 }))
 Result:          Pass
 
-ID:              SEC-18
+ID:              SEC-19
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Refuses more tags than the profile screen can make
@@ -1365,7 +1393,7 @@ Expected result: assertFails(updateDoc(doc(alex(), 'profiles', ALEX), { interest
                  interests: thirteen.slice(0, 12) }))
 Result:          Pass
 
-ID:              SEC-19
+ID:              SEC-20
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Refuses a name or a major longer than the rule allows
@@ -1374,7 +1402,7 @@ Expected result: assertFails(updateDoc(doc(db, 'profiles', ALEX), { full_name:
                  major: 'm'.repeat(201) }))
 Result:          Pass
 
-ID:              SEC-20
+ID:              SEC-21
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Refuses an update that removes any of the six fields
@@ -1382,7 +1410,7 @@ Expected result: assertFails(updateDoc(doc(db, 'profiles', ALEX), { [field]:
                  deleteField() }))
 Result:          Pass
 
-ID:              SEC-21
+ID:              SEC-22
 Traces to:       FR-1, NFR-2
 Precondition:    a student's own profile
 What it checks:  Refuses a noise level outside one to five
@@ -1390,21 +1418,21 @@ Expected result: assertFails(updateDoc(doc(db, 'profiles', ALEX), { noise_pref: 
                  assertFails(updateDoc(doc(db, 'profiles', ALEX), { noise_pref: 9 }))
 Result:          Pass
 
-ID:              SEC-22
+ID:              SEC-23
 Traces to:       FR-1
 Precondition:    a student's own profile
 What it checks:  Can be deleted, because somebody has to be able to leave
 Expected result: assertSucceeds(deleteDoc(doc(alex(), 'profiles', ALEX)))
 Result:          Pass
 
-ID:              SEC-23
+ID:              SEC-24
 Traces to:       FR-2
 Precondition:    a student's own schedule
 What it checks:  Takes a sensible class
 Expected result: assertSucceeds(addDoc(mine(alex()), aClass()))
 Result:          Pass
 
-ID:              SEC-24
+ID:              SEC-25
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a document id longer than the app could ever build
@@ -1416,7 +1444,7 @@ Expected result: assertSucceeds( setDoc(doc(db, 'profiles', ALEX, 'class_meeting
                  ALEX, 'class_meetings', 'z'.repeat(1000)), aClass()))
 Result:          Pass
 
-ID:              SEC-25
+ID:              SEC-26
 Traces to:       FR-2
 Precondition:    a student's own schedule
 What it checks:  Can be read back and cleared
@@ -1426,7 +1454,7 @@ Expected result: assertSucceeds(getDocs(mine(db))); assertSucceeds(setDoc(doc(db
                  'x')))
 Result:          Pass
 
-ID:              SEC-26
+ID:              SEC-27
 Traces to:       FR-2
 Precondition:    a student's own schedule
 What it checks:  Lets the owner fetch one meeting on its own
@@ -1434,7 +1462,7 @@ Expected result: assertSucceeds(getDoc(doc(alex(), 'profiles', ALEX, 'class_meet
                  ref.id)))
 Result:          Pass
 
-ID:              SEC-27
+ID:              SEC-28
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a time without seconds, so the end > start test stays honest
@@ -1443,7 +1471,7 @@ Expected result: assertFails(addDoc(mine(alex()), aClass({ start_time: '09:30',
                  end_time: '12:45' })))
 Result:          Pass
 
-ID:              SEC-28
+ID:              SEC-29
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a time that is not a time
@@ -1452,14 +1480,14 @@ Expected result: assertFails(addDoc(mine(alex()), aClass({ start_time: '9:00' })
                  assertFails(addDoc(mine(alex()), aClass({ start_time: '24:00:00' })))
 Result:          Pass
 
-ID:              SEC-29
+ID:              SEC-30
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a class that ends before it starts
 Expected result: assertFails(addDoc(mine(alex()), aClass({ end_time: '09:00:00' })))
 Result:          Pass
 
-ID:              SEC-30
+ID:              SEC-31
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a day outside the week
@@ -1467,7 +1495,7 @@ Expected result: assertFails(addDoc(mine(alex()), aClass({ day_of_week: 7 })));
                  assertFails(addDoc(mine(alex()), aClass({ day_of_week: -1 })))
 Result:          Pass
 
-ID:              SEC-31
+ID:              SEC-32
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a class with no course code or no building
@@ -1475,7 +1503,7 @@ Expected result: assertFails(addDoc(mine(alex()), aClass({ course_code: '' })));
                  assertFails(addDoc(mine(alex()), aClass({ building_id: '' })))
 Result:          Pass
 
-ID:              SEC-32
+ID:              SEC-33
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a course code or a building id one character over the cap
@@ -1483,14 +1511,14 @@ Expected result: assertFails(addDoc(mine(db), aClass({ course_code: 'C'.repeat(3
                  assertFails(addDoc(mine(db), aClass({ building_id: 'b'.repeat(65) })))
 Result:          Pass
 
-ID:              SEC-33
+ID:              SEC-34
 Traces to:       FR-2, NFR-2
 Precondition:    a student's own schedule
 What it checks:  Refuses a field nobody asked for
 Expected result: assertFails(addDoc(mine(alex()), aClass({ junk: 'x'.repeat(1000) })))
 Result:          Pass
 
-ID:              SEC-34
+ID:              SEC-35
 Traces to:       FR-1
 Precondition:    a student deleting their own account
 What it checks:  Can clear the schedule and then the profile, and nothing is left
@@ -1501,21 +1529,21 @@ Expected result: assertSucceeds(setDoc(doc(db, 'profiles', LEAVER), freshProfile
                  assertSucceeds(getDocs(schedule)) (11 assertions in all)
 Result:          Pass
 
-ID:              SEC-35
+ID:              SEC-36
 Traces to:       FR-1, NFR-2
 Precondition:    a student deleting their own account
 What it checks:  Cannot be done to somebody else
 Expected result: assertFails(batch.commit())
 Result:          Pass
 
-ID:              SEC-36
+ID:              SEC-37
 Traces to:       FR-1, NFR-2
 Precondition:    a student deleting their own account
 What it checks:  Cannot be done to somebody else by the profile delete alone
 Expected result: assertFails(deleteDoc(doc(alex(), 'profiles', JORDAN)))
 Result:          Pass
 
-ID:              SEC-37
+ID:              SEC-38
 Traces to:       FR-1
 Precondition:    a student deleting their own account
 What it checks:  Can clear a class meeting left behind with no profile above it

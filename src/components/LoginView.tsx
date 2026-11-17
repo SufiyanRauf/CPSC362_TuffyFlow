@@ -3,6 +3,7 @@ import {
   NO_PROJECT, enterDemo, logIn, resetPassword, signInWithGoogle, signUp,
 } from '../lib/session'
 import { signInAvailable } from '../lib/firebase'
+import { DELETED } from '../lib/campusData'
 
 // Google's four color mark. Inline rather than an image so it needs no network
 // request and no file in the build. The fills are hardcoded on purpose: their
@@ -50,8 +51,8 @@ export default function LoginView() {
   // say it a second time.
   const [deleted, setDeleted] = useState(() => {
     try {
-      const was = sessionStorage.getItem('tuffyflow.deleted')
-      if (was) sessionStorage.removeItem('tuffyflow.deleted')
+      const was = sessionStorage.getItem(DELETED)
+      if (was) sessionStorage.removeItem(DELETED)
       return was === '1'
     } catch {
       // A private window with storage refused. The delete still happened, so

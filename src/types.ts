@@ -74,11 +74,21 @@ export type ParkingLot = {
   // Nothing reads it yet: the parking screen works off typical_pct_full.
   total_spaces: number | null
   // Absent means yes, which is every lot but one. Eastside South is set false
-  // because the board has reported the same 1321 free spaces across ten
-  // readings on four days, including middays where every other structure
-  // was over 90 percent full. A structure nobody can get into is not a worse
-  // recommendation, it is not a recommendation, so it is filtered out the way
-  // a lot the permit does not admit is.
+  // because the board has reported the same 1321 free spaces in every reading
+  // from 3 November onwards: five of the nine, on four days, from 11:59 in the
+  // morning to
+  // 21:40 at night. One is a midday when Nutwood was 95.9 percent full, with
+  // Eastside North at 90.9 and State College at 90.5 beside it. A counter that
+  // never moves across a span like that is a closed gate, and a lot nobody can
+  // get into is not a worse recommendation, it is not a recommendation, so it
+  // is filtered out the way a lot the permit does not admit is.
+  //
+  // This said ten readings and "every other structure was over 90" until the
+  // rows were counted. Five of the ten are from the spreadsheet the CSV header
+  // excludes for provenance, and at that midday S8 and S10 was 62.7 percent
+  // full and Eastside South itself 1.5, so three lots were over 90 and two were
+  // not. Named them instead of counting them. campusRows.ts carries the long
+  // version of this.
   taking_cars?: boolean
 }
 
@@ -99,6 +109,11 @@ export type Spot = {
   section: 'North' | 'South' | null
   noise_level: number
   has_outlets: boolean
+  // Nothing reads this yet, the same as code above and total_spaces on the
+  // lot. Every spot in the seed is indoors, so a filter on it would have no
+  // effect today; it is here because the next places worth adding are the
+  // outdoor ones, the quad and the arboretum benches, and that is the day a
+  // student wanting power and a roof needs to be able to say so.
   is_indoor: boolean
   seats: number | null
   reservable: boolean
@@ -197,9 +212,20 @@ export type RecommendResponse = {
   parking: Recommendation[]
   spots: Recommendation[]
   events: Recommendation[]
+  // Which class these were ranked for, attached by the browser rather than
+  // sent by the scorer. Everything in the three lists above is measured from
+  // one class, and the screens look that class up separately and faster, so
+  // without this they cannot tell that the rows they are holding belong to
+  // the class before last. See classKey in src/lib/recommend.ts.
+  for_class: string
 }
 
 export type Loadable<T> =
   | { state: 'loading' }
   | { state: 'error'; message: string }
-  | { state: 'ready'; data: T }
+  // refetchFailed is the message from a refetch that failed while these rows
+  // were already on screen. useAsync keeps the rows and puts no error up, on
+  // purpose, so anything that decides the rows are the wrong ones now has to
+  // be able to tell a replacement that is still coming from one that is never
+  // going to arrive.
+  | { state: 'ready'; data: T; refetchFailed?: string }

@@ -36,7 +36,27 @@ export function useAsync<T>(load: () => Promise<T>, deps: unknown[]): Loadable<T
         setState((current) => {
           if (current.state === 'ready') {
             console.warn('Refetch failed, keeping what is already on screen:', message)
-            return current
+            // Kept, and recorded. The note stays set until something succeeds,
+            // and it is deliberately not cleared when the next attempt starts.
+            //
+            // Both ways round were tried against a scorer that stays down.
+            // Clearing it at the start of each attempt is more truthful about
+            // the one in flight, and it made anything reading the note flap:
+            // once a minute the failure on screen was replaced by Loading for
+            // the length of the failing request and then came back, and Panel
+            // announces through one live region, so a reader heard the whole
+            // failure sentence again every minute for as long as the tab was
+            // open. Leaving it set holds a stale failure on screen for the
+            // second or two a recovering request takes, and then the rows
+            // replace it. The second is bounded and quiet; the first is not.
+            //
+            // The same message twice is the same object back, which is what
+            // keeps a request failing every minute from re-rendering the
+            // screen every minute. That only works because the note is not
+            // cleared above.
+            return current.refetchFailed === message
+              ? current
+              : { ...current, refetchFailed: message }
           }
           return { state: 'error', message }
         })

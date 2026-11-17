@@ -131,6 +131,13 @@ const STUDENT_FACING = [
   'That is not there any more.',
   'Tuffy Flow has hit its limit for today.',
   'That class is already on your schedule',
+  // Thrown by campusData while an account delete is running, and the only one
+  // of its four student sentences that was left off this list. Without it a
+  // save during that window answered "That did not save. Try again.", which is
+  // the one instruction that is wrong: nothing will save for that uid again.
+  // Worst on the half way path, where the student has already been told to
+  // press Delete account a second time.
+  'Your account is being deleted',
   'That class belongs to a different account.',
   'That form belongs to a different account.',
   // What session.ts says when proving who you are fails, on the way to

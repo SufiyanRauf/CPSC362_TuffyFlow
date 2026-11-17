@@ -1,6 +1,8 @@
 import type { NextClass, RecCategory, View } from '../types'
 import { useAsync } from '../lib/useAsync'
-import { campusNow, findNextClass, getRecommendations } from '../lib/recommend'
+import {
+  campusNow, findNextClass, forThisClass, getRecommendations,
+} from '../lib/recommend'
 import { getProfile } from '../lib/campusData'
 import NextClassCard from './NextClassCard'
 import RecCard from './RecCard'
@@ -62,7 +64,13 @@ export default function Dashboard({ onOpen }: DashboardProps) {
   // 2:00 PM". Asking every minute is free, because getRecommendations hands
   // back the promise it is already holding whenever the key has not moved,
   // and the key only moves when the class does.
-  const recs = useAsync(getRecommendations, [version, minute])
+  const asked = useAsync(getRecommendations, [version, minute])
+  // Held back while the rows belong to the class before last. nextClass above
+  // resolves out of memoised reads; these arrive a POST later, and for that
+  // window the hero printed the previous class's lot and leave time under the
+  // new class's name. Keying on the minute narrowed that to one request
+  // rather than closing it.
+  const recs = forThisClass(asked, nextClass)
 
   // No name on a brand new account, and no greeting is better than greeting
   // somebody by the front half of their email address.
@@ -78,7 +86,18 @@ export default function Dashboard({ onOpen }: DashboardProps) {
   // including the button, mid tap. So the card waits for the scorer as well.
   // Settled rather than ready: a scorer that failed has still finished, and
   // the card is worth showing with no lot on it.
-  const hero = recs.state === 'loading' ? { state: 'loading' as const } : nextClass
+  //
+  // Waiting only on a first load, where there is nothing else to put there. A
+  // class boundary also sends recs back to loading now, on purpose, and
+  // blanking on that pass replaced the countdown, the class, the walk and the
+  // button with one Loading line every time the next class changed, then
+  // jumped everything below it up and back down when they returned. The card
+  // already knows how to draw with no lot on it, which is what rankingReady is
+  // for, so on that pass it keeps the half it has and loses only the lot.
+  const firstLoad = asked.state !== 'ready'
+  const hero = recs.state === 'loading' && firstLoad
+    ? { state: 'loading' as const }
+    : nextClass
   // findNextClass looks forward through the whole week, so a null means there
   // is no class anywhere on the schedule, not just none left today. That one
   // fact used to get stated three times down this screen: the hero said "No

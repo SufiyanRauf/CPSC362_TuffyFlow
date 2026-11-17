@@ -259,6 +259,42 @@ def test_rank_is_stable_when_everything_ties():
     assert [r["item"]["id"] for r in backwards] == ["a", "b"]
 
 
+def test_two_parking_lots_tied_on_score_break_on_the_shorter_walk():
+    # The test above ties on score, walk and name together, so ids decide it
+    # and the walk tie-break is never reached: removing that one key from the
+    # sort left the whole suite green. This ties on score alone. A 2 minute
+    # walk at 50 percent full and an 8 minute walk at nothing score the same
+    # 0.8 exactly, and the names match so the name key cannot settle it
+    # either, which leaves the walk. Without it the ids decide and the 8
+    # minute walk is returned as the better lot.
+    ctx = _parking_context()
+    ctx["availability"] = [
+        {"lot_id": "near", "day_of_week": scoring.class_day(ctx),
+         "hour": ctx["arrival_hour"], "typical_pct_full": 50},
+        {"lot_id": "far", "day_of_week": scoring.class_day(ctx),
+         "hour": ctx["arrival_hour"], "typical_pct_full": 0},
+    ]
+    cfg = scoring.parking_config(ctx)
+    # far sorts before near by id, so a run that comes back near-first cannot
+    # be the input order surviving.
+    lots = [
+        {"id": "far", "name": "Same name", "lat": 33.882349,
+         "lng": -117.887450, "permits": ["student"]},
+        {"id": "near", "name": "Same name", "lat": 33.882349,
+         "lng": -117.883450, "permits": ["student"]},
+    ]
+    out = scoring.rank(lots, cfg["filters"], cfg["factors"], cfg["weights"], 10, ctx)
+    # That they are equal, not what they equal. Pinning 0.8 would tie this to
+    # the weight table as well, and a deliberate change there would fail it on
+    # the score line while the tie-break it is named for still worked.
+    assert out[0]["score"] == out[1]["score"]
+    assert [r["item"]["id"] for r in out] == ["near", "far"]
+    assert [r["walk_minutes"] for r in out] == [2, 8]
+    backwards = scoring.rank(lots[::-1], cfg["filters"], cfg["factors"],
+                             cfg["weights"], 10, ctx)
+    assert [r["item"]["id"] for r in backwards] == ["near", "far"]
+
+
 def test_rank_handles_nothing_to_rank_and_honours_top_n():
     ctx = _parking_context()
     cfg = scoring.parking_config(ctx)

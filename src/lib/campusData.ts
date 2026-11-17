@@ -241,7 +241,13 @@ const LEAVING = 'Your account is being deleted, so that change was not saved.'
 // Where the login card looks for the one word about a delete that worked.
 // sessionStorage rather than a module, so it survives the reload signing out
 // can cause, and read once and removed there.
-const DELETED = 'tuffyflow.deleted'
+// Exported because LoginView is the only reader and it had the string written
+// out again. Spelled twice they can drift, and the way they would drift is
+// silent: getItem on a key nothing was written under looks exactly like the
+// flag not being set, so the confirmation after a delete would just stop
+// appearing. Same reason draftKey() lives in session.ts rather than in both
+// screens that use it.
+export const DELETED = 'tuffyflow.deleted'
 
 // The opening words of what eraseStudent throws once it has deleted something.
 // firestoreData.ts owns the sentence; this is the half of the coupling that

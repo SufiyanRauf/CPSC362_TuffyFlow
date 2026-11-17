@@ -302,6 +302,298 @@ and in the samples file. Two more photographs, one about 15:00 and one about
 
 ---
 
+**2026-11-16: The last round, and what driving it in a browser found again**
+
+Four more reviews, on the frozen tree: the two bits of logic that had been
+rewritten twice and never read by anybody else, a clone followed literally from
+the top of the README and then driven in Chrome, a fact check of everything
+written in the round before, and one reading across files rather than down them.
+The browser one found the thing worth holding the submission for, which is the
+second time in two days that running it beat reading it.
+
+The campus map lived inside the ranking's panel. With the scorer not running,
+which is what the README's own quickstart leaves you with until you read the
+next sentence, the parking screen was one orange error box and nothing else:
+the map, which is lot coordinates and a building and has nothing to do with the
+scorer, went with it. The most finished looking thing in the project was
+invisible in the state a reader is most likely to see it in. It draws from the
+campus data now, pale blue for every lot, orange for the pick only when there
+is a ranking to pick from, and the caption says which of the two you are
+looking at.
+
+Then the focus handback, which is now on its third shape and was measured
+properly this time, in real Chrome over the debugging protocol rather than
+reasoned about. Three things were wrong with it. A press on the backdrop did
+hand focus back and then lost it again a fraction of a millisecond later,
+because mousedown's own default action runs after the handler and moves focus
+to the body: preventDefault on the backdrop. A click on the dialog's heading or
+its padding focused the panel, which has tabIndex -1, and the focus trap asked
+whether the panel contained the focused element, which it did, so every branch
+fell through and Shift+Tab walked backwards out of the dialog into the page
+behind it. That is the exact failure the comment above the trap says it
+prevents. The test is whether focus is on one of the buttons, not whether the
+panel contains it. And in development only, React's double invoke meant the
+effect read the activeElement its own first run had just set, so the dialog
+captured its own Cancel button as the thing that opened it and never handed
+focus anywhere: the opener is captured in a state initialiser now, during the
+first render, where nothing has moved yet. The production build was always
+fine, which is why hand checking it in npm run dev would have sent somebody
+after a fourth wrong fix.
+
+Two of the three dialog openers also did not focus themselves on click, which
+only matters in Safari and Firefox, where a clicked button does not take focus,
+so the dialog captured the body and had nothing to hand back to. The account
+menu already carried that line with the reason written next to it. The class
+rows and the Delete account button carry it now too.
+
+The failed refetch note went back to how it was, deliberately, and this is the
+one place where two review rounds pulled in opposite directions and both were
+right. Clearing it when a new attempt starts is more truthful about the request
+in flight, which is what the round before asked for. Leaving it set is better
+for the case that actually happens: against a scorer that stays down, clearing
+it made the failure on screen flip to Loading and back once a minute forever,
+and Panel announces through one live region, so a screen reader read the whole
+failure sentence again every minute. The cost of leaving it set is a stale
+failure held for the second or two a recovering request takes. Bounded and
+quiet beats correct and flapping, and both failure modes are written next to
+the code now so the next person does not have to rediscover one of them.
+
+One sentence was missing from the allowlist. campusData throws four sentences a
+student can act on and three of them were on the list; the fourth is the one
+thrown while an account delete is running, so a save in that window answered
+"That did not save. Try again." That is the single wrongest thing the app could
+say there, because nothing will save for that uid again, and it is worst on the
+half way path where the student has already been told to press Delete account a
+second time.
+
+The fact check is the part worth being embarrassed about. The entry above this
+one contains a paragraph about three numbers that were never measured, and the
+sentence written to replace them had a number in it that was never measured
+either. It said a maxed request takes two seconds here rather than the eight
+somebody else had measured. Timed it: six and a half. The figure being waved
+away was close to right and the figure waving it away was invented, one
+paragraph after writing down the lesson. A second claim in the same entry said
+a class before 06:20 falls back to the stand in fullness with nothing on screen
+saying why, and the cards have said "no typical reading for that hour" since
+the day that fallback was written, with a test on it. Both are corrected in
+place, and the correction is in the entry rather than quietly swapped, because
+the pattern matters more than either number.
+
+Smaller things, all of them found by reading across files rather than down one.
+The parking screen's provenance footnote named five of the nine board readings
+and omitted the Wednesday the weekday curve is fitted to, while claiming all
+three weekday hours come from after the closure, which cannot both be true. The
+login card's deleted flag was written out as a bare string on the reading side
+and as a constant on the writing side, which is the drift that fails silently.
+The events screen showed four of twelve with no count line while the spots
+screen has said "Showing 8 of 24" all along. The rail listed a closed structure
+as "no reading" at every hour of every week, which reads as data that failed to
+load rather than a gate nobody can drive through. And the README promised a
+working demo from one command, said the spots screen needed the scorer when it
+never has, and claimed nothing was outstanding in the project's settings while
+this file said a console errand was left.
+
+One finding was checked and thrown out. A review had the student seeing "Start
+it with: .venv/bin/python -m uvicorn" when the scorer 404s in production. It
+does not: studentFacing passes a raw message through only in development, and
+in a production build that one falls to the generic line. The comment next to
+it says so, and it was right.
+
+The README also got the two things every review round has asked for and nobody
+had done: a contents list, and a diagram that renders where the architecture is
+described rather than a filename pointing at one.
+
+**2026-11-16: A read of the whole project before handing it in**
+
+Seven reviews at once, one each on the uncommitted screens, the rules and
+sign in, the Python scorer, the seed data, the written documents, the build and
+a clone of it, and one reading the repository the way somebody grading it
+would. They were told to report and not to touch anything, so every fix below
+is one thing decided in one place rather than seven sets of edits meeting in
+the middle. What came back is worth recording, because most of it is not bugs.
+
+Two of the fixes from the browser round were half fixes.
+
+Holding the rows back until they are the rows for the class on the heading is
+right, but useAsync keeps the old rows when a refetch fails and puts no error
+up, deliberately, so one dropped request does not wipe a screen somebody is
+reading. Put those two together and a scorer that goes down at a class
+boundary leaves the rows hidden and the failure invisible: a spinner with
+nothing behind it, for as long as the tab stays open, because nothing re-asks
+on a mismatch and every minute after that fails the same way. Loadable carries
+the message from a failed refetch now, and the guard shows that instead of a
+spinner. Leaving the screen and coming back was the only way out, and nobody
+would ever find it.
+
+The other was the focus on removing a class, and it took three tries. The
+dialog used to hand focus back to whatever opened it, which was the x of the
+row about to disappear, so focus landed on the body a moment later. The first
+fix was a prop saying which dialogs restore focus and which do not. Wrong,
+because it is not a property of the dialog: the same dialog wants the handback
+when it is cancelled and not when it is confirmed, and turning it off for that
+dialog left Cancel, Escape and a press on the backdrop with focus nowhere,
+which is the common way out of a dialog. The second was a flag for which way it
+was left. Wrong too, and the review caught it: confirming the account delete
+leaves its own opener right where it was, and nothing else there moves focus,
+so skipping the handback on every confirm dropped focus on the body on a screen
+where that button is the only thing worth tabbing to.
+
+The question is not which dialog or which button. It is whether anything has
+claimed focus by the time the dialog comes off the page. React detaches the
+panel first, so focus that was inside the dialog has fallen to the body and
+nobody wants it, while focus anywhere else was put there on purpose. One
+condition, all three dialogs, no prop and no flag.
+
+Also on the screens: the dashboard's main card blanked at every class boundary,
+because recs going back to loading is what the hold-back is made of and the
+card was waiting on it. It already knows how to draw with no lot on it. And the
+events screen prints which building the walk was measured from, so it needed
+the same hold-back as parking: without it, the line named the previous class's
+building for as long as the scorer took.
+
+The seed had one guard missing on a key nobody had thought about. A club is
+matched to an event by name, and a name that matches nothing writes an empty
+club_id, which is what dropped eleven of twelve events once and why that check
+exists. building_id is written straight out of the row with no lookup at all,
+on spots and on events, and recommend.ts drops anything whose building it
+cannot find, so a renamed building is the same silent disappearance from the
+other side. Reproduced it: one letter changed in an event's building_id, both
+existing guards pass, eleven of twelve events reach the scorer. It is also what
+the count of 24 spots used to cover, back when the spots joined on a building
+code in SQL and a miss dropped the row.
+
+Three things in the documents did not match the code, and one of them was the
+first thing a reader sees: App Check was still described as reporting but not
+enforcing, which has been wrong since it was switched on. The two others were
+a stale test count and a pointer to a NOT_FITTED entry that was superseded the
+next day and never added.
+
+One sentence was worse than stale. The comment on taking_cars still said the
+Eastside South closure rested on ten readings across four days, including
+middays where every other structure was over 90 percent full. The ten was
+retired in campusRows.ts in favour of the five this project is allowed to cite,
+and the rest of it was never true: at that midday S8 and S10 was 62.7 percent
+full. Both halves are fixed and the sentence says what it used to say, because
+that is the one number on the parking screen that rests on a judgement rather
+than a measurement.
+
+Three tests were added, and each one was checked by breaking the thing it
+watches. Swapping lat and lng in the response builder passed every one of the
+191 tests: those two fields are what the Directions link and the map marker are
+built from, so a swap sends somebody to the southern Indian Ocean and nothing
+turns red. The walk tie-break that rank's own docstring argues for was
+untested, because the test that ties two candidates ties them on walk as well,
+so ids decided it and dropping the key changed nothing: two lots at the same
+score, one a two minute walk and one eight, settle it now. And a collection
+group query across every student's schedule is refused today, but nothing asked
+it to be, so a path wildcard added later to fix something unrelated would hand
+every student's week of whereabouts to every account holder. That one turned
+out not to be the hole it looked like: adding the wildcard also breaks the test
+on a single student reading another's schedule, because the narrowest form that
+enables a collection group query covers that path too. The test stays, for
+naming the attack rather than for being the only thing in its way.
+
+What was looked for and not found is the longer half of this. No way for one
+student to read or write another's profile or schedule, including through a
+collection group query or a list filtered by document name. Nothing writable on
+the campus data. No secret ever committed, and the two private planning files
+ignored and never tracked. Every factor in the scorer inside 0 to 1 against a
+fixed anchor over four thousand random contexts, every weight table summing to
+one, the ranking identical across three hundred shuffles, no 500 anywhere in
+about six hundred hostile requests, and the stored day offset round-tripping
+through a whole year and both clock changes without a single mismatch. Every
+event resolving to a real club by exact name, every spot to a real building,
+no duplicate or oversized id, every coordinate on campus, no spot with a close
+before its open. And every number in TEST_CASES.md's traceability matrix
+recomputed from the cases themselves: sixteen requirements, none dangling,
+none uncovered.
+
+The scorer's row cap came down, and how that went is worth keeping. The first
+draft of this paragraph said the cap was being left alone, because the app
+sends about four hundred rows and four tests were pinned to the boundary, so
+moving it days before handing in was not worth it. Every number in that
+sentence was wrong, and the check that caught it was counting rather than
+reasoning: the widest body the app can build is a hundred rows, not four
+hundred, because the clubs never go to the scorer at all, and one test touches
+the cap, not four, and it reads the constant rather than the number, so
+narrowing it breaks nothing. With the excuse gone there was nothing left to
+weigh, so the cap is 400 now, four times the real campus, on an endpoint with
+no sign in in front of it.
+
+Then the sentence written to replace it got a number wrong in the same way,
+which is the part actually worth keeping. It said the eight seconds somebody
+else had measured for a maxed request did not apply here, because this machine
+got two. Nobody had timed it. Timed properly afterwards, four runs: 2000 rows
+in each of the five lists is a request of about a megabyte and a half, with
+ids as long as the real ones, and 6.5 seconds in process on this machine. So
+the figure being waved away was close to right and the figure waving it away
+was invented. Another run of it on a quieter machine came back between three
+and four seconds, which is worth saying rather than quoting one number as
+though it were a constant: the shape of the finding is that a maxed request
+costs seconds, not that it costs exactly six and a half. At 400 the same maxed request is 0.26 seconds. The cost
+is quadratic in the schedule against the candidates rather than in the size of
+the body, which is why 2000 rows in the other four lists with a real twenty
+class schedule is 0.20 seconds.
+
+So the lesson this file keeps relearning did not take the first time it was
+written down, one paragraph above. A number that argues for doing nothing has
+to be measured before it is allowed to win.
+
+One thing is left alone on purpose. The occupancy grid covers six in the
+morning to nine at night, so a class starting before 06:20 has no row for any
+lot, falls back to the stand-in figure of fifty, and the parking order becomes
+walk alone, every card carrying "no typical reading for that hour" rather than
+a number. The cards do say it, which the first draft of this sentence claimed
+they did not: the fullness factor returns that sentence instead of a
+measurement, deliberately, and a test is on it. The earliest class in any
+schedule this app carries is at eight, which lands in hour seven and well
+inside the grid, so it is a hole in the data rather than one anybody reaches.
+Clamping the lookup to the hours that exist would be the fix if it ever
+mattered, and the stand-in is at least a defined, tested behaviour rather than
+a crash.
+
+**2026-11-16: What driving the app in a browser found**
+
+The rounds before this read the code. This one ran it, with a fake clock and
+the scorer slowed down on purpose, and found three things reading could not.
+
+At a class boundary the parking screen printed the previous class's answer
+under the new class's heading: a different lot, a different fullness, a
+different match percent, and a leave time for a class that had already
+started. Two loaders on one screen, and they do not arrive together, because
+the next class comes out of memoised reads while the ranking has to POST.
+leaveTimeGone could not rescue the time either, because the day offset it is
+handed already belongs to the new class. Keying the cache on the minute,
+earlier the same day, narrowed that window from the rest of the hour to one
+request; it did not close it, and a cold Python function on Vercel is a second
+or three. The ranking is stamped with the class it was built for now, and a
+screen holding rows for a different class shows them as still loading.
+
+Removing a class dropped keyboard focus on the body. The handler puts focus on
+the day heading, which is right, but the dialog's own cleanup puts it back on
+whatever opened it, which here is the x button of the row being deleted, and
+that button goes a moment later. Measured in the browser: heading, then x,
+then body, and the next Tab starts again from the skip link. The dialog took a
+keepFocus prop at first and this caller turned it off. (Replaced the same day,
+in the entry above: the prop was the wrong shape, and so was the flag that
+replaced it. The dialog now hands focus back only if nothing else has claimed
+it, which is one condition for all three of them. There is no keepFocus
+anywhere in src/ any more.)
+
+Two more where the screen said nothing. Pressing Remove on a second class
+while the first was still going returned without a word, so the dialog closed
+and the class stayed. And editing a field while a save was in flight ended
+with "Saved" over the newer edit and the draft protecting it deleted, because
+forgetDraft ran on the way out and none of the draft effect's dependencies
+change afterwards, so it was never written again. Both say what happened now,
+and the save only forgets the draft if the form has not moved under it.
+
+Not changed, because it is a decision rather than a defect: is_open uses
+opens <= now <= closes, so a place is open at the exact minute it closes, and
+there is a test named for that boundary. Worth knowing it is deliberate.
+
+---
+
 **2026-11-15: The second review found the first review's own mistakes**
 
 The account work was read again, by three passes that were told what the
@@ -603,6 +895,12 @@ carries a NOT_FITTED list naming this reading and the reason, and a test that
 fails if the curve ever starts matching it, so the exemption cannot outlive
 what it is for. A second weekday midday reading settles it.
 
+Settled the next day, in the entry above: the second reading arrived, the curve
+was refitted to both middays and reproduces them to within half a point, so
+this reading is a fitted input now and was never added to NOT_FITTED. That list
+holds the two 1 October readings and nothing else, which is worth saying here
+because the paragraph above sends a reader looking for a third.
+
 ---
 
 **2026-11-03: App Check, and why it is reCAPTCHA Enterprise**
@@ -626,12 +924,17 @@ between a grader being able to start the app and not.
 Sequenced monitoring before enforcement deliberately. Turning enforcement on
 first would have locked out the demo account and every clone at once, with no
 way to see which requests were failing. Monitoring shows the traffic for a few
-days and enforcement follows. The enforcement switch is still off, and that is
-the one thing left on the README's list rather than an oversight.
+days and enforcement follows. Enforcement is on now: the App Check page showed
+65 of 65 requests verified for Cloud Firestore, and the switch went on after
+that. It was the one thing left on the README's list rather than an oversight,
+and the live site and a local dev server were both checked with it on, because
+they use different reCAPTCHA keys.
 
 Registered debug tokens are the sharp edge here: one is a permanent bypass for
 anyone holding the UUID, and it gets printed to the browser console. Short
-lived ones, deleted before enforcement goes live.
+lived ones only. Now that enforcement is on they have no job left, so taking
+the registered ones off the project is the last thing on the App Check list and
+it is a console job, not a code one.
 
 ---
 
@@ -1033,10 +1336,11 @@ from 171 KB to 127 KB at the time, and the stylesheet with it from 12 KB to
 6 KB. Those were measured against the Supabase build; the move to Firebase
 pushed the first load up again, and the entry at the end of this file has the
 figures that hold today. The split itself still earns its place: the map is
-about 50 KB of the 224 KB the demo downloads. (Both numbers are
+about 50 KB of the 226 KB the demo downloads. (Both numbers are
 re-measurements. This said 51 of 217 and the Firebase entry below said 216,
 which is how the drift was noticed: two figures for one thing, and the bundle
-had grown past both since either was taken.)
+had grown past both since either was taken. 224 until 16 November, when the
+build moved again.)
 
 The map is hidden from screen readers and is not a tab stop. Everything on it
 is already in the list above it in words, and a reader tabbing into Leaflet
@@ -1187,13 +1491,14 @@ the first load went from 127 KB compressed to 158 KB, which is 31 KB more for
 the login screen and the demo. Firestore is another 170 KB on top, and that one
 is fetched only when somebody signs in, the same trick the map already uses.
 Measured it rather than assuming: browsing the whole demo, parking screen and
-map included, pulls 224 KB and never asks for the Firestore chunk at all. Only
+map included, pulls 226 KB and never asks for the Firestore chunk at all. Only
 an account pays for it. (158 and 216 when this entry was written. Re-measured
-against the current build on 8 November 2026 with `gzip -c` over dist/: the
-first load is 174 KB and the demo 224 KB, because the bundle has grown since.
-The shape of the argument is unchanged and the Firestore chunk, 167 KB, is
-still fetched only on sign in. The numbers are corrected in place rather than
-left as a record, because both sentences claim what the app downloads now.)
+against the build of 16 November 2026 with `gzip -c` over dist/: the first load
+is 176 KB and the demo 226 KB, because the bundle has grown since. The shape of
+the argument is unchanged and the Firestore chunk, 167 KB, is still fetched only
+on sign in. The numbers are corrected in place rather than left as a record,
+because both sentences claim what the app downloads now, which also means they
+have to be taken again whenever the build moves: 174 and 224 on 8 November.)
 
 Two things are genuinely better. Firestore denies anything the rules do not
 allow, which is the opposite default from Postgres, where a table with security
@@ -1392,7 +1697,7 @@ There is a suite for it now, in tests/event_dates.test.mjs, which reads the
 dates at five fixed points, two of them now in the past, and either side of
 the November clock
 change. We put both bugs back to check it could fail: a hard coded timezone
-offset broke three of the nine, and treating the day offset as hours broke
+offset broke three of the nine the suite held then, and treating the day offset as hours broke
 four. It needs no emulator and no project, so it runs anywhere.
 
 **2026-10-28: Reading the whole thing before the demo**
@@ -1623,8 +1928,9 @@ generates nothing instead of quietly surviving a find and replace.
 with real logic to check. **tests/firestore_rules.test.mjs**: what the access
 rules actually allow, run against Firebase's emulator.
 
-**tests/event_dates.test.mjs**: the same event read at five points in the
-future, including either side of the November clock change. Needs no emulator
+**tests/event_dates.test.mjs**: the same event read at five fixed points, two
+of them now in the past, which is the whole idea, and including either side of
+the November clock change. Needs no emulator
 and no project.
 
 **src/lib/eventDates.ts**: the one place an event gets a date. Firestore
@@ -1656,7 +1962,7 @@ bare one breaks both and nothing else notices.
 **src/vite-env.d.ts**: the types for import.meta.env, so the Firebase config
 reads are checked rather than any.
 
-**data/parking_samples.csv**: the nine readings off the campus availability board
+**data/parking_samples.csv**: the nine readings off the campus availability
 board, which the occupancy curve was fitted to. **docs/architecture.mmd**: the
 three recommenders drawn from the student's side, which GitHub renders.
 
@@ -1720,7 +2026,7 @@ the screen sorts with. It was three closures inside ClubsView until the test
 suite needed to reach it, and `node --test` can import a .ts from here but not
 a .tsx component.
 
-**tests/club_ranking.test.mjs**: seven cases over the above, including the real
+**tests/club_ranking.test.mjs**: eight cases over the above, including the real
 case that forced the rarity weighting, so the choral society cannot climb back
 above the software engineering clubs without a failure.
 
@@ -1764,8 +2070,16 @@ it sets up, what it asserts and whether it passed. Generated, not maintained.
 
 **README.txt**: the plain text copy of README.md. Generated, not maintained.
 
-**package.json**: the front end's dependencies and the scripts. `dev`, `build`
-and `typecheck`, plus `seed` and the six test commands.
+**package.json**: the front end's dependencies and the scripts. `dev`, `build`,
+`typecheck` and `preview`, plus `seed`, the six test commands, and a plain
+`test` for the 48 cases that need nothing but `npm install`, which is five of
+those six commands between them. That last one is there because `npm test` is
+the first thing anybody types, and a missing script is a worse answer than 48
+of the 194 with a line saying which 48. It is one `node --test` over the six
+files rather than the five commands chained on `&&`, which stops at the first
+failure. Counted what that hides rather than guessing: breaking the first file
+leaves 38 of the 48 still running in one pass, while the chained version stops
+after `test:dates` and hides 29, because the first command carries two files.
 
 **vite.config.ts**, **tsconfig.json**, **tsconfig.app.json**,
 **tsconfig.node.json**: the build. The app config turns on

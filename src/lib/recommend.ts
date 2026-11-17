@@ -1,4 +1,6 @@
-import type { Building, ClassMeeting, RecommendResponse, Spot } from '../types'
+import type {
+  Building, ClassMeeting, Loadable, NextClass, RecommendResponse, Spot,
+} from '../types'
 import {
   getAvailabilityAround, getBuildings, getClassMeetings, getEvents,
   getParkingLots, getProfile, getSpots,
@@ -122,7 +124,11 @@ function todaysHours(spot: Spot, day: number) {
   return { opens_at: today[0], closes_at: today[1], closed_today: false }
 }
 
-function assertResponse(json: unknown): RecommendResponse {
+// for_class is left out of the return on purpose. The scorer does not send it,
+// the one caller below stamps it on, and promising it here would hand a second
+// caller a string that is undefined at runtime, which forThisClass would read
+// as a mismatch that can never clear.
+function assertResponse(json: unknown): Omit<RecommendResponse, 'for_class'> {
   const r = json as RecommendResponse
   if (!r || !Array.isArray(r.parking) || !Array.isArray(r.spots) || !Array.isArray(r.events)) {
     throw new Error('The scorer returned something unexpected')
@@ -142,17 +148,81 @@ export async function findNextClass() {
 // the right continent.
 const CAMPUS_MIDDLE = { lat: 33.8816, lng: -117.8854 }
 
-async function loadRecommendations(): Promise<RecommendResponse> {
+// Which class a ranking belongs to, as one string. Used twice: for the cache
+// key, and stamped on the answer so a screen can see that the rows it still
+// has were measured from a different class.
+//
+// JSON.stringify rather than a join, because course_code is free text and a
+// colon in it made the parts ambiguous.
+export function classKey(next: NextClass | null): string {
+  return next
+    ? JSON.stringify([next.course_code, next.day_offset, next.start_minutes])
+    : 'none'
+}
+
+// The ranking and the next class are two loaders on one screen, and they do
+// not arrive together: the class resolves out of memoised reads in about no
+// time, while the ranking has to POST to the scorer. For the length of that
+// request the heading names the new class and every row under it is still the
+// old class's answer, which is a different lot, a different fullness, a
+// different match and a leave time for a class that has started. leaveTimeGone
+// cannot rescue the time either, because the day offset it is handed already
+// belongs to the new class, so it leaves the old one alone.
+//
+// Keying the cache on the minute narrowed that window from the rest of the
+// hour to one request. It did not close it, and a cold Python function on
+// Vercel is a second or three. So the rows are held back until they are the
+// rows for the class on the heading.
+// Generic over anything carrying the stamp, because the events screen reshapes
+// the ranking into its own rows before a screen sees it and needs the same
+// guard.
+export function forThisClass<T extends { for_class: string }>(
+  recs: Loadable<T>,
+  next: Loadable<NextClass | null>,
+): Loadable<T> {
+  if (next.state !== 'ready') return recs
+  if (recs.state === 'ready' && recs.data.for_class !== classKey(next.data)) {
+    // Normally the loader is already on its way with the rows for the class on
+    // the heading, so a moment of Loading is the truth.
+    //
+    // If the last attempt failed, it is not. useAsync keeps the rows it has
+    // and puts no error up, on purpose, so with the rows hidden here as well
+    // there would be nothing on screen but a spinner: the tick does re-ask
+    // every minute, but against a scorer that is down every one of those fails
+    // the same way, and a spinner that never resolves says nothing and offers
+    // nothing to press. So the failure is shown instead, which is also the
+    // only thing that tells them opening another screen will ask again.
+    return recs.refetchFailed
+      ? { state: 'error', message: recs.refetchFailed }
+      : { state: 'loading' }
+  }
+  return recs
+}
+
+// next is handed in rather than worked out again in here. It used to be read
+// twice, once for the cache key and once in here for the stamp, with seven
+// reads in between: a class starting inside that window filed the answer under
+// one class and stamped it with the next one, so the key could never match its
+// own stamp and every screen held a spinner until the following minute.
+async function loadRecommendations(next: NextClass | null): Promise<RecommendResponse> {
+  // Nothing to rank against is an empty result, not a failure. Deleting every
+  // class on the profile screen used to put an error box on three screens.
+  //
+  // Before the reads rather than after them, which is the other thing handing
+  // next in bought: an account with an empty schedule used to pay for a full
+  // round of them to find out there was nothing to rank.
+  if (!next) return { parking: [], spots: [], events: [], for_class: 'none' }
+
   // Everything the ranking needs, in one go, so it is all from whichever
-  // source answered first.
+  // source answered first. next came out of its own pair of reads a moment
+  // ago, so in principle a sign in landing between the two could leave it
+  // describing the sample campus while buildings comes from the database.
+  // Nothing reaches a screen that way: App.tsx keys the whole tree on the
+  // person, so the panel waiting on this is unmounted, and the cache key has
+  // moved on by then too.
   const [profile, lots, spots, events, buildings, meetings] = await Promise.all([
     getProfile(), getParkingLots(), getSpots(), getEvents(), getBuildings(), getClassMeetings(),
   ])
-
-  const next = nextClassFrom(meetings, buildings)
-  if (!next) // Nothing to rank against is an empty result, not a failure. Deleting every
-    // class on the profile screen used to put an error box on three screens.
-    return { parking: [], spots: [], events: [] }
 
   const { dayOfWeek, minutes } = campusNow()
   // Which hour's occupancy row to read. The 20 is not arbitrary: it is
@@ -293,7 +363,7 @@ async function loadRecommendations(): Promise<RecommendResponse> {
         : `The scoring service returned ${res.status}`,
     )
   }
-  return assertResponse(await res.json())
+  return { ...assertResponse(await res.json()), for_class: classKey(next) }
 }
 
 // The ranking is the most expensive thing the app does, and one screen asks
@@ -345,12 +415,7 @@ export async function getRecommendations(): Promise<RecommendResponse> {
   const [meetings, buildings] = await Promise.all([getClassMeetings(), getBuildings()])
   const next = nextClassFrom(meetings, buildings)
   const today = campusParts(new Date())
-  // JSON.stringify rather than a join, because course_code is free text and
-  // a colon in it made the parts of this key ambiguous.
-  const forClass = next
-    ? JSON.stringify([next.course_code, next.day_offset, next.start_minutes])
-    : 'none'
-  const asked = `${dataVersion()}:${today.date}:${today.minutes}:${forClass}`
+  const asked = `${dataVersion()}:${today.date}:${today.minutes}:${classKey(next)}`
   if (asked !== rankedFor) {
     rankedFor = asked
     ranked = null
@@ -364,7 +429,7 @@ export async function getRecommendations(): Promise<RecommendResponse> {
     // keeping a rejected promise means one request off bad wifi keeps failing
     // for the life of the page even after the network comes back. Only if the
     // key has not moved on, so a late rejection cannot throw away a newer one.
-    ranked = loadRecommendations().catch((e: unknown) => {
+    ranked = loadRecommendations(next).catch((e: unknown) => {
       if (rankedFor === asked) ranked = null
       throw e
     })

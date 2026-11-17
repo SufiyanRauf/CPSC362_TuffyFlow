@@ -21,8 +21,8 @@ import {
   assertFails, assertSucceeds, initializeTestEnvironment,
 } from '@firebase/rules-unit-testing'
 import {
-  addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, setDoc,
-  updateDoc, writeBatch,
+  addDoc, collection, collectionGroup, deleteDoc, deleteField, doc, getDoc,
+  getDocs, setDoc, updateDoc, writeBatch,
 } from 'firebase/firestore'
 
 const ALEX = 'alex-uid'
@@ -156,6 +156,22 @@ describe('one student against another', () => {
 
   it('cannot list everybody’s profiles', async () => {
     await assertFails(getDocs(collection(alex(), 'profiles')))
+  })
+
+  // The schedule rule matches profiles/{uid}/class_meetings/{id}, and a
+  // collection group query asks across every parent at once, so there is no
+  // {uid} for it to bind and the rule cannot admit it. That is the right
+  // answer and it is already what happens, but nothing asked it to be, and a
+  // {path=**} match added later to fix something unrelated would hand every
+  // student's week of whereabouts to every account holder. Tried it: the
+  // "cannot read or touch the other's schedule" case below catches that too,
+  // because the narrowest wildcard that enables a collection group query also
+  // covers a direct list of one student's own subcollection, which is what
+  // that one asks about. So this is not the only thing standing in the way. It
+  // is the one that names the attack, which is why it reads the way it does.
+  it('cannot reach every schedule at once with a collection group query', async () => {
+    await assertFails(getDocs(collectionGroup(alex(), 'class_meetings')))
+    await assertFails(getDocs(collectionGroup(strangers(), 'class_meetings')))
   })
 
   it('cannot write the other’s profile', async () => {

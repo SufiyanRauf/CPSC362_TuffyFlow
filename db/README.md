@@ -31,9 +31,13 @@ at the end of the file that refuses to pass if any of it did not run.
 
 If you are reading those to understand the data, they are accurate with four
 exceptions, all of them in `src/lib/campusRows.ts`, which is the live copy.
-Occupancy diverged twice: on 2026-10-30 when Friday got its own curve, and on
-2026-11-03 when weekday evenings got theirs, which together change 660 of the
-1,344 cells and remove another 112 outright. Eastside South closed, so it
+Occupancy diverged four times: on 2026-10-30 when Friday got its own curve, on
+2026-11-03 when weekday evenings got theirs, and twice more when readings taken
+on 4 and 5 November and on 8 November replaced parts of the curve with measured
+figures, which are `WEEKDAY_MEASURED` and `WEEKEND_MEASURED` in that file.
+Together they change 660 of the 1,344 cells and remove another 112 outright.
+This paragraph named only the first two until the cells were counted one at a
+time against the live rows: those two account for 388 of the 660. Eastside South closed, so it
 carries no row at any hour of any day rather than the evening-only gap this
 paragraph used to describe. The SQL files still give it the highest weekday
 offset of any lot and still explain that it fills because it is closest to the

@@ -1,6 +1,6 @@
 import { tagText } from '../lib/labels'
 import { useAsync } from '../lib/useAsync'
-import { getRecommendations, findNextClass } from '../lib/recommend'
+import { getRecommendations, findNextClass, forThisClass } from '../lib/recommend'
 import { getBuildings, getEvents, getProfile } from '../lib/campusData'
 import Panel from './Panel'
 import PageHeader from './PageHeader'
@@ -83,7 +83,11 @@ async function rankedEvents() {
   // name an event this copy of the list does not have. That row has no time
   // and no host to print, which came out as a clock icon and a person icon
   // with nothing beside them, so it is dropped instead.
-  return recs.events.flatMap((r) => {
+  // Stamped with the class the ranking was measured from, so this screen can
+  // hold the rows back when they belong to the class before last. Without it
+  // the walk line under every event said it was measured from the previous
+  // class's building, for as long as the scorer took to answer.
+  const rows = recs.events.flatMap((r) => {
     const e = byId.get(r.id)
     if (!e) return []
     const start = new Date(e.starts_at)
@@ -105,6 +109,7 @@ async function rankedEvents() {
       measuredFrom: r.reasons.find((x) => WALK_REASON.test(x)) ?? '',
     }]
   })
+  return { for_class: recs.for_class, rows }
 }
 
 export default function EventsView() {
@@ -116,8 +121,22 @@ export default function EventsView() {
   // On the minute. An event that started since the last hour mark has to
   // leave the list, and the ranking is keyed on the minute now.
   const hour = useMinuteTick()
-  const events = useAsync(rankedEvents, [version, hour])
+  const loaded = useAsync(rankedEvents, [version, hour])
   const next = useAsync(findNextClass, [version, hour])
+  // How many events there are altogether, so the screen can say it is showing
+  // four of twelve rather than leaving a reader to wonder whether the other
+  // eight failed to load. How many survive depends on the clock, so the four is
+  // whatever it is when they look; the twelve is the whole seed. The header
+  // above already says what gets left out and why, and this is the number.
+  // Memoised read, so it costs nothing here.
+  const everything = useAsync(getEvents, [version])
+  // The same hold-back the parking screen and the dashboard use. The rows come
+  // back out of the wrapper once it has let them through, because Panel's empty
+  // line is about an empty array and would never fire on an object.
+  const guarded = forThisClass(loaded, next)
+  const events = guarded.state === 'ready'
+    ? { state: 'ready' as const, data: guarded.data.rows, refetchFailed: guarded.refetchFailed }
+    : guarded
 
   // The ranking is empty with no class at all, not only when the filter took
   // everything out, so an account with nothing on its schedule was being told
@@ -142,6 +161,15 @@ export default function EventsView() {
         }
       >
         {(rows) => (
+          <>
+          {/* Only when something is actually missing. "Showing 12 of 12" is a
+              sentence with no information in it, which is the rule the spots
+              screen's own count line follows. */}
+          {everything.state === 'ready' && rows.length < everything.data.length && (
+            <p className="mb-2 text-xs text-ink-faint">
+              {`Showing ${rows.length} of ${everything.data.length} events`}
+            </p>
+          )}
           <ul className="flex flex-col gap-3">
             {rows.map((e, i) => (
               <li
@@ -223,6 +251,7 @@ export default function EventsView() {
               </li>
             ))}
           </ul>
+          </>
         )}
       </Panel>
 

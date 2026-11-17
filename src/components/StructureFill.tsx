@@ -42,7 +42,15 @@ async function fillNow() {
       // recorded for this day and hour, is us not knowing. The occupancy
       // numbers never go below 1 precisely so that the app never tells a
       // student a structure is empty, and a zero would do exactly that.
-      return { name, pct: lot ? atHour.get(lot.id) ?? null : null }
+      // taking_cars is carried through so the row can tell the two reasons
+      // for a blank apart. A structure that is shut has no reading and never
+      // will, and "no reading" beside five percentages reads as data we failed
+      // to load rather than a gate nobody can drive through.
+      return {
+        name,
+        pct: lot ? atHour.get(lot.id) ?? null : null,
+        shut: lot ? lot.taking_cars === false : false,
+      }
     }),
   }
 }
@@ -76,7 +84,7 @@ export default function StructureFill() {
                 <div className="flex items-baseline justify-between gap-3 text-sm">
                   <span className="text-ink">{l.name}</span>
                   <span className="shrink-0 tabular-nums text-ink-soft">
-                    {l.pct === null ? 'no reading' : `${l.pct}%`}
+                    {l.pct !== null ? `${l.pct}%` : l.shut ? 'closed' : 'no reading'}
                     {/* the bar turning orange is the only cue otherwise, and a
                         color on its own is not a cue for everyone */}
                     {l.pct !== null && l.pct >= BUSY_PERCENT

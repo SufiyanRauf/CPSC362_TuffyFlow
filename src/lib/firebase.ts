@@ -29,8 +29,16 @@ const config = {
 // Proof that a request came from this app rather than from a script holding a
 // copy of the config above. The rules decide what a signed in student may
 // touch; they cannot decide how often, because a rule cannot count. Without
-// this, anybody can make an account and read until the day's free allowance is
-// gone, and the app stops working for everybody until midnight.
+// this, a script anywhere holding those four values can read until the day's
+// free allowance is gone, and the app stops working for everybody until
+// midnight.
+//
+// It raises that bar rather than removing it, and the difference is worth
+// being straight about: App Check says where a request came from, not how many
+// have come from there. Somebody signed in on the real site can still spend
+// the day's reads from their own console, and one query of the club list is
+// 320 of them. Nothing on the free tier can stop that, so it is a limit we
+// live with rather than one this closes.
 //
 // Optional on purpose, and separately from the four values above. Somebody
 // cloning this repository has no reCAPTCHA key, and the app should still run

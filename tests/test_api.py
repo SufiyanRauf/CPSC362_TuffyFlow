@@ -375,6 +375,48 @@ def test_a_spot_kind_that_is_not_one_of_the_four_is_refused():
         assert client.post(PATH, json=body).status_code == 200, good
 
 
+def test_a_card_carries_its_own_name_coordinates_and_reasons_over_http():
+    """The values in the response, not just which keys are present.
+
+    The test below pins the key set and the category. Nothing pinned what was
+    in six of the eleven fields, so lat and lng could be swapped in _result
+    and the whole suite stayed green: the browser builds its Directions link
+    and centres its map marker on those two, so a swap sends a student to a
+    point in the southern Indian Ocean and zooms the map out to the world.
+    Title, reasons and match_percent were loose the same way, and a
+    match_percent hardcoded to 100 also passed.
+    """
+    body = client.post(PATH, json=_a_body()).json()
+    lot, spot, event = body["parking"][0], body["spots"][0], body["events"][0]
+
+    # Written out rather than read back off the request, which is what makes
+    # a swap visible: _a_body sends lat 33.880356 and lng -117.881687, and
+    # both are northern-hemisphere latitude and western-hemisphere longitude,
+    # so the signs alone separate them.
+    assert lot["title"] == "Eastside South"
+    assert (lot["lat"], lot["lng"]) == (33.880356, -117.881687)
+    assert lot["match_percent"] == 69
+    assert lot["reasons"] == [
+        "4 min walk to Computer Science",
+        "usually about 62% full when you would arrive",
+    ]
+
+    assert spot["title"] == "Library North 3rd Floor"
+    assert (spot["lat"], spot["lng"]) == (LIBRARY_LAT, LIBRARY_LNG)
+    assert spot["match_percent"] == 93
+
+    assert event["title"] == "Resume Workshop"
+    assert (event["lat"], event["lng"]) == (CS_LAT, CS_LNG)
+
+    # kind is carried through untouched, and is null for a row that does not
+    # send one. The card renderer switches on it, so returning None for every
+    # spot also passed.
+    assert lot["kind"] is None
+    kinded = _a_body()
+    kinded["spots"][0]["kind"] = "study"
+    assert client.post(PATH, json=kinded).json()["spots"][0]["kind"] == "study"
+
+
 def test_every_card_carries_its_own_category_and_only_parking_carries_arrive_by():
     """The contract src/types.ts reads, which nothing checked.
 

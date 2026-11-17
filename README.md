@@ -14,11 +14,18 @@ it does, and it is what we show in class.
 
 **If you have just cloned this**, you need no credentials to build it, run it
 or run the tests. `npm install` then `npm run dev` serves the whole app on the
-bundled sample campus, and View demo works. None of the 191 tests need
+bundled sample campus, and View demo opens it. The rankings go through the
+Python scorer, though, so the dashboard, the parking order and the events list
+say the scoring service is not answering until that is running too: "Running it
+locally" below starts both, and it is two commands, not one. The spots, clubs
+and profile screens do not use the scorer and work either way, and so does the
+campus map, which draws every lot from the campus data rather than from the
+ranking. None of the 194 tests need
 credentials either, though they do not all run off `npm install` alone: the 48
-date, clock, club, parking, profile and account message tests do, the 106
+date, clock, club, parking, profile and account message tests do, which is
+what plain `npm test` runs, the 108
 Python ones want a virtualenv,
-and the 37 security rules tests want `firebase-tools` and a JDK. Running it locally below
+and the 38 security rules tests want `firebase-tools` and a JDK. Running it locally below
 has each. Only signing in and saving anything need your own
 Firebase project.
 
@@ -35,6 +42,26 @@ the test case list. They are generated, not maintained: edit the markdown and
 run `python3 tools/md_to_txt.py README.md README.txt`.
 
 Early UI prototype, from before the app was built: https://genre-fetch-60235643.figma.site/
+
+**If you are grading this and want the short route:** [Architecture](#architecture)
+for how it is put together, [Running it locally](#setting-it-up) for the
+commands, [TEST_CASES.md](TEST_CASES.md) for the 194 tests and what each one
+checks, and [What is real and what is ours](#what-is-real-and-what-is-ours) for
+which numbers came off a CSUF page and which are our own estimates.
+
+Contents:
+
+* [Project Overview](#project-overview)
+* [Core Features](#core-features)
+* [Recommendation System](#recommendation-system)
+* [Tech Stack](#tech-stack)
+* [What is real and what is ours](#what-is-real-and-what-is-ours)
+* [Architecture](#architecture)
+* [Current Project Status](#current-project-status)
+* [Setting it up](#setting-it-up)
+* [Team](#team)
+* [Course Information](#course-information)
+* [Disclaimer](#disclaimer)
 
 ---
 
@@ -235,8 +262,8 @@ Both are free on Firebase's Spark plan for the ways we sign people in.
 
 ## What is real and what is ours
 
-Nothing is fetched from CSUF or any third party at runtime, so every campus
-row ships inside the repository. (It still crosses the network twice over: the
+Nothing is fetched from CSUF at runtime, so every campus row ships inside the
+repository. (It still crosses the network twice over: the
 map tiles and the web font come from their own hosts, the ranking is a POST to
 our scorer, and a signed in student reads the campus back out of our own
 Firestore rather than out of the bundle. What none of that does is ask CSUF
@@ -247,7 +274,7 @@ two are kept apart on purpose.
 
 | Read from a named source | Ours, estimated or invented |
 |---|---|
-| Building names, codes and coordinates, from the campus map `locations.json`, 1 Oct 2026 | Class schedules and the demo student profile |
+| Building names, codes and coordinates, from the campus map's own locations.json, 1 Oct 2026 | Class schedules and the demo student profile |
 | Parking lot names, coordinates and permit types, from the parking map at `parking.fullerton.edu`, 9 Oct 2026 | Typical parking occupancy for the six lots CSUF does not count |
 | | Student Union Way's coordinate, which that map marks without giving one, read off satellite imagery |
 | Capacities of the four structures, from the parking availability board | |
@@ -353,6 +380,29 @@ project.
 
 The application has four parts.
 
+```mermaid
+flowchart TD
+    subgraph vercel["Vercel"]
+        browser["Browser<br/>React and TypeScript"]
+        scorer["Scoring service<br/>Python, POST /api/recommend"]
+    end
+    auth["Firebase Authentication<br/>email and password, or Google"]
+    store["Cloud Firestore<br/>the rows, and the rules<br/>saying who reads what"]
+    sample["Bundled sample campus<br/>src/lib/campusRows.ts"]
+    tiles["OpenStreetMap tiles<br/>the map only"]
+
+    browser -->|"sign in"| auth
+    browser -->|"an account's own rows"| store
+    browser -->|"demo mode, no account"| sample
+    browser -->|"candidates to rank"| scorer
+    scorer -->|"an order, and a reason per row"| browser
+    browser -->|"tiles"| tiles
+```
+
+GitHub renders that on its own. [docs/architecture.mmd](docs/architecture.mmd)
+is the other view of the same system, drawn from the student's side rather than
+the software's: what they tell it, and what it hands back.
+
 * The browser runs the interface. It keeps the session, so that a reload does
   not sign you out, and two small things in session storage: an unsaved
   profile form, and one word for the login card after a delete.
@@ -414,18 +464,20 @@ and a class has to end after it starts.
 ## Current Project Status
 
 Every feature is built and the app is live at tuffyflow.vercel.app, running on
-a real Firebase project with real accounts. What is left is one setting, noted
-at the bottom of this section.
+a real Firebase project with real accounts. Nothing is outstanding in the code.
+The one thing left anywhere is a console errand: the short lived App Check
+debug tokens registered while it was in monitoring mode have no job now that it
+is enforcing, and they come off the project.
 
 Completed:
 
 * Project concept, initial presentation and UI prototype
 * Database schema, security policies and seed data
-* The ranking engine, in Python, with 89 tests, and the endpoint it is
-  served behind, with 17 more that go through the app itself
+* The ranking engine, in Python, with 90 tests, and the endpoint it is
+  served behind, with 18 more that go through the app itself
 * The club ranking, pulled out of the screen into `src/lib/clubRanking.ts`,
   with 8 tests
-* The access rules, with 37 tests against Firebase's emulator
+* The access rules, with 38 tests against Firebase's emulator
 * The event dates and the clock formatting, with 19 tests that need neither Java nor a project
 * The parking occupancy curve, with 7 tests, three of them read straight from
   the board readings in `data/parking_samples.csv`
@@ -455,24 +507,28 @@ Completed:
 * Access rules written for every collection, with the validation that used to
   be database constraints
 * Deployed to Vercel, which rebuilds on every push to main
-* App Check, wired and reporting in monitoring mode, so the database can tell which
-  requests came from this app
+* App Check, enforcing on Cloud Firestore, so the database refuses a request
+  that did not come from this app
 
-Left to do:
+It ran in monitoring mode first, so we could watch verified requests arriving
+before anything started being refused: turning it on cold would have taken the
+live site down rather than protected it. The App Check page showed 65 of 65
+requests verified for Cloud Firestore, and enforcement went on after that. Both
+the live site and a local dev server still work with it on, which is the pair
+worth checking, because the local one uses a different reCAPTCHA key.
 
-App Check is switched on and reporting, but not yet enforcing. It runs in
-monitoring mode first so we can see verified requests arriving before we start
-refusing the ones without a token. Turning it on too early would have taken the
-live site down instead of protecting it. Once the App Check page shows verified
-traffic for Cloud Firestore, enforcement goes on and that is the last step.
-
-Nothing else is outstanding in the code.
+What App Check does and does not do is worth being exact about, since it is the
+last thing on this list. It proves a request came from this app. It does not
+count requests, so a signed in student can still spend the day's free read
+allowance from their own browser console, and nothing on the free tier can stop
+that. It is a limit we live with, not one this closes.
 
 Anyone cloning this repository needs their own Firebase project, and "Setting
 it up" below is the whole procedure. Until the config is in place the app runs
-on the sample campus bundled in the repository, the demo works, and the login
-screen says why signing in is unavailable. That is deliberate: a marker who
-clones this gets a working app rather than a blank screen.
+on the sample campus bundled in the repository, the demo works, and pressing
+any of the sign in buttons says why signing in is unavailable rather than
+failing silently. That is deliberate: a marker who clones this gets a working
+app rather than a blank screen.
 
 ---
 
@@ -484,7 +540,11 @@ clones this gets a working app rather than a blank screen.
 npm install
 npm run dev
 
-# the scoring service, in a second terminal
+# the scoring service, in a second terminal. Needs Python 3.10 or newer: four
+# of the six versions pinned in api/requirements.txt ask for it, fastapi,
+# starlette, uvicorn and pytest, and macOS still ships python3 as 3.9, so
+# check `python3 -V` first and name the version in the command if it is older,
+# as in python3.12 -m venv
 python3 -m venv .venv && .venv/bin/pip install -r api/requirements.txt
 .venv/bin/python -m uvicorn api.recommend:app --port 8000
 ```
@@ -497,9 +557,10 @@ npm run typecheck   # tsc over the whole front end, strict, no unused locals
 npm run build       # typecheck plus the production bundle
 ```
 
-[TEST_CASES.md](TEST_CASES.md) lists all 191 of them by id, with the numbered
-requirement each one traces to, the fixture it sets up, the assertions it makes
-and whether it passed. It opens with the sixteen requirements, eight functional
+[TEST_CASES.md](TEST_CASES.md) lists all 194 of them by id, with the numbered
+requirement each one traces to where it traces to one, the fixture it sets up,
+the assertions it makes and whether it passed. Sixteen trace to no requirement
+and print `--`; that file names all sixteen and says why. It opens with the sixteen requirements, eight functional
 and eight not, and a matrix tracing each to the cases that check it.
 
 It is generated by `python3 tools/gen_test_cases.py`, which runs every suite to
@@ -510,7 +571,11 @@ defined twice, or if a requirement ends up with no case behind it. Those
 refusals are the point: the document is only worth reading if it cannot
 claim a pass that did not happen.
 
-There are seven commands, covering the nine suites TEST_CASES.md lists. The
+There are seven commands, covering the nine suites TEST_CASES.md lists, plus a
+plain `npm test` for the 48 cases that need nothing but `npm install`, which is
+five of those commands between them. That one runs all six of their files in a
+single pass rather than one command after another, so a failure in the first
+does not hide the other thirty eight. The
 ranking engine and the endpoint in front of
 it, which is the part with the logic worth testing:
 
@@ -536,6 +601,22 @@ npm run test:rules
 
 The cask version of the JDK wants an administrator password; the formula above
 does not, and the emulator only needs it on the PATH.
+
+If that run stops with `Could not start Firestore Emulator, port taken`,
+something else on the machine already has port 8080, which is usually an
+emulator left behind by an earlier run. Freeing it is the simplest fix. To move
+off 8080 instead, two things have to move together, because two different
+programs read the port: `firebase.json` is where the emulator is started, and
+`FIRESTORE_EMULATOR_PORT` is where the tests look for it.
+
+```bash
+# both, to the same free port
+FIRESTORE_EMULATOR_PORT=8099 npm run test:rules   # after editing firebase.json
+```
+
+Changing only `firebase.json` is worse than leaving it alone: the emulator
+moves, the tests stay pointed at 8080, and they can pass against whatever is
+already sitting there.
 
 A green run of this suite still prints a long stream of red `PERMISSION_DENIED`
 blocks. Those are the refusals the tests are asserting, not failures. Read the

@@ -114,7 +114,10 @@ export default function DeleteAccount() {
           type="button"
           aria-disabled={busy}
           aria-describedby={noteId}
-          onClick={ask}
+          /* the focus() is for Safari and Firefox, as on the class rows and
+             the account menu: without it the confirm dialog captures the body
+             as its opener and this button never gets focus back. */
+          onClick={(e) => { e.currentTarget.focus(); ask() }}
           className={
             'mt-4 min-h-11 rounded-lg px-4 text-sm font-medium ' +
             (busy

@@ -260,6 +260,12 @@ function Details({ saved }: { saved: Profile }) {
   const [note, setNote] = useState(restored ? 'Restored what you had typed. Not saved yet.' : '')
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
+  // Always the form as it is on screen now. save() awaits a round trip and
+  // its closure holds the form from before it, so comparing against that
+  // would never see an edit made while the write was in flight.
+  const formRef = useRef(form)
+  formRef.current = form
+
   const dirty = JSON.stringify(form) !== JSON.stringify(saved)
 
   // The fields above lived nowhere but this component's state, and the app
@@ -302,19 +308,32 @@ function Details({ saved }: { saved: Profile }) {
     if (!dirty || busy) return
     setBusy(true)
     setNote('')
+    // What is being written, captured before the await. On an account that is
+    // a round trip, and the form stays live throughout: edit another field
+    // while it is in flight and the two below would otherwise both lie. The
+    // note would say "Saved" over an edit that was not in the write, and
+    // forgetDraft would delete the draft protecting it, which the effect above
+    // does not rewrite because none of its deps change afterwards. So the
+    // edit was gone on the next navigation with nothing having said so.
+    const written = JSON.stringify(form)
     try {
       await saveProfile(form)
       setFailed(false)
-      // the typing is now somewhere better than sessionStorage
-      forgetDraft()
+      const moved = JSON.stringify(formRef.current) !== written
+      // the typing is now somewhere better than sessionStorage, unless some of
+      // it arrived after the write started, in which case the draft is still
+      // the only copy of that part.
+      if (!moved) forgetDraft()
       // Only an account was written to. The demo's profile is a module
       // variable in campusData.ts, so telling someone it was saved was a
       // promise the app cannot keep past the next reload. Neither line talks
       // about rescoring any more: that happened on a screen the student is not
       // looking at, in words only we use.
-      setNote(session.kind === 'account'
-        ? 'Saved. Your recommendations are up to date.'
-        : 'Updated for this visit. A reload puts the sample student back.')
+      setNote(moved
+        ? 'Saved what you had. The newer edits are still unsaved.'
+        : session.kind === 'account'
+          ? 'Saved. Your recommendations are up to date.'
+          : 'Updated for this visit. A reload puts the sample student back.')
     } catch (e) {
       setFailed(true)
       // Not e.message. A rules refusal and an App Check failure both come back
@@ -533,6 +552,7 @@ function AddClass({ buildings: unsorted }: { buildings: Building[] }) {
   // all while they happened. Same treatment as Save changes above.
   const [busy, setBusy] = useState(false)
   const startId = useId()
+  const whereId = useId()
   // '' compares less than any time string, so a cleared start used to pass
   // and the class landed at midnight
   const why = classProblem(course, from, to, where)
@@ -548,6 +568,7 @@ function AddClass({ buildings: unsorted }: { buildings: Building[] }) {
       // row by keyboard nothing about where to go back to
       if (!course.trim()) document.getElementById('add-course')?.focus()
       else if (!from || !to || to <= from) document.getElementById(startId)?.focus()
+      else if (!where) document.getElementById(whereId)?.focus()
       return
     }
     const code = course.trim().toUpperCase()
@@ -627,7 +648,8 @@ function AddClass({ buildings: unsorted }: { buildings: Building[] }) {
         </label>
         <label className="text-xs font-medium text-ink-soft">
           Building
-          <select value={where} onChange={(e) => { setNote(null); setWhere(e.target.value) }}
+          <select id={whereId} value={where}
+                  onChange={(e) => { setNote(null); setWhere(e.target.value) }}
                   className={'mt-1 block max-w-48 ' + input}>
             <option value="">Pick one</option>
             {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -680,13 +702,29 @@ function Week({ meetings, buildings }: { meetings: ClassMeeting[]; buildings: Bu
   }))
 
   async function reallyRemove(dayName: string, c: ClassMeeting) {
-    if (removing) return
-    // Focus goes to the day's own heading. It used to go to the next class
-    // down, so a keyboard user who pressed Enter again deleted a second class,
-    // and on a day holding one class it fell out of the card entirely and took
-    // the viewport with it. The heading is where they were looking and there is
+    // Before the check below rather than after it. The dialog has closed by
+    // now and the x it was opened from is going with the row, so focus has to
+    // land somewhere on both ways out of here, not only on the one that
+    // removes something, and the day's own status line is what answers either
+    // way, so the day's card is where they should be looking.
+    //
+    // The day's heading, specifically. It used to go to the next class down,
+    // so a keyboard user who pressed Enter again deleted a second class, and
+    // on a day holding one class it fell out of the card entirely and took the
+    // viewport with it. The heading is where they were looking and there is
     // nothing destructive on it.
     document.getElementById(`day-${dayName}`)?.focus()
+    if (removing) {
+      // The other x buttons stay live during a removal, so this is reachable
+      // on an account, where the write is a round trip. It used to return
+      // without saying anything: the dialog closed, the class stayed, and
+      // nothing on the screen had changed.
+      setNote({
+        day: dayName, bad: true,
+        text: 'One class is still being removed. Try that one again in a moment.',
+      })
+      return
+    }
     setNote(null)
     setRemoving(c.id)
     try {
@@ -766,7 +804,12 @@ function Week({ meetings, buildings }: { meetings: ClassMeeting[]; buildings: Bu
                       type="button"
                       id={`rm-${c.id}`}
                       aria-disabled={removing === c.id}
-                      onClick={() => setConfirming({ day: day.name, c })}
+                      /* the focus() is for Safari and Firefox, which do not
+                         focus a button when it is clicked, so the dialog this
+                         opens would capture the body as its opener and have
+                         nowhere to hand focus back to on a cancel. Same line
+                         TopBar carries, for the same reason. */
+                      onClick={(e) => { e.currentTarget.focus(); setConfirming({ day: day.name, c }) }}
                       aria-label={`Remove ${c.course_code} at ${clockText(c.start_time)} on ${day.name}`}
                       className="grid h-9 w-9 shrink-0 place-items-center rounded text-ink-faint hover:bg-titan-50 hover:text-flame-ink"
                     >

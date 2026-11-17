@@ -68,6 +68,10 @@ const BATCH_LIMIT = 500
 // is here.
 const EXPECTED = { clubs: 320, spots: 24, events: 12 }
 
+// Every building id any row points at. Built here rather than inside write()
+// so the check below cannot depend on which collection went in first.
+const BUILDING_IDS = new Set(buildings.map((b) => b.id))
+
 async function write(name, rows) {
   const want = EXPECTED[name]
   if (want !== undefined && rows.length !== want) {
@@ -86,6 +90,24 @@ async function write(name, rows) {
     throw new Error(
       `${name}: ${orphans.length} row(s) name a club that does not exist: `
       + `${orphans.map((row) => row.club_name).join(', ')}.`)
+  }
+  // The other half of the same join, which did not come across either. A club
+  // is matched by name and leaves club_id empty when it misses, which is what
+  // the check above reads. building_id is written straight out of the row with
+  // no lookup at all, so nothing marks a building that was renamed or recoded:
+  // the row goes in pointing at a building that is not there, and recommend.ts
+  // drops any spot or event whose building it cannot find. That is the same
+  // eleven-of-twelve disappearance as the club rename, from the other key, and
+  // it is also what the count of 24 spots used to cover: in SQL the spots
+  // joined on a building code and a miss dropped the row, so the count caught
+  // it. Here spots is a list of literals and the count cannot move, so this is
+  // the check that does the work.
+  const nowhere = rows.filter(
+    (row) => row.building_id != null && !BUILDING_IDS.has(row.building_id))
+  if (nowhere.length > 0) {
+    throw new Error(
+      `${name}: ${nowhere.length} row(s) point at a building that does not exist: `
+      + `${nowhere.map((row) => `${row.name ?? row.title} -> ${row.building_id}`).join(', ')}.`)
   }
   for (let from = 0; from < rows.length; from += BATCH_LIMIT) {
     const batch = db.batch()

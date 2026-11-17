@@ -63,7 +63,16 @@ A_TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$")
 # Room for every row the app can hold several times over. A body is capped at
 # 4.5 MB by the host either way; this stops the quadratic part of the scoring
 # being handed a list big enough to matter.
-MANY = 2000
+#
+# 400 rather than the 2000 it started at. The widest body the app can build is
+# 100 rows all told: 11 lots after the closed one is dropped, 33 occupancy rows
+# for the three hour window, 24 spots, 12 events and a 20 class schedule. 2000
+# in each of five lists is a request of about a megabyte and a half that takes
+# seconds of CPU, measured, on an
+# endpoint with no sign in in front of it, and nothing was asking for it. 400
+# is four times the real campus and the one test on this cap reads the constant
+# rather than the number, so narrowing it cost nothing.
+MANY = 400
 
 # How many of each category the route asks the scorer for. One number because
 # the three screens read the same way, and a named one because 20 on its own in

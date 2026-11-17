@@ -49,6 +49,10 @@ function labelFor(rec: Recommendation) {
 // already says "3 min walk", so the card was printing the number twice. Spots
 // and events say "measured from Computer Science" with no number in it, which
 // is the one thing the walk row cannot tell you, so those stay.
+// Kept, like the parking entries in the three tables above, against a parking
+// row arriving here rather than because one does now. Only the parking walk
+// factor writes "min walk", and the dashboard passes this component a spot and
+// an event, so as things stand this filter takes nothing out.
 function saysWalk(reason: string) {
   return reason.includes('min walk')
 }
