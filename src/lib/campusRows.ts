@@ -158,7 +158,7 @@ const parkingLots: ParkingLot[] = [
 // This used to say ten readings from two people starting at 10:07. Five of
 // those ten, and the whole morning end of that range, exist only in the
 // spreadsheet the CSV header excludes for provenance, so citing them put
-// harvested figures behind a conclusion in the README. The conclusion does not
+// harvested figures behind a conclusion in project_notes. It does not
 // need them: four days of an unmoving counter, one of them a midday when
 // Nutwood was 95.9 percent full, is the same finding on readings nobody can
 // question. Both Tuesday readings put it at 1.49 percent,

@@ -1188,7 +1188,7 @@ a real 0.5. The seed carried three columns from here, and a fourth from
 Worth saying plainly: six readings is not much. Four days, only the counted
 facilities, and only a Sunday on the weekend side, so Saturday is an
 assumption. The employee, resident and hourly lots are not on that board at all
-and their numbers are guesses. The README says so and so does the parking
+and their numbers are guesses. docs/project_notes.md says so and so does the parking
 screen.
 
 ---
@@ -1215,7 +1215,7 @@ Four seed files now instead of one, so the order matters: schema, seed,
 seed_clubs, seed_spots, seed_events. seed_demo_account.sql runs after those,
 once someone has signed up in the app. The order for the first five is written
 at the bottom of seed.sql. (All of that is the Postgres design now; see
-db/README.md for which files are live.)
+db/data_layer.md for which files are live.)
 
 Removing the made up clubs broke the events seed and we nearly missed it. The
 events join clubs by name to pick a host, so when the names changed, eleven of
@@ -1363,7 +1363,7 @@ caption underneath instead, where it is both visible and read out.
 > and the findings were real; they are just findings about db/schema.sql now
 > rather than about what the app talks to.
 
-The README has claimed since September that row level security means a student
+The read me claimed, in September, that row level security meant a student
 can only ever read their own profile and their own schedule. Nothing had tested
 it, because testing it needs a database and two accounts.
 
@@ -1469,7 +1469,7 @@ Three things this costs, stated plainly because they are not small:
 Eight tables of Postgres, twelve row level security policies and five seed
 files stop being what the app talks to. They are still in db/ and still
 accurate, because they are where the campus data was written down with its
-sources. db/README.md says
+sources. db/data_layer.md says
 which files are live.
 
 Occupancy had to change shape. As rows it is twelve lots by seven days by
@@ -1663,7 +1663,7 @@ delete again. Every one of them failed a test, and putting the rules back made
 it green. A suite that cannot fail is worth nothing.
 
 They need Firebase's emulator, which is a Java program, so running them means
-having a JDK on the path. The README says how.
+having a JDK on the path. docs/project_notes.md says how.
 
 ---
 
@@ -1736,6 +1736,75 @@ whether the document existed or not, and that is not true here, because an
 update is allowed to carry values that a create refuses. We only knew because
 we went and read the rule. That is the argument for the explain-it-line-by-line
 rule in a sentence.
+
+---
+
+**2026-11-18: One read me in the root, and it is the text one**
+
+We were asked for the read me as plain text, and we had both: README.md and
+README.txt sitting next to each other in the root with the same 800-odd lines
+in them. Two read me files is the thing that was asked against, and the
+markdown one is the one that had to go.
+
+Deleting it was not an option at the time. README.txt did not exist on its
+own: it was generated from the markdown by `tools/md_to_txt.py`, and
+`gen_test_cases.py` rebuilt both text copies in the same command. Deleting the source would have
+left the generated file heading itself with a pointer to a file that is not
+there, broken the one command that keeps the two in step, and thrown away the
+161 lines of the read me that are Bhavy's.
+
+So it moved instead. `git mv` keeps the history, so `git blame` still credits
+his lines.
+
+Corrected the same day, twice over. The first move put it at
+`docs/readme_source.md`, and that name was wrong for the one thing this entry
+is about: a grader searching the project for a read me would have found two
+files, one of them markdown. The long document became
+`docs/project_notes.md`, so `README.txt` is the only file in the project with
+read me in its name. `db/README.md` went the same way, to
+`db/data_layer.md`, for the same reason: it is eighty six lines about the data
+layer and nobody asked for a second read me in a subdirectory.
+
+The second correction was bigger. The read me was asked to be how to run the
+program, and what we had was an 839 line project report with run instructions
+at either end: overview, features, tech stack, provenance, architecture,
+status. All of it true, none of it asked for, and a grader who draws a line
+that clearly is entitled to mind. `README.txt` now holds the site, the two ways to
+make an account, what to fill in first and in what order, what each screen
+does, and how to run it locally, and nothing else. Everything cut moved to
+`docs/project_notes.md` rather than being deleted, because it is the record of
+where every number came from and it carries Bhavy's 161 lines.
+
+Then the markdown source went too, and that is the third correction. A review
+asked the obvious question: a file that carries the same title, the same byline
+and the same instructions is a read me whatever it is called, so shipping
+`docs/how_to_run.md` meant shipping the read me twice, once as text and once as
+markdown, against a rule that said one plain text read me. It was written,
+converted once, and deleted. `README.txt` is written by hand now, and the
+converter it used to go through only has the test case list left.
+
+Nothing is lost by that. The converter was there to stop two copies of one
+document drifting apart, and with one copy there is nothing to drift. What it
+did guarantee, plain ASCII and no line past the margin, `gen_test_cases.py`
+now checks on the file directly and refuses the run if either fails.
+
+Three independent reviews of the first draft of those run instructions turned
+up six things wrong with it, which is the argument for writing a read me
+against the code rather than from memory. It said press **Add** when the button
+says **Add class**. It said the noise preference ranks spots quietest to
+loudest, when the scorer treats it as a ceiling and anything quieter is a full
+match. It said the Dashboard shows the top pick from every screen, when clubs
+are not a recommendation category at all. It said the Spots screen ranks, when
+it filters and the ranked spot is the one on the Dashboard. It said Parking
+comes back with nothing without a permit, when the screen says the permit is
+why and still draws the map. And it never mentioned **Save changes**, so
+anybody following it would have set a permit, walked to the Parking screen and
+found nothing saved.
+
+What this costs: GitHub no longer has a markdown read me to render, so the
+component diagram is only a diagram if somebody opens the markdown in `docs/`.
+GitHub does render README.txt as the repository's front page, as preformatted
+text, which is the file we were asked for anyway.
 
 ---
 
@@ -2055,20 +2124,30 @@ and swallowed. They also pin the two things the delete path cannot express in a
 rule: that the schedule is paged until empty, and that nothing may write an
 account that is being erased.
 
-**tools/gen_test_cases.py**: writes TEST_CASES.md. Reads the test files for the
+**tools/gen_test_cases.py**: writes TEST_CASES.md and the plain text copy
+TEST_CASES.txt beside it, so the two cannot drift apart, and checks README.txt
+rather than writing it. Reads the test files for the
 names, the fixtures and the assertions, runs all nine suites for the pass
 column, and refuses to write anything if a suite will not run, so the document
 cannot claim a pass nobody saw.
 
-**tools/md_to_txt.py**: writes README.txt and TEST_CASES.txt, which are the
-plain text copies the professor asked for. Headings get underlines, code gets
+**tools/md_to_txt.py**: turns TEST_CASES.md into the plain text TEST_CASES.txt.
+It used to convert the read me as well, which is why it exists at all, and the
+read me is written in text directly now. Headings get underlines, code gets
 indented, a table too wide for the page becomes one labelled block per row, and
 the output is checked for anything outside plain ASCII before it is written.
 
 **TEST_CASES.md** and **TEST_CASES.txt**: every automated test by id, with what
 it sets up, what it asserts and whether it passed. Generated, not maintained.
 
-**README.txt**: the plain text copy of README.md. Generated, not maintained.
+**README.txt**: the read me, and the only read me. How to open the app, how to
+make an account, what to fill in first, what each screen does, and how to run
+it locally. Nothing else, on purpose. Written by hand, in text, with no
+generation stamp in it. It was briefly converted from a markdown source, which
+meant the project shipped the read me twice, once as text and once as markdown,
+and one read me in plain text is the whole of what was asked for.
+`tools/gen_test_cases.py` checks it for plain ASCII and for any line past the
+margin, which is what the converter used to guarantee.
 
 **package.json**: the front end's dependencies and the scripts. `dev`, `build`,
 `typecheck` and `preview`, plus `seed`, the six test commands, and a plain
@@ -2135,11 +2214,12 @@ needs a weekday and a date and not just a clock time.
 **src/components/StructureFill.tsx**: the little bar showing how full a parking
 structure usually is at the hour you would arrive.
 
-**README.md**: the front door. What the app does, how to run it, how to connect
-a Firebase project, and what is done and still to do. `README.txt` is generated
-from it.
+**docs/project_notes.md**: everything the read me used to carry and no longer
+does. What the app does, the features, the recommendation system, the tech
+stack, what is real and what is ours, the architecture, the status, and the
+full local and Firebase setup. Not handed in, and nothing generates from it.
 
-**db/README.md**: the data layer on its own terms, including the move from
+**db/data_layer.md**: the data layer on its own terms, including the move from
 Postgres to Firestore and what survived it.
 
 **db/seed.sql** and **db/seed_events.sql**: the Postgres seed, kept from before

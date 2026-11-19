@@ -1,5 +1,7 @@
 # Tuffy Flow
 
+Sufiyan Rauf, Bhavy Patel and Phillip Bryan. CPSC 362, Fall 2026.
+
 Tuffy Flow is a campus companion web application designed for students at California State University, Fullerton. The goal of the project is to help students make better decisions throughout their campus day by providing personalized recommendations for parking, campus study spaces, clubs, and events.
 
 Live app: https://tuffyflow.vercel.app
@@ -30,22 +32,28 @@ has each. Only signing in and saving anything need your own
 Firebase project.
 
 **Three other documents are worth reading alongside this one.**
-[TEST_CASES.md](TEST_CASES.md) lists every automated test by id, with what it
+[TEST_CASES.md](../TEST_CASES.md) lists every automated test by id, with what it
 sets up, what it expects and whether it passed on the day it was generated.
-[DECISIONS.md](DECISIONS.md) is the dated decision log: what we chose, why, and
+[DECISIONS.md](../DECISIONS.md) is the dated decision log: what we chose, why, and
 which of those choices we later reversed and for what reason. It also has a
-file by file inventory of the codebase. [db/README.md](db/README.md) covers the
+file by file inventory of the codebase. [db/data_layer.md](../db/data_layer.md) covers the
 data layer and the move from Postgres to Firestore.
 
-`README.txt` and `TEST_CASES.txt` are the plain text copies of this file and of
-the test case list. They are generated, not maintained: edit the markdown and
-run `python3 tools/md_to_txt.py README.md README.txt`.
+`README.txt` in the root is the read me that gets handed in, and it is only the
+how-to-run instructions, because that is all the read me was asked to be. This
+file is everything else: what the app does, how it is built, and where every
+number in it came from. It is not handed in and nothing generates from it.
+
+`README.txt` is the only read me in the project, and it is plain text, which
+is how it was asked for. Nothing else is named readme anything, so a search of
+the project turns up the one file.
 
 Early UI prototype, from before the app was built: https://genre-fetch-60235643.figma.site/
 
-**If you are grading this and want the short route:** [Architecture](#architecture)
-for how it is put together, [Running it locally](#setting-it-up) for the
-commands, [TEST_CASES.md](TEST_CASES.md) for the 194 tests and what each one
+**If you are grading this and want the short route:** `README.txt` in the root
+to open the app and use it, [Architecture](#architecture) for how this is put
+together,
+[Setting it up](#setting-it-up) for the local commands, [TEST_CASES.md](../TEST_CASES.md) for the 194 tests and what each one
 checks, and [What is real and what is ours](#what-is-real-and-what-is-ours) for
 which numbers came off a CSUF page and which are our own estimates.
 
@@ -399,7 +407,8 @@ flowchart TD
     browser -->|"tiles"| tiles
 ```
 
-GitHub renders that on its own. [docs/architecture.mmd](docs/architecture.mmd)
+GitHub renders that diagram when you open `docs/project_notes.md`.
+[docs/architecture.mmd](architecture.mmd)
 is the other view of the same system, drawn from the student's side rather than
 the software's: what they tell it, and what it hands back.
 
@@ -557,7 +566,7 @@ npm run typecheck   # tsc over the whole front end, strict, no unused locals
 npm run build       # typecheck plus the production bundle
 ```
 
-[TEST_CASES.md](TEST_CASES.md) lists all 194 of them by id, with the numbered
+[TEST_CASES.md](../TEST_CASES.md) lists all 194 of them by id, with the numbered
 requirement each one traces to where it traces to one, the fixture it sets up,
 the assertions it makes and whether it passed. Sixteen trace to no requirement
 and print `--`; that file names all sixteen and says why. It opens with the sixteen requirements, eight functional

@@ -727,7 +727,7 @@ def main():
         # Pass and the document shows no evidence for it, which is the same
         # lie as a guessed result wearing a different hat: a reader is told a
         # behaviour was checked and given no way to see what was checked.
-        # PROF-01 shipped like this, on one of the two cases README.md holds
+        # PROF-01 shipped like this, on one of the two cases project_notes holds
         # up as the client-and-database drift check, because the body parser
         # stopped at a } inside a regex. The parser is fixed; this is what
         # stops the next parser bug reaching the page quietly.
@@ -1069,24 +1069,45 @@ def main():
     print('TEST_CASES.md: %d cases across %d suites, %d failing, %d skipped'
           % (total, len(suites), failures, skipped))
 
-    # The plain text copies are the other half of what gets handed in, and
-    # nothing used to regenerate them. Leaving that to whoever remembered the
-    # second command meant TEST_CASES.txt could keep an older date and older
-    # verdicts while the markdown beside it was current, and the professor
-    # reads whichever file he opens. One command writes both now.
+    # The plain text copy is the other half of what gets handed in, and nothing
+    # used to regenerate it. Leaving that to whoever remembered the second
+    # command meant TEST_CASES.txt could keep an older date and older verdicts
+    # while the markdown beside it was current, and the professor reads
+    # whichever file he opens. One command writes both of them now.
     sys.path.insert(0, os.path.join(ROOT, 'tools'))
     import md_to_txt
-    for name in ('TEST_CASES', 'README'):
-        src = os.path.join(ROOT, name + '.md')
-        dest = os.path.join(ROOT, name + '.txt')
-        with open(src, encoding='utf-8') as f:
-            text = md_to_txt.convert(f.read(), name + '.md')
-        bad = sorted({c for c in text if ord(c) > 126})
-        if bad:
-            raise SystemExit('%s is not plain ascii: %r' % (dest, bad))
-        with open(dest, 'w', encoding='ascii', newline='\n') as f:
-            f.write(text)
-        print('%s.txt: %d lines' % (name, text.count('\n')))
+    src = os.path.join(ROOT, 'TEST_CASES.md')
+    dest = os.path.join(ROOT, 'TEST_CASES.txt')
+    with open(src, encoding='utf-8') as f:
+        text = md_to_txt.convert(f.read(), 'TEST_CASES.md')
+    bad = sorted({c for c in text if ord(c) > 126})
+    if bad:
+        raise SystemExit('%s is not plain ascii: %r' % (dest, bad))
+    with open(dest, 'w', encoding='ascii', newline='\n') as f:
+        f.write(text)
+    print('TEST_CASES.txt: %d lines' % text.count('\n'))
+
+    # README.txt is not generated from anything. It used to be converted from a
+    # markdown source in docs, which meant the project shipped the read me
+    # twice, once as text and once as markdown, and one read me in plain text
+    # is the whole of what was asked for. It is written by hand now, so what
+    # the converter used to guarantee is checked here instead: a .txt opened in
+    # the wrong encoding shows a curly quote as mojibake, and a line past the
+    # margin wraps in a way that makes a table unreadable.
+    readme = os.path.join(ROOT, 'README.txt')
+    with open(readme, encoding='utf-8') as f:
+        text = f.read()
+    bad = sorted({c for c in text if ord(c) > 126})
+    if bad:
+        raise SystemExit('README.txt is not plain ascii: %r' % bad)
+    long_lines = [(i, line) for i, line in enumerate(text.split('\n'), 1)
+                  if len(line) > 90]
+    if long_lines:
+        raise SystemExit('README.txt line %d is %d characters, over the 90 the '
+                         'plain text documents keep to:\n  %s'
+                         % (long_lines[0][0], len(long_lines[0][1]),
+                            long_lines[0][1][:90]))
+    print('README.txt: %d lines, checked, not generated' % text.count('\n'))
 
 
 if __name__ == '__main__':

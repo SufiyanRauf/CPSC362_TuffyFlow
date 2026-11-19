@@ -1,10 +1,10 @@
 """Turn one of our markdown documents into the plain text version.
 
-The professor asked for the read me in text format, so README.txt and
-TEST_CASES.txt are both handed in. They are generated, not maintained: edit
-the markdown and run this.
+The professor asked for the read me in text format. README.txt is written in
+text directly, so the only document this converts now is the test case list,
+which is generated and would be absurd to keep by hand.
 
-    python3 tools/md_to_txt.py README.md README.txt
+    python3 tools/md_to_txt.py TEST_CASES.md TEST_CASES.txt
 
 Markdown that is only punctuation on the page has to become something a
 person reads in a terminal or in Notepad, which means a few decisions:
@@ -15,8 +15,8 @@ person reads in a terminal or in Notepad, which means a few decisions:
     inside a numbered step is indented past the step, not level with the
     prose around it, or the commands and the sentences look the same.
   * A table wider than the page is printed as one block per row instead of
-    a grid. The provenance table in the read me is 244 characters across,
-    and a grid that wide is unreadable in any window.
+    a grid. Only TEST_CASES.md has one that wide now, at 244 characters
+    across, and a grid that wide is unreadable in any window.
   * Output is plain ASCII. A .txt opened in the wrong encoding shows
     "anybody's" as mojibake, so the curly quotes and dashes are folded down.
 """
@@ -274,19 +274,15 @@ def convert(source, name):
     text = '\n'.join(out)
     text = re.sub(r'\n{3,}', '\n\n', text).strip('\n')
 
-    # TEST_CASES.md is itself generated, so telling a reader to edit it would
-    # send them somewhere their change is overwritten on the next run.
+    # The stamp goes at the top, where it warns you before you start editing a
+    # file your next run will overwrite. Both this document and its source are
+    # generated, so pointing a reader at the markdown would send them somewhere
+    # their change is lost just the same; the real source is the test files.
     stamp = 'Generated from %s on %s.' % (name, date.today().isoformat())
-    if name.startswith('TEST_CASES'):
-        how = ('%s\nBoth this file and %s are generated. The source is the\n'
-               'test files themselves, read and run by:\n'
-               '    python3 tools/gen_test_cases.py\n' % (stamp, name))
-    else:
-        how = ('%s Edit the markdown, not this file:\n'
-               '    python3 tools/md_to_txt.py %s %s\n'
-               % (stamp, name, name[:-3] + '.txt'))
-    header = how
-    return header + '\n' + text + '\n'
+    how = ('%s\nBoth this file and %s are generated. The source is the\n'
+           'test files themselves, read and run by:\n'
+           '    python3 tools/gen_test_cases.py\n' % (stamp, name))
+    return how + '\n' + text + '\n'
 
 
 def main():

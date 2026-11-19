@@ -22,11 +22,11 @@ ever comes up.
 project was built on before it moved to Firestore. Nothing runs them any more.
 
 They are kept rather than deleted for two reasons. They are where the campus
-data was first written down, with its sources named row by row, and the README's
-provenance table names the sources they cite. And they are the clearest
-record of how the
-access rules were worked out, which is the part of this project worth being
-able to explain: eight tables, twelve row level security policies, and a check
+data was first written down, with its sources named row by row, and the
+provenance table in ../docs/project_notes.md names the sources they cite. And
+they are the clearest record of how the access rules were worked out, which is
+the part of this project worth being able to explain: eight tables, twelve row
+level security policies, and a check
 at the end of the file that refuses to pass if any of it did not run.
 
 If you are reading those to understand the data, they are accurate with four
